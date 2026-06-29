@@ -1,0 +1,53 @@
+# Ferro yerel test sunucuları — gerçek FTP/SFTP davranışına karşı doğrulama.
+#   docker compose -f test/docker-compose.yml up -d
+#
+# FTP : localhost:21       kullanıcı=ferro  parola=ferropass  (pasif port 21000-21010)
+# SFTP: localhost:2222     kullanıcı=ferro  parola=ferropass  (ev dizini: /upload)
+
+services:
+  ftp:
+    image: delfer/alpine-ftp-server:latest
+    container_name: ferro-ftp
+    environment:
+      USERS: 'ferro|ferropass'
+      ADDRESS: localhost
+      MIN_PORT: '21000'
+      MAX_PORT: '21010'
+    ports:
+      - '21:21'
+      - '21000-21010:21000-21010'
+
+  sftp:
+    image: atmoz/sftp:latest
+    container_name: ferro-sftp
+    command: ferro:ferropass:::upload
+    ports:
+      - '2222:22'
+
+  # ── Genişletilmiş uyumluluk sunucuları (varsayılan kapalı) ───────────────
+  #   docker compose -f test/docker-compose.yml --profile extended up -d
+  pure-ftpd:
+    image: stilliard/pure-ftpd:latest
+    container_name: ferro-pureftpd
+    profiles: [extended]
+    environment:
+      PUBLICHOST: localhost
+      FTP_USER_NAME: ferro
+      FTP_USER_PASS: ferropass
+      FTP_USER_HOME: /home/ferro
+      FTP_PASSIVE_PORTS: '30000:30009'
+    ports:
+      - '2121:21'
+      - '30000-30009:30000-30009'
+
+  proftpd:
+    image: kibatic/proftpd:latest
+    container_name: ferro-proftpd
+    profiles: [extended]
+    environment:
+      FTP_LIST: 'ferro:ferropass'
+      PASSIVE_MIN_PORT: '30100'
+      PASSIVE_MAX_PORT: '30109'
+    ports:
+      - '2122:21'
+      - '30100-30109:30100-30109'

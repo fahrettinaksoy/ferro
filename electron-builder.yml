@@ -1,0 +1,56 @@
+appId: com.ferro.app
+productName: Ferro
+copyright: Copyright © 2026 Ferro
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!test/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!vitest.config.{js,ts}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,package-lock.json}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!{*.md,gelistirme-plani.md,ftp-client-analiz-raporu.md,stackvo.json}'
+asar: true
+asarUnpack:
+  - resources/**
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # Kod imzalama: CSC_LINK + CSC_KEY_PASSWORD env değişkenleriyle.
+  # Notarization: APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # İmzalama: WIN_CSC_LINK + WIN_CSC_KEY_PASSWORD env değişkenleriyle.
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Network
+  maintainer: Ferro
+
+# Auto-update yayın hedefi. Gerçek yayında provider/url doldurulmalı.
+publish:
+  provider: generic
+  url: https://example.com/ferro/updates/
+
+npmRebuild: false
