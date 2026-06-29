@@ -1,6 +1,6 @@
 {
-  "name": "l00kout",
-  "domain": "l00kout.loc",
+  "name": "ferro",
+  "domain": "ferro.loc",
   "runtime": "node",
   "node": {
     "version": "22",
