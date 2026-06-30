@@ -5,15 +5,15 @@ import { onMounted, onBeforeUnmount, watch } from 'vue'
 import { onEvent, invoke } from '@renderer/lib/ipc'
 import { useUiStore } from '@renderer/stores/ui'
 import { useConnectionStore } from '@renderer/stores/connection'
+import { useSitesStore } from '@renderer/stores/sites'
 import { useRemoteFsStore } from '@renderer/stores/remoteFs'
 import { useLocalStore } from '@renderer/stores/local'
 import { useLogStore } from '@renderer/stores/log'
 import { useTransferStore } from '@renderer/stores/transfer'
 import type { LocalEntry, RemoteEntry } from '@shared/transfer'
-import QuickConnect from '@renderer/components/QuickConnect.vue'
 import FilePane from '@renderer/components/FilePane.vue'
 import LogPanel from '@renderer/components/LogPanel.vue'
-import TransferBar from '@renderer/components/TransferBar.vue'
+import TransferTabs from '@renderer/components/TransferTabs.vue'
 import HostKeyDialog from '@renderer/components/HostKeyDialog.vue'
 import TlsDialog from '@renderer/components/TlsDialog.vue'
 import SiteManager from '@renderer/components/SiteManager.vue'
@@ -26,12 +26,46 @@ const vTheme = useTheme()
 watch(theme, (t) => vTheme.change(t), { immediate: true })
 
 const siteManagerOpen = ref(false)
+const siteManagerFocusId = ref<string | null>(null)
+const drawerOpen = ref(true)
 const syncOpen = ref(false)
 const conn = useConnectionStore()
 const remote = useRemoteFsStore()
 const local = useLocalStore()
 const log = useLogStore()
 const transfer = useTransferStore()
+const sites = useSitesStore()
+
+// Sol kenar çubuğundan site yönetimini aç: "Sunucu Ekle" (yeni) veya düzenle.
+function openSiteManager(siteId: string | null = null): void {
+  siteManagerFocusId.value = siteId
+  siteManagerOpen.value = true
+}
+
+function isActiveSite(host: string, port: number): boolean {
+  return conn.isConnected && conn.config?.host === host && conn.config?.port === port
+}
+
+// Kenar çubuğundaki bir sunucuya tıklama: bağlıysa kes, değilse bağlan.
+// Başka bir sunucuya geçişte önce mevcut oturum kapatılır.
+function connectSite(id: string): void {
+  const site = sites.sites.find((s) => s.id === id)
+  if (!site) return
+  if (isActiveSite(site.host, site.port)) {
+    remote.reset()
+    run(conn.disconnect())
+    return
+  }
+  run(
+    (async () => {
+      if (conn.isConnected) {
+        remote.reset()
+        await conn.disconnect()
+      }
+      await sites.connect(site)
+    })()
+  )
+}
 
 let unsubLog: (() => void) | null = null
 let unsubProgress: (() => void) | null = null
@@ -41,6 +75,7 @@ onMounted(async () => {
   unsubProgress = onEvent('transfer:update', (job) => transfer.onUpdate(job))
   await ui.applyBandwidth()
   await local.init()
+  await sites.load()
 })
 
 onBeforeUnmount(() => {
@@ -79,6 +114,7 @@ function run(p: Promise<unknown>): void {
 <template>
   <v-app>
     <v-app-bar :elevation="2" density="comfortable">
+      <v-app-bar-nav-icon @click="drawerOpen = !drawerOpen" />
       <v-app-bar-title>
         <v-icon icon="mdi-folder-network" class="mr-2" />
         Ferro
@@ -92,7 +128,7 @@ function run(p: Promise<unknown>): void {
       >
         {{ $t('sync.title') }}
       </v-btn>
-      <v-btn prepend-icon="mdi-server-network" variant="text" @click="siteManagerOpen = true">
+      <v-btn prepend-icon="mdi-server-network" variant="text" @click="openSiteManager(null)">
         {{ $t('settings.siteManager') }}
       </v-btn>
       <v-menu :close-on-content-click="false">
@@ -123,9 +159,62 @@ function run(p: Promise<unknown>): void {
       />
     </v-app-bar>
 
-    <v-main>
+    <v-navigation-drawer v-model="drawerOpen" width="280">
+      <v-list-subheader>{{ $t('sites.servers') }}</v-list-subheader>
+      <v-divider />
+
+      <v-list density="compact" nav class="drawer-list">
+        <v-list-item
+          v-for="s in sites.sites"
+          :key="s.id"
+          :active="isActiveSite(s.host, s.port)"
+          @click="connectSite(s.id)"
+        >
+          <template #prepend>
+            <v-icon
+              v-if="isActiveSite(s.host, s.port)"
+              icon="mdi-lan-connect"
+              color="success"
+            />
+            <v-icon v-else :icon="s.protocol === 'sftp' ? 'mdi-shield-lock' : 'mdi-server'" />
+          </template>
+          <v-list-item-title>{{ s.name }}</v-list-item-title>
+          <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
+          <template #append>
+            <v-btn
+              icon="mdi-pencil"
+              size="x-small"
+              variant="text"
+              :title="$t('sites.edit')"
+              @click.stop="openSiteManager(s.id)"
+            />
+          </template>
+        </v-list-item>
+
+        <v-list-item v-if="!sites.sites.length" class="text-disabled text-caption">
+          {{ $t('sites.noSites') }}
+        </v-list-item>
+      </v-list>
+
+      <template #append>
+        <div class="pa-2">
+          <v-btn
+            block
+            color="primary"
+            prepend-icon="mdi-server-plus"
+            @click="openSiteManager(null)"
+          >
+            {{ $t('sites.addServer') }}
+          </v-btn>
+        </div>
+      </template>
+    </v-navigation-drawer>
+
+    <v-main class="main-area">
       <div class="layout">
-        <QuickConnect />
+        <div class="log-area">
+          <LogPanel />
+        </div>
 
         <div class="panes">
           <FilePane
@@ -173,26 +262,31 @@ function run(p: Promise<unknown>): void {
           />
         </div>
 
-        <TransferBar />
-
-        <div class="log-area">
-          <LogPanel />
+        <div class="transfer-area">
+          <TransferTabs />
         </div>
       </div>
 
       <HostKeyDialog />
       <TlsDialog />
-      <SiteManager v-model="siteManagerOpen" />
+      <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
       <SyncDialog v-model="syncOpen" />
     </v-main>
   </v-app>
 </template>
 
 <style scoped>
+/* v-main, uygulama çubuğunun yüksekliği kadar padding ile içeriği aşağı iter.
+   Yüksekliği görünüm alanına sabitleyince (border-box) içerik kutusu
+   tam olarak "ekran − app-bar" kadar olur; böylece sayfa hiç kaydırılmaz. */
+.main-area {
+  height: 100vh;
+  overflow: hidden;
+}
 .layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   gap: 6px;
   padding: 6px;
   box-sizing: border-box;
@@ -205,7 +299,11 @@ function run(p: Promise<unknown>): void {
   min-height: 0;
 }
 .log-area {
-  height: 180px;
+  height: 140px;
+  flex: 0 0 auto;
+}
+.transfer-area {
+  height: 200px;
   flex: 0 0 auto;
 }
 </style>

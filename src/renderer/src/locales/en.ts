@@ -39,7 +39,12 @@ export default {
   transfer: {
     title: 'Transfers',
     activeCount: '{count} active',
-    clearCompleted: 'Clear completed'
+    clearCompleted: 'Clear completed',
+    queued: 'Queued',
+    completed: 'Transferred',
+    failed: 'Not transferred',
+    empty: 'No items',
+    cancel: 'Cancel'
   },
   log: {
     title: 'Log',
@@ -54,7 +59,10 @@ export default {
     protocol: 'Protocol',
     noSites: 'No saved sites',
     encWarning: 'OS encryption unavailable — passwords stored insecurely (base64).',
-    savedPassword: '•••••• (saved)'
+    savedPassword: '•••••• (saved)',
+    servers: 'Servers',
+    addServer: 'Add Server',
+    edit: 'Edit'
   },
   hostkey: {
     unknownTitle: 'Unknown Host Key',

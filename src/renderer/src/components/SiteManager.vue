@@ -7,7 +7,7 @@ import { useSitesStore } from '@renderer/stores/sites'
 
 const { t } = useI18n()
 
-const props = defineProps<{ modelValue: boolean }>()
+const props = defineProps<{ modelValue: boolean; focusSiteId?: string | null }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
 
 const sites = useSitesStore()
@@ -37,8 +37,13 @@ const passwordPlaceholder = ref('')
 
 watch(
   () => props.modelValue,
-  (open) => {
-    if (open) void sites.load()
+  async (open) => {
+    if (!open) return
+    await sites.load()
+    // Drawer'dan açılış: belirli bir siteye odaklan ya da "yeni" moduna geç.
+    const target = props.focusSiteId ? sites.sites.find((s) => s.id === props.focusSiteId) : null
+    if (target) selectSite(target)
+    else selectNew()
   }
 )
 

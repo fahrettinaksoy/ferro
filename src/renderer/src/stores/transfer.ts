@@ -16,7 +16,15 @@ function joinLocal(base: string, name: string): string {
 export const useTransferStore = defineStore('transfer', {
   state: (): { items: TransferJob[] } => ({ items: [] }),
   getters: {
-    active: (s): TransferJob[] => s.items.filter((t) => t.status === 'active' || t.status === 'queued')
+    active: (s): TransferJob[] => s.items.filter((t) => t.status === 'active' || t.status === 'queued'),
+    // Kuyruktakiler: aktif + bekleyen
+    queued: (s): TransferJob[] =>
+      s.items.filter((t) => t.status === 'active' || t.status === 'queued'),
+    // Aktarılanlar: tamamlanan
+    completed: (s): TransferJob[] => s.items.filter((t) => t.status === 'completed'),
+    // Aktarılmayanlar: başarısız + iptal edilen
+    failed: (s): TransferJob[] =>
+      s.items.filter((t) => t.status === 'failed' || t.status === 'cancelled')
   },
   actions: {
     sessionId(): string {

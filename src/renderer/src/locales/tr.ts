@@ -39,7 +39,12 @@ export default {
   transfer: {
     title: 'Transferler',
     activeCount: '{count} aktif',
-    clearCompleted: 'Tamamlananları temizle'
+    clearCompleted: 'Tamamlananları temizle',
+    queued: 'Kuyruktakiler',
+    completed: 'Aktarılanlar',
+    failed: 'Aktarılmayanlar',
+    empty: 'Öğe yok',
+    cancel: 'İptal'
   },
   log: {
     title: 'Günlük',
@@ -54,7 +59,10 @@ export default {
     protocol: 'Protokol',
     noSites: 'Henüz kayıt yok',
     encWarning: 'OS şifreleme kullanılamıyor — parolalar güvensiz (base64) saklanır.',
-    savedPassword: '•••••• (kayıtlı)'
+    savedPassword: '•••••• (kayıtlı)',
+    servers: 'Sunucular',
+    addServer: 'Sunucu Ekle',
+    edit: 'Düzenle'
   },
   hostkey: {
     unknownTitle: 'Bilinmeyen Host Anahtarı',

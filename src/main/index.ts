@@ -1,6 +1,14 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, nativeImage } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+
+// Uygulama adı: dev modunda Electron binary'sinden gelen "Electron" yerine
+// menü çubuğu/dock'ta "Ferro" gösterilsin diye hazır olmadan önce ayarlanır.
+app.setName('Ferro')
+
+// Uygulama ikonu (dev + linux pencere ikonu). macOS/Windows paketlerinde
+// ikon electron-builder tarafından build/icon.icns / build/icon.ico'dan gelir.
+const appIcon = nativeImage.createFromPath(join(__dirname, '../../build/icon.png'))
 import { installIpcRouter } from './ipc/router'
 import { registerAllHandlers } from './ipc/handlers'
 import { sessionManager } from './transfer/SessionManager'
@@ -16,6 +24,7 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true,
     title: 'Ferro',
+    ...(appIcon.isEmpty() ? {} : { icon: appIcon }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
@@ -49,6 +58,11 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.ferro.app')
+
+  // macOS dock ikonu (dev'de; pakette .icns kullanılır).
+  if (process.platform === 'darwin' && !appIcon.isEmpty()) {
+    app.dock?.setIcon(appIcon)
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
