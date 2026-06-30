@@ -34,7 +34,19 @@ export default {
     chmod: 'Permissions (chmod)',
     chmodTitle: 'Change permissions (octal)',
     edit: 'Edit (open locally)',
-    deleteConfirm: 'Delete {name}. Are you sure?'
+    deleteConfirm: 'Delete {name}. Are you sure?',
+    colName: 'Filename',
+    colSize: 'Size',
+    colType: 'Filetype',
+    colModified: 'Last modified',
+    colOwner: 'Owner/Group',
+    typeFolder: 'Folder',
+    typeFile: 'File',
+    typeSymlink: 'Link',
+    fileTypeExt: '{ext} file',
+    summary: '{files} files and {folders} folders. Total size: {bytes} bytes',
+    notConnected: 'Not connected.',
+    noConnection: 'Not connected to any server'
   },
   transfer: {
     title: 'Transfers',
@@ -50,6 +62,11 @@ export default {
     title: 'Log',
     clear: 'Clear',
     empty: 'No entries yet'
+  },
+  hotkeys: {
+    title: 'Keyboard Shortcuts',
+    refresh: 'Refresh',
+    hint: 'Shortcuts do not fire while typing in a text field.'
   },
   sites: {
     title: 'Site Manager',
@@ -82,12 +99,342 @@ export default {
     reject: 'Reject'
   },
   settings: {
+    title: 'Settings',
+    selectPage: 'Select page:',
     language: 'Language',
     theme: 'Theme',
     dark: 'Dark',
     light: 'Light',
     siteManager: 'Site Manager',
-    bandwidth: 'Speed limit (KB/s, 0=unlimited)'
+    bandwidth: 'Speed limit (KB/s, 0=unlimited)',
+    placeholder: 'This page will be filled in the next step.',
+    pages: {
+      connection: 'Connection',
+      ftp: 'FTP',
+      ftpActive: 'Active mode',
+      ftpPassive: 'Passive mode',
+      ftpProxy: 'FTP Proxy',
+      sftp: 'SFTP',
+      genericProxy: 'Generic proxy',
+      transfer: 'Transfers',
+      transferTypes: 'FTP: File Types',
+      transferExists: 'File exists action',
+      interface: 'Interface',
+      passwords: 'Passwords',
+      themes: 'Themes',
+      dateTime: 'Date/time format',
+      fileSize: 'Filesize format',
+      fileLists: 'File lists',
+      lang: 'Language',
+      editing: 'File editing',
+      fileAssoc: 'Filetype associations',
+      updates: 'Updates',
+      logging: 'Logging',
+      debug: 'Debug'
+    },
+    connection: {
+      timeoutTitle: 'Timeout',
+      timeoutLabel: 'Timeout in seconds:',
+      timeoutHint:
+        'If no data is sent or received during an operation for longer than the specified time, the connection will be closed and Ferro will try to reconnect.',
+      timeoutRange: '(10-9999, 0 to disable)',
+      reconnectTitle: 'Reconnection settings',
+      maxRetries: 'Maximum number of retries:',
+      maxRetriesRange: '(0-99)',
+      retryDelay: 'Delay between failed login attempts:',
+      retryDelayRange: '(0-999 seconds)',
+      reconnectHint:
+        'Keep in mind that some servers may ban you if you try to connect too frequently in a short period.',
+      tlsTitle: 'TLS options',
+      tlsMinVersion: 'Minimum allowed TLS version:',
+      tlsSystemTrust: 'Use system trust store for TLS certificates'
+    },
+    ftp: {
+      generalTitle: 'Overview',
+      generalHint:
+        'To better understand what these options do, run the network configuration wizard.',
+      wizardBtn: 'Start network configuration wizard...',
+      modeTitle: 'Transfer mode',
+      passive: 'Passive (recommended)',
+      active: 'Active',
+      fallback: 'Fall back to other transfer mode on failure',
+      modeHint:
+        'If you have problems listing folders or transferring files, try changing the default transfer mode.',
+      keepAliveTitle: 'FTP keep-alive',
+      keepAlive: 'Send FTP keep-alive commands',
+      keepAliveHint:
+        'Not needed for a normal server. If you need it, check with your server administrator.'
+    },
+    transferOpts: {
+      concurrentTitle: 'Concurrent transfers',
+      concurrent: 'Maximum simultaneous transfers:',
+      concurrentRange: '(at most: 1-10)',
+      concurrentDownload: 'Limit for concurrent downloads:',
+      concurrentUpload: 'Limit for concurrent uploads:',
+      unlimitedZero: '(0 for no limit)',
+      speedTitle: 'Speed limits',
+      enableSpeed: 'Enable speed limits',
+      downloadLimit: 'Download limit:',
+      uploadLimit: 'Upload limit:',
+      kibs: '(KiB/s)',
+      tolerance: 'Burst tolerance:',
+      tolLow: 'Low',
+      tolNormal: 'Normal',
+      tolHigh: 'High',
+      invalidTitle: 'Invalid characters in filenames',
+      invalidHint:
+        'Characters that are not supported by the local operating system in filenames are replaced if downloading such a file.',
+      replaceWith: 'Replace invalid characters with:',
+      charToReplace: 'Character to replace: /',
+      preallocTitle: 'Preallocation',
+      prealloc: 'Preallocate space before downloading'
+    },
+    transferTypes: {
+      defaultTitle: 'Default transfer type:',
+      auto: 'Auto',
+      ascii: 'ASCII',
+      binary: 'Binary',
+      autoTitle: 'Automatic file type classification',
+      asciiListLabel: 'Treat the following filetypes as ASCII files:',
+      add: 'Add',
+      remove: 'Remove',
+      malformedHint: 'Incorrectly entered types may corrupt files during transfer.',
+      noExt: 'Treat files without extension as ASCII files',
+      dotfiles: 'Treat dotfiles as ASCII files',
+      dotfilesNote: '*Dotfiles: files whose name begins with a dot, such as .htaccess'
+    },
+    fileExists: {
+      intro: 'Select the action to take if the target file already exists.',
+      defaultTitle: 'Default file exists action',
+      download: 'Download:',
+      upload: 'Upload:',
+      timeHint:
+        "For the 'Overwrite if newer' option to work, the system time must match the server time. If they differ (e.g. different time zones), set the time offset in the site manager.",
+      asciiResume: 'Allow resume of ASCII files',
+      asciiResumeHint: 'May cause problems if line endings differ between server and client.',
+      actAsk: 'Ask what to do',
+      actOverwrite: 'Overwrite',
+      actOverwriteNewer: 'Overwrite if newer',
+      actOverwriteSize: 'Overwrite if different size',
+      actResume: 'Resume',
+      actRename: 'Rename',
+      actSkip: 'Skip'
+    },
+    iface: {
+      layoutTitle: 'Layout',
+      layoutLabel: 'Layout of file and directory panes:',
+      layoutClassic: 'Classic',
+      layoutExplorer: 'Explorer',
+      layoutSideBySide: 'Two sided, side by side',
+      layoutTopBottom: 'Two sided, top and bottom',
+      msgLogLabel: 'Message log position:',
+      msgLogAbove: 'Above the local and remote file panes',
+      msgLogTab: 'As tab in the file pane area',
+      msgLogHidden: 'Hidden',
+      swapPanes: 'Swap local and remote panes',
+      behaviourTitle: 'Behaviour',
+      preventSleep: 'Prevent system from going to sleep during transfers and other operations',
+      startupLabel: 'When starting Ferro:',
+      startupNormal: 'Start normally',
+      startupSiteManager: 'Show the site manager on startup',
+      startupRestore: 'Restore tabs and reconnect',
+      newConnLabel: 'When starting a new connection while already connected:',
+      newConnAsk: 'Ask what to do',
+      newConnNewTab: 'Start in a new tab',
+      newConnCurrentTab: 'Start in the current tab',
+      forceRefresh: 'Force refreshing of directory listings during remote subfolder operations',
+      queueTitle: 'Transfer queue',
+      showInstantRate: 'Show instant transfer rate instead of average rate'
+    },
+    passwords: {
+      save: 'Save passwords',
+      dontSave: 'Do not save passwords',
+      master: 'Save passwords protected by a master password',
+      masterPw: 'Master password:',
+      masterPwConfirm: 'Confirm password:',
+      masterWarning: 'If the master password is lost it cannot be recovered! Keep it safe.'
+    },
+    langPage: {
+      selectLabel: 'Select language:',
+      systemDefault: 'Default system language',
+      instantNote: 'Language changes are applied instantly.',
+      previewLabel: 'Preview (selected language):'
+    },
+    themesPage: {
+      selectionTitle: 'Theme selection',
+      themeLabel: 'Theme:',
+      scaleLabel: 'Scale factor:',
+      note: 'Ferro uses a dark/light theme; there is no separate icon theme.',
+      previewLabel: 'Preview (selected theme):',
+      previewSample: 'Sample text and colors'
+    },
+    dateTime: {
+      dateTitle: 'Date format',
+      timeTitle: 'Time format',
+      systemDefault: 'Use system defaults of current language',
+      isoDate: 'ISO 8601 (example: 2007-09-15)',
+      isoTime: 'ISO 8601 (example: 15:47)',
+      custom: 'Custom format',
+      dateExample: '(example: %Y-%m-%d)',
+      timeExample: '(example: %H-%M-%S)',
+      moreInfo: 'More information about custom date and time formats'
+    },
+    fileSize: {
+      title: 'Size format',
+      bytes: 'Display size in bytes',
+      iec: 'IEC binary prefixes (example: 1 KiB = 1024 bytes)',
+      siBinary: 'Binary prefixes using SI symbols (example: 1 KB = 1024 bytes)',
+      siDecimal: 'SI symbols using decimal prefixes (example: 1 KB = 1000 bytes)',
+      thousandsSep: 'Use thousands separator',
+      decimals: 'Number of decimal places:',
+      examplesTitle: 'Examples'
+    },
+    fileLists: {
+      sortTitle: 'Sorting',
+      sortMode: 'Sort mode:',
+      sortDirsFirst: 'Directories first (default)',
+      sortFilesFirst: 'Files first',
+      sortMixed: 'Mixed',
+      nameSort: 'Name sort mode:',
+      nameCaseSensitive: 'Case sensitive (default)',
+      nameCaseInsensitive: 'Case insensitive',
+      nameNatural: 'Natural sort',
+      compareTitle: 'Directory comparison',
+      compareHint:
+        'When comparing by time, files with different times are considered equal if the difference does not exceed the threshold specified here.',
+      compareThreshold: 'Comparison threshold (in minutes):',
+      dblTitle: 'Double-click actions',
+      dblFile: 'Action on double-clicked files:',
+      dblDir: 'Action on double-clicked directories:',
+      dblTransfer: 'Transfer',
+      dblViewEdit: 'View/Edit',
+      dblNone: 'None',
+      dblOpen: 'Open'
+    },
+    editing: {
+      defaultTitle: 'Default editor:',
+      none: 'Do not use a default editor',
+      system: 'Use the system default editor for text files',
+      custom: 'Use the following custom editor:',
+      browse: 'Browse...',
+      quoteHint: 'The command and its parameters must be properly quoted.',
+      quoteRules: 'Quoting rules',
+      useAssoc: 'Use file associations if available',
+      alwaysDefault: 'Always use the default editor',
+      watchChanges: 'Watch locally edited files and prompt to upload changes'
+    },
+    fileAssoc: {
+      label: 'Custom filetype associations:',
+      formatHint: 'Format: the filetype, followed by the quoted command and its parameters.',
+      example: 'Example: png "c:\\program files\\viewer\\viewer.exe" -open',
+      quoteRules: 'Quoting rules'
+    },
+    updates: {
+      title: 'Ferro updates',
+      frequency: 'Check for updates:',
+      freqDaily: 'Daily',
+      freqWeekly: 'Weekly',
+      freqNever: 'Never',
+      channel: 'Update versions to check:',
+      chStable: 'Stable versions only',
+      chBeta: 'Stable and beta versions',
+      chNightly: 'Stable, beta and nightly versions',
+      recommendation:
+        'Recommendation: unless you want to test new features, use stable versions. Beta versions and nightly builds are development versions intended for testing. Nightly builds may not work as expected and could harm your system. You assume the risk of any damage from using beta versions and nightly builds.',
+      checkNow: 'Check for updates...',
+      privacyHint:
+        'To check for updates, information such as the Ferro version, your operating system and CPU architecture must be sent. Only the necessary data is sent. The submitted data is anonymized and aggregated.',
+      privacyPolicy: 'Privacy policy'
+    },
+    logging: {
+      timestamps: 'Add timestamps to log entries',
+      toFile: 'Log to file',
+      fileName: 'Filename:',
+      browse: 'Browse',
+      limitSize: 'Limit log file size',
+      limit: 'Limit:',
+      mib: 'MiB',
+      rotateHint:
+        'When the log file reaches the specified size, ".1" is appended to the filename (older log files may be overwritten), it is renamed and a new file is created.'
+    },
+    debug: {
+      title: 'Debug settings',
+      showMenu: 'Show the debug menu',
+      level: 'Debug log level:',
+      lvl0: '0 - None',
+      lvl1: '1 - Warning',
+      lvl2: '2 - Info',
+      lvl3: '3 - Verbose',
+      lvl4: '4 - Debug',
+      levelHint:
+        'The higher the debug level, the more information is written to the message log. Showing debug information reduces performance.',
+      reportHint: 'When reporting a bug, send the logs at the "Verbose" log level.',
+      rawListing: 'Show raw directory listing'
+    },
+    ftpActive: {
+      portTitle: 'Limit local ports',
+      limitPorts: 'Limit local ports used by Ferro',
+      limitHint:
+        'By default, Ferro can use any available local port for active mode transfers. If you want Ferro to use only ports within a certain range, enter the range below.',
+      portMin: 'Lowest available port:',
+      portMax: 'Highest available port:',
+      ipTitle: 'Active mode IP address',
+      ipHint: 'In order to use active mode, Ferro needs to know your external IP address.',
+      ipAskOs: 'Ask the operating system for the external IP address',
+      ipFixed: 'Use the following IP address:',
+      ipFixedHint:
+        'Check this option if you are behind a router and have a fixed external IP address.',
+      ipUrl: 'Get external IP address from the following URL:',
+      ipUrlDefault: 'Default: http://ip.filezilla-project.org/ip.php',
+      noExternalForLocal: 'Do not use the external IP address for local connections.'
+    },
+    ftpPassive: {
+      title: 'Passive mode',
+      hint: 'Some misconfigured servers behind routers may reply with their own local IP address.',
+      useServerIp: "Use the server's external IP address instead",
+      fallbackActive: 'Fall back to active mode'
+    },
+    ftpProxy: {
+      title: 'FTP Proxy',
+      typeLabel: 'Type of FTP proxy:',
+      none: 'None',
+      custom: 'Custom',
+      specifiers: 'Format specifiers:',
+      spec1: '%h - Host    %u - Username    %p - Password',
+      spec2: '%a - Account (lines containing this will be ignored if account login type is not used)',
+      spec3: '%s - Proxy username    %w - Proxy password',
+      host: 'Proxy host:',
+      user: 'Proxy username:',
+      password: 'Proxy password:',
+      note: 'Note: This only works with plain, unencrypted FTP connections.'
+    },
+    sftp: {
+      title: 'Public key authentication',
+      hint: 'To use public key authentication, Ferro needs to know your personal key.',
+      keysLabel: 'Personal keys:',
+      colFile: 'Filename',
+      colComment: 'Comment',
+      colType: 'Type',
+      colFingerprint: 'Fingerprint',
+      addKey: 'Add key file...',
+      removeKey: 'Remove key',
+      empty: 'No keys added yet',
+      sshAgentHint:
+        'Alternatively you can use your system SSH agent. To do so, make sure the SSH_AUTH_SOCK variable is set.'
+    },
+    genericProxy: {
+      title: 'Generic proxy',
+      typeLabel: 'Type of generic proxy:',
+      none: 'None',
+      http: 'HTTP/1.1 using CONNECT method',
+      socks4: 'SOCKS 4',
+      socks5: 'SOCKS 5',
+      host: 'Proxy host:',
+      port: 'Proxy port:',
+      user: 'Proxy username:',
+      password: 'Proxy password:',
+      note: 'Note: A generic proxy only allows establishing passive mode FTP connections.'
+    }
   },
   sync: {
     title: 'Directory Synchronization',

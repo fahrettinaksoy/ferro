@@ -13,6 +13,10 @@ export interface RemoteEntry {
   modifiedAt: number | null
   /** Unix izinleri (örn. 0o755) — biliniyorsa. */
   permissions: number | null
+  /** Sahip kullanıcı: SFTP'de uid, FTP'de kullanıcı adı — biliniyorsa. */
+  owner?: string | null
+  /** Sahip grup: SFTP'de gid, FTP'de grup adı — biliniyorsa. */
+  group?: string | null
   /** Sembolik link hedefi (type === 'symlink'). */
   linkTarget?: string
 }

@@ -101,11 +101,14 @@ const statusColor: Record<string, string> = {
   >
     <v-card>
       <v-toolbar density="compact" color="surface">
-        <v-icon icon="mdi-sync" class="ml-3" />
+        <v-icon icon="$sync" class="ml-3" />
         <v-toolbar-title class="text-body-1">{{ $t('sync.title') }}</v-toolbar-title>
         <v-spacer />
-        <v-btn icon="mdi-refresh" size="small" :loading="loading" @click="compare()" />
-        <v-btn icon="mdi-close" size="small" @click="emit('update:modelValue', false)" />
+        <!-- Bağlamsal defaults: toolbar butonları küçük (sadece bu alt-ağaç). -->
+        <v-defaults-provider :defaults="{ VBtn: { size: 'small' } }">
+          <v-btn icon="$refresh" :loading="loading" @click="compare()" />
+          <v-btn icon="mdi-close" @click="emit('update:modelValue', false)" />
+        </v-defaults-provider>
       </v-toolbar>
 
       <div v-if="!conn.isConnected" class="pa-6 text-center text-medium-emphasis">
@@ -125,7 +128,7 @@ const statusColor: Record<string, string> = {
         </div>
 
         <div class="sync-scroll px-2 py-2">
-          <v-table density="compact">
+          <v-table>
             <thead>
               <tr>
                 <th style="width: 40px"></th>
@@ -140,13 +143,12 @@ const statusColor: Record<string, string> = {
                 <td>
                   <v-checkbox-btn
                     :model-value="selected.has(e.name)"
-                    density="compact"
                     @update:model-value="toggle(e.name)"
                   />
                 </td>
                 <td>
                   <v-icon
-                    :icon="e.isDirectory ? 'mdi-folder' : 'mdi-file-outline'"
+                    :icon="e.isDirectory ? '$folder' : '$fileEntry'"
                     size="small"
                     class="mr-1"
                   />
@@ -160,7 +162,16 @@ const statusColor: Record<string, string> = {
                 </td>
                 <td>
                   <v-chip :color="statusColor[status(e)]" size="x-small" variant="tonal">
-                    {{ $t('sync.' + (status(e) === 'onlyLocal' ? 'onlyLocal' : status(e) === 'onlyRemote' ? 'onlyRemote' : 'differ')) }}
+                    {{
+                      $t(
+                        'sync.' +
+                          (status(e) === 'onlyLocal'
+                            ? 'onlyLocal'
+                            : status(e) === 'onlyRemote'
+                              ? 'onlyRemote'
+                              : 'differ')
+                      )
+                    }}
                   </v-chip>
                 </td>
               </tr>
@@ -184,7 +195,7 @@ const statusColor: Record<string, string> = {
           </v-btn>
           <v-btn
             color="primary"
-            prepend-icon="mdi-sync"
+            prepend-icon="$sync"
             :disabled="!selected.size"
             @click="synchronize()"
           >

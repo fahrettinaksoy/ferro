@@ -26,11 +26,11 @@ export function formatDate(ms: number | null): string {
 export function entryIcon(type: EntryType): string {
   switch (type) {
     case 'directory':
-      return 'mdi-folder'
+      return '$folder'
     case 'symlink':
-      return 'mdi-link-variant'
+      return '$symlink'
     default:
-      return 'mdi-file-outline'
+      return '$fileEntry'
   }
 }
 

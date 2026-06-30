@@ -35,6 +35,9 @@ function mapEntry(info: FileInfo): RemoteEntry {
     size: info.size,
     modifiedAt: info.modifiedAt ? info.modifiedAt.getTime() : null,
     permissions: mapPermissions(info),
+    // basic-ftp unix listelemelerinde kullanıcı/grup adlarını (string) verir.
+    owner: info.user || null,
+    group: info.group || null,
     linkTarget: info.link || undefined
   }
 }

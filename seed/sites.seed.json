@@ -1,0 +1,491 @@
+[
+  {
+    "id": "6eefce1f-9067-42a4-aadb-10ecfb856875",
+    "name": "Web Sunucusu (App)",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "app01.ferro.example.com",
+    "port": 22,
+    "user": "deploy",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "3e303c98-15da-4885-ba41-76bf3828021c",
+    "name": "Web Sunucusu (App2)",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "app02.ferro.example.com",
+    "port": 22,
+    "user": "deploy",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "3e35e035-3a49-4021-9079-d187ab0adc82",
+    "name": "API Gateway",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "api.ferro.example.com",
+    "port": 2222,
+    "user": "svc-api",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "a9ff290f-645d-4b98-b24a-a9313fab7e2e",
+    "name": "Yük Dengeleyici",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "lb.ferro.example.com",
+    "port": 22,
+    "user": "root",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "4598c1f9-586c-48ac-aedf-99e59e4a4f6f",
+    "name": "Statik İçerik (FTPS)",
+    "folder": "Production",
+    "protocol": "ftps",
+    "host": "static.ferro.example.com",
+    "port": 21,
+    "user": "static-ftp",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "a1fdfa7a-e2e6-4fa9-8b45-1a643e3726fa",
+    "name": "Medya Deposu",
+    "folder": "Production",
+    "protocol": "ftps-implicit",
+    "host": "media.ferro.example.com",
+    "port": 990,
+    "user": "media",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "ce8de1f9-2dec-410d-bd5a-cd9cf6b20773",
+    "name": "Ödeme Servisi",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "pay.ferro.example.com",
+    "port": 50022,
+    "user": "pay-svc",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "b79840cb-427d-4168-8b99-97dd354f6c1d",
+    "name": "Kuyruk İşleyici",
+    "folder": "Production",
+    "protocol": "sftp",
+    "host": "worker.ferro.example.com",
+    "port": 22,
+    "user": "worker",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "75ac9014-7faa-4675-84b2-eaf98eb48df2",
+    "name": "Staging Web",
+    "folder": "Staging",
+    "protocol": "sftp",
+    "host": "staging.ferro.example.com",
+    "port": 22,
+    "user": "deploy",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "f98f6108-0700-4ecf-a2fa-6c07a4539b7d",
+    "name": "Staging API",
+    "folder": "Staging",
+    "protocol": "ftps",
+    "host": "api.staging.ferro.example.com",
+    "port": 21,
+    "user": "qa-ftp",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "53a4dedf-3151-4ba8-a85c-87e9eb4f9f72",
+    "name": "Staging DB Dosyaları",
+    "folder": "Staging",
+    "protocol": "sftp",
+    "host": "db.staging.ferro.example.com",
+    "port": 22,
+    "user": "dbadmin",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "98b69ae0-c078-4a73-a9f6-7e5384d1eaf4",
+    "name": "QA Test Sunucu",
+    "folder": "Staging",
+    "protocol": "ftp",
+    "host": "qa.ferro.example.com",
+    "port": 21,
+    "user": "qa",
+    "encoding": "latin1",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "c292f4d3-249c-44ab-b247-e60b3350177d",
+    "name": "UAT Ortamı",
+    "folder": "Staging",
+    "protocol": "ftps",
+    "host": "uat.ferro.example.com",
+    "port": 21,
+    "user": "uatuser",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "56527684-a98b-4041-af31-fba5bfaff9d5",
+    "name": "Dev Box (Local VM)",
+    "folder": "Development",
+    "protocol": "ftp",
+    "host": "192.168.1.50",
+    "port": 2121,
+    "user": "dev",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "10daaa09-1ad5-40f5-ad81-24498733ed77",
+    "name": "Dev Box (Docker)",
+    "folder": "Development",
+    "protocol": "sftp",
+    "host": "127.0.0.1",
+    "port": 2222,
+    "user": "ferro",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "91de2683-0c89-4b1b-aeb3-901221f329bf",
+    "name": "Test FTP (vsftpd)",
+    "folder": "Development",
+    "protocol": "ftp",
+    "host": "127.0.0.1",
+    "port": 21,
+    "user": "ferro",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "1f0bb644-5b1e-4218-ad78-4ed2ca97d26b",
+    "name": "Test SFTP (atmoz)",
+    "folder": "Development",
+    "protocol": "sftp",
+    "host": "localhost",
+    "port": 2200,
+    "user": "ferro",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "6929e81b-e63c-44cd-b850-d6f686f3872a",
+    "name": "Feature Branch Demo",
+    "folder": "Development",
+    "protocol": "sftp",
+    "host": "demo.ferro.example.com",
+    "port": 22,
+    "user": "demo",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "f9dac175-dd8c-4f07-9a99-c8f9d5959cd8",
+    "name": "Sandbox",
+    "folder": "Development",
+    "protocol": "ftps",
+    "host": "sandbox.ferro.example.com",
+    "port": 21,
+    "user": "sandbox",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "d2c161ca-b3b0-4e17-baa9-163d594b738c",
+    "name": "Yedek Sunucu (Gece)",
+    "folder": "Backups",
+    "protocol": "sftp",
+    "host": "backup01.ferro.example.com",
+    "port": 22,
+    "user": "backup",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "d59b0aef-1ecd-4c4d-a429-b9f26afaafb8",
+    "name": "Yedek Sunucu (Haftalık)",
+    "folder": "Backups",
+    "protocol": "sftp",
+    "host": "backup02.ferro.example.com",
+    "port": 2222,
+    "user": "backup",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "431f0c69-0688-468b-a8ac-146da9eabee6",
+    "name": "Off-site Yedek",
+    "folder": "Backups",
+    "protocol": "ftps-implicit",
+    "host": "offsite.ferro.example.com",
+    "port": 990,
+    "user": "archive",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "9565b029-630b-42aa-bfdf-57c536e394b5",
+    "name": "Veritabanı Dump Arşivi",
+    "folder": "Backups",
+    "protocol": "sftp",
+    "host": "dumps.ferro.example.com",
+    "port": 22,
+    "user": "pgdump",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "031fd14b-3fb9-494b-b674-2a415d66f9f6",
+    "name": "Log Arşivi",
+    "folder": "Backups",
+    "protocol": "ftps",
+    "host": "logs.ferro.example.com",
+    "port": 21,
+    "user": "logship",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "d2e0a3d1-45dc-4eec-b562-8179a55596dc",
+    "name": "CDN Origin (EU)",
+    "folder": "CDN",
+    "protocol": "ftps-implicit",
+    "host": "origin-eu.cdn.example.com",
+    "port": 990,
+    "user": "cdn-eu",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "8a50f2b9-5b1d-4d50-ab8f-c3580b994bed",
+    "name": "CDN Origin (US)",
+    "folder": "CDN",
+    "protocol": "ftps-implicit",
+    "host": "origin-us.cdn.example.com",
+    "port": 990,
+    "user": "cdn-us",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "4e8024ed-4f25-4e17-aa48-470a9bae9217",
+    "name": "CDN Origin (APAC)",
+    "folder": "CDN",
+    "protocol": "ftps",
+    "host": "origin-ap.cdn.example.com",
+    "port": 21,
+    "user": "cdn-ap",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "3be86eca-c96d-4daf-86fd-1906449f81ea",
+    "name": "Edge Cache Node 1",
+    "folder": "CDN",
+    "protocol": "sftp",
+    "host": "edge1.cdn.example.com",
+    "port": 22,
+    "user": "edge",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "ed087b75-a77c-42dd-9426-562039cadff3",
+    "name": "Acme Corp",
+    "folder": "Müşteriler",
+    "protocol": "ftps",
+    "host": "ftp.acme-corp.example",
+    "port": 21,
+    "user": "ferro-acme",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "f6843a20-f48d-4b60-b4cc-fdcb769b7a4d",
+    "name": "Globex",
+    "folder": "Müşteriler",
+    "protocol": "sftp",
+    "host": "sftp.globex.example",
+    "port": 2022,
+    "user": "globex",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "2a65eaec-caf4-4f12-8c35-aa1882d8ab14",
+    "name": "Initech",
+    "folder": "Müşteriler",
+    "protocol": "ftp",
+    "host": "ftp.initech.example",
+    "port": 21,
+    "user": "initech",
+    "encoding": "latin1",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "02a69a8a-2639-4112-8c4d-327563595130",
+    "name": "Umbrella Health",
+    "folder": "Müşteriler",
+    "protocol": "ftps-implicit",
+    "host": "secure.umbrella.example",
+    "port": 990,
+    "user": "umbrella",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "5c933524-ca8c-4a1f-9e27-e5db0df322a0",
+    "name": "Wonka Industries",
+    "folder": "Müşteriler",
+    "protocol": "sftp",
+    "host": "transfer.wonka.example",
+    "port": 22,
+    "user": "wonka",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "7506903f-cdfc-4c90-93e9-29e2ffac14be",
+    "name": "Stark Endüstri",
+    "folder": "Müşteriler",
+    "protocol": "ftps",
+    "host": "edi.stark.example",
+    "port": 21,
+    "user": "stark-edi",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "23b26d3a-1e5f-484e-9bf8-46aa4e349c3b",
+    "name": "Wayne Holding",
+    "folder": "Müşteriler",
+    "protocol": "sftp",
+    "host": "files.wayne.example",
+    "port": 4422,
+    "user": "wayne",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "89ac0e8d-18b5-4d60-98bf-3bd398c98e2b",
+    "name": "Debian Aynası",
+    "folder": "Aynalar",
+    "protocol": "ftp",
+    "host": "ftp.debian.org",
+    "port": 21,
+    "user": "anonymous",
+    "anonymous": true
+  },
+  {
+    "id": "3fd5f9e8-99e9-4d08-8fc7-51315d2d09f1",
+    "name": "GNU Aynası",
+    "folder": "Aynalar",
+    "protocol": "ftp",
+    "host": "ftp.gnu.org",
+    "port": 21,
+    "user": "anonymous",
+    "anonymous": true
+  },
+  {
+    "id": "265a7986-0e71-4527-8894-2e4f13f5585c",
+    "name": "Mozilla Aynası",
+    "folder": "Aynalar",
+    "protocol": "ftp",
+    "host": "ftp.mozilla.org",
+    "port": 21,
+    "user": "anonymous",
+    "anonymous": true
+  },
+  {
+    "id": "8893baad-b05c-4678-b668-4486424599ec",
+    "name": "Kernel.org",
+    "folder": "Aynalar",
+    "protocol": "ftp",
+    "host": "mirrors.kernel.org",
+    "port": 21,
+    "user": "anonymous",
+    "anonymous": true
+  },
+  {
+    "id": "9dc03eb5-90d2-4b93-b3f6-2bd160a6723f",
+    "name": "Ubuntu Releases",
+    "folder": "Aynalar",
+    "protocol": "ftp",
+    "host": "releases.ubuntu.com",
+    "port": 21,
+    "user": "anonymous",
+    "anonymous": true
+  },
+  {
+    "id": "ad93b837-6c30-49b8-a29d-59a2f6e06e08",
+    "name": "AWS EC2 (Bastion)",
+    "folder": "Bulut",
+    "protocol": "sftp",
+    "host": "bastion.eu-central-1.example",
+    "port": 22,
+    "user": "ec2-user",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "6abb589e-edc2-4aa4-b15d-e4fe11ae7508",
+    "name": "DigitalOcean Droplet",
+    "folder": "Bulut",
+    "protocol": "sftp",
+    "host": "do-fra1.example",
+    "port": 22,
+    "user": "root",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "0b55f12d-06b0-4ff3-bdc9-9e2a180e636a",
+    "name": "Hetzner Storage Box",
+    "folder": "Bulut",
+    "protocol": "ftps-implicit",
+    "host": "u123456.your-storagebox.de",
+    "port": 990,
+    "user": "u123456",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "ea387e1b-2c47-4e81-8319-32381d52c193",
+    "name": "Hetzner Storage (SFTP)",
+    "folder": "Bulut",
+    "protocol": "sftp",
+    "host": "u123456.your-storagebox.de",
+    "port": 23,
+    "user": "u123456",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "ccd745b6-1ee1-49b1-adbf-9960c42bfae0",
+    "name": "OVH VPS",
+    "folder": "Bulut",
+    "protocol": "sftp",
+    "host": "vps.ovh.example",
+    "port": 22,
+    "user": "ubuntu",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "d06154cf-f3ec-48a8-8c0e-f6671bba3da4",
+    "name": "Azure Web App",
+    "folder": "Bulut",
+    "protocol": "ftps",
+    "host": "waws-ferro.ftp.azurewebsites.windows.net",
+    "port": 21,
+    "user": "$ferro",
+    "rejectUnauthorized": false,
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "15d3403d-b2c3-4f35-b944-b67995d6f0e1",
+    "name": "Google Cloud VM",
+    "folder": "Bulut",
+    "protocol": "sftp",
+    "host": "gcp-vm.example",
+    "port": 22,
+    "user": "gcpuser",
+    "secret": "p0:ZmVycm9wYXNz"
+  },
+  {
+    "id": "f3ed79a7-7458-4d73-a6b3-549dabb40ee3",
+    "name": "Cloudflare R2 Gateway",
+    "folder": "Bulut",
+    "protocol": "ftps",
+    "host": "r2-gw.example",
+    "port": 21,
+    "user": "r2-access",
+    "secret": "p0:ZmVycm9wYXNz"
+  }
+]

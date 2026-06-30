@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { EntryType } from '@shared/transfer'
 import { formatSize, formatDate, entryIcon, formatPermissions } from '@renderer/lib/format'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 interface PaneEntry {
   name: string
@@ -12,6 +12,10 @@ interface PaneEntry {
   size: number
   modifiedAt: number | null
   permissions?: number | null
+  /** Sahip kullanıcı (uzak; adapter sağlarsa). */
+  owner?: string | null
+  /** Sahip grup (uzak; adapter sağlarsa). */
+  group?: string | null
 }
 
 interface DragPayload {
@@ -80,7 +84,72 @@ function onDragOver(e: DragEvent): void {
   }
 }
 
-const hasPermissions = computed(() => props.entries.some((e) => e.permissions != null))
+// İzinler ve Sahip/Grup sütunları yalnızca uzak panelde gösterilir (FileZilla gibi).
+const showRemoteCols = computed(() => props.side === 'remote')
+
+// ── Sütunlar: sıralama + dosya türü (FileZilla benzeri) ──
+type SortKey = 'name' | 'size' | 'type' | 'modified'
+const sortKey = ref<SortKey>('name')
+const sortAsc = ref(true)
+function toggleSort(key: SortKey): void {
+  if (sortKey.value === key) sortAsc.value = !sortAsc.value
+  else {
+    sortKey.value = key
+    sortAsc.value = true
+  }
+}
+
+/** Girdinin "Dosya türü" sütunu metni. */
+function fileType(entry: PaneEntry): string {
+  if (entry.type === 'directory') return t('panes.typeFolder')
+  if (entry.type === 'symlink') return t('panes.typeSymlink')
+  const dot = entry.name.lastIndexOf('.')
+  if (dot > 0 && dot < entry.name.length - 1) {
+    return t('panes.fileTypeExt', { ext: entry.name.slice(dot + 1).toUpperCase() })
+  }
+  return t('panes.typeFile')
+}
+
+// Klasörler önce; ardından seçili sütuna göre. Sıralama panele özgü (yerel/uzak).
+const sortedEntries = computed(() => {
+  const dir = sortAsc.value ? 1 : -1
+  return [...props.entries].sort((a, b) => {
+    const ad = a.type === 'directory' ? 0 : 1
+    const bd = b.type === 'directory' ? 0 : 1
+    if (ad !== bd) return ad - bd
+    let r = 0
+    switch (sortKey.value) {
+      case 'size':
+        r = a.size - b.size
+        break
+      case 'modified':
+        r = (a.modifiedAt ?? 0) - (b.modifiedAt ?? 0)
+        break
+      case 'type':
+        r = fileType(a).localeCompare(fileType(b))
+        break
+      default:
+        r = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    }
+    return r * dir
+  })
+})
+
+/** Boş satır için sütun sayısı. Uzak: +İzinler +Sahip/Grup. */
+const colCount = computed(() => (showRemoteCols.value ? 7 : 5))
+
+/** Alt durum çubuğu metni: uzak bağlı değilse "bağlantı yok", aksi halde özet. */
+const statusText = computed(() => {
+  if (props.disabled) return t('panes.notConnected')
+  const fileEntries = props.entries.filter((e) => e.type !== 'directory')
+  const folders = props.entries.length - fileEntries.length
+  const bytes = fileEntries.reduce((s, e) => s + e.size, 0)
+  return t('panes.summary', {
+    files: fileEntries.length,
+    folders,
+    bytes: new Intl.NumberFormat(locale.value).format(bytes)
+  })
+})
 
 // ── Sağ tık menüsü ──
 const menuOpen = ref(false)
@@ -172,18 +241,21 @@ const dialogTitle = computed(() => {
       <v-icon :icon="icon" class="ml-3" />
       <v-toolbar-title class="text-body-1">{{ title }}</v-toolbar-title>
       <v-spacer />
-      <v-btn
-        icon="mdi-folder-plus-outline"
-        size="small"
-        :title="$t('common.newFolder')"
-        :disabled="disabled"
-        @click="startMkdir()"
-      />
-      <v-btn icon="mdi-arrow-up" size="small" :disabled="disabled" @click="emit('up')" />
-      <v-btn icon="mdi-refresh" size="small" :disabled="disabled" @click="emit('refresh')" />
+      <!-- Bağlamsal defaults: bu toolbar'ın butonları küçük. Global VBtn'i ezmeden
+           yalnızca bu alt-ağaç için size='small' verilir (defaults-provider). -->
+      <v-defaults-provider :defaults="{ VBtn: { size: 'small' } }">
+        <v-btn
+          icon="$folderAdd"
+          :title="$t('common.newFolder')"
+          :disabled="disabled"
+          @click="startMkdir()"
+        />
+        <v-btn icon="$navUp" :disabled="disabled" @click="emit('up')" />
+        <v-btn icon="$refresh" :disabled="disabled" @click="emit('refresh')" />
+      </v-defaults-provider>
     </v-toolbar>
 
-    <div class="px-3 py-1 text-caption text-medium-emphasis path-bar" :title="cwd">
+    <div class="px-3 text-caption text-medium-emphasis path-bar" :title="cwd">
       {{ cwd || '—' }}
     </div>
 
@@ -202,19 +274,49 @@ const dialogTitle = computed(() => {
       @dragleave="dragOver = false"
       @drop="onDrop"
     >
-      <v-table density="compact" fixed-header hover>
+      <v-table fixed-header hover>
         <thead>
           <tr>
-            <th>{{ $t('common.name') }}</th>
-            <th class="text-right" style="width: 90px">{{ $t('common.size') }}</th>
-            <th style="width: 140px">{{ $t('common.modified') }}</th>
-            <th v-if="hasPermissions" style="width: 100px">{{ $t('common.permissions') }}</th>
+            <th class="col-sort" @click="toggleSort('name')">
+              {{ $t('panes.colName') }}
+              <v-icon
+                v-if="sortKey === 'name'"
+                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+                size="x-small"
+              />
+            </th>
+            <th class="col-sort text-right" style="width: 90px" @click="toggleSort('size')">
+              {{ $t('panes.colSize') }}
+              <v-icon
+                v-if="sortKey === 'size'"
+                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+                size="x-small"
+              />
+            </th>
+            <th class="col-sort" style="width: 130px" @click="toggleSort('type')">
+              {{ $t('panes.colType') }}
+              <v-icon
+                v-if="sortKey === 'type'"
+                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+                size="x-small"
+              />
+            </th>
+            <th class="col-sort" style="width: 140px" @click="toggleSort('modified')">
+              {{ $t('panes.colModified') }}
+              <v-icon
+                v-if="sortKey === 'modified'"
+                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+                size="x-small"
+              />
+            </th>
+            <th v-if="showRemoteCols" style="width: 100px">{{ $t('common.permissions') }}</th>
+            <th v-if="showRemoteCols" style="width: 120px">{{ $t('panes.colOwner') }}</th>
             <th style="width: 48px"></th>
           </tr>
         </thead>
         <tbody>
           <tr
-            v-for="entry in entries"
+            v-for="entry in sortedEntries"
             :key="entry.name"
             class="row-entry"
             :draggable="true"
@@ -226,26 +328,42 @@ const dialogTitle = computed(() => {
               <v-icon :icon="entryIcon(entry.type)" size="small" class="mr-2" />
               {{ entry.name }}
             </td>
-            <td class="text-right">{{ entry.type === 'directory' ? '' : formatSize(entry.size) }}</td>
+            <td class="text-right">
+              {{ entry.type === 'directory' ? '' : formatSize(entry.size) }}
+            </td>
+            <td class="text-caption">{{ fileType(entry) }}</td>
             <td class="text-caption">{{ formatDate(entry.modifiedAt) }}</td>
-            <td v-if="hasPermissions" class="text-caption font-monospace">
+            <td v-if="showRemoteCols" class="text-caption font-monospace">
               {{ formatPermissions(entry.permissions ?? null) }}
+            </td>
+            <td v-if="showRemoteCols" class="text-caption">
+              {{ entry.owner ? entry.owner + '/' + (entry.group ?? '') : '' }}
             </td>
             <td>
               <v-btn
                 :icon="transferIcon"
                 size="x-small"
                 variant="text"
-                :title="entry.type === 'directory' ? transferTooltip + ' (klasör)' : transferTooltip"
+                :title="
+                  entry.type === 'directory' ? transferTooltip + ' (klasör)' : transferTooltip
+                "
                 @click.stop="emit('transfer', entry)"
               />
             </td>
           </tr>
           <tr v-if="!entries.length && !loading">
-            <td colspan="5" class="text-center text-medium-emphasis py-4">{{ $t('common.empty') }}</td>
+            <td :colspan="colCount" class="text-center text-medium-emphasis py-4">
+              {{ disabled ? $t('panes.noConnection') : $t('common.empty') }}
+            </td>
           </tr>
         </tbody>
       </v-table>
+    </div>
+
+    <!-- Alt durum çubuğu: yerelde özet (dosya/klasör/boyut), uzakta bağlantı durumu. -->
+    <v-divider />
+    <div class="status-bar px-3 text-caption text-medium-emphasis">
+      {{ statusText }}
     </div>
 
     <!-- Sağ tık menüsü -->
@@ -276,7 +394,7 @@ const dialogTitle = computed(() => {
         />
         <v-divider />
         <v-list-item
-          prepend-icon="mdi-delete-outline"
+          prepend-icon="$remove"
           :title="$t('common.delete')"
           base-color="error"
           @click="startDelete()"
@@ -285,7 +403,11 @@ const dialogTitle = computed(() => {
     </v-menu>
 
     <!-- İşlem diyaloğu -->
-    <v-dialog :model-value="dialog.type !== null" max-width="420" @update:model-value="dialog.type = null">
+    <v-dialog
+      :model-value="dialog.type !== null"
+      max-width="420"
+      @update:model-value="dialog.type = null"
+    >
       <v-card :title="dialogTitle">
         <v-card-text>
           <template v-if="dialog.type === 'delete'">
@@ -295,9 +417,6 @@ const dialogTitle = computed(() => {
             v-else
             v-model="dialog.value"
             autofocus
-            density="compact"
-            variant="outlined"
-            hide-details
             :label="dialog.type === 'chmod' ? '755' : $t('common.name')"
             @keyup.enter="dialogValid && confirmDialog()"
           />
@@ -320,7 +439,14 @@ const dialogTitle = computed(() => {
 
 <style scoped>
 .table-scroll {
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* v-table parent'ı doldursun; kaydırma kendi __wrapper'ında olsun ki
+   fixed-header (sticky thead) çalışsın. */
+.table-scroll > :deep(.v-table) {
+  flex: 1 1 auto;
   min-height: 0;
 }
 .drop-active {
@@ -331,6 +457,9 @@ const dialogTitle = computed(() => {
   cursor: grab;
 }
 .path-bar {
+  flex: 0 0 auto;
+  height: 28px;
+  line-height: 28px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -341,5 +470,18 @@ const dialogTitle = computed(() => {
 .row-entry {
   cursor: default;
   user-select: none;
+}
+.col-sort {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.status-bar {
+  flex: 0 0 auto;
+  height: 24px;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

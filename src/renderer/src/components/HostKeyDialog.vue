@@ -44,13 +44,7 @@ async function decide(accept: boolean): Promise<void> {
         {{ current.changed ? $t('hostkey.changedTitle') : $t('hostkey.unknownTitle') }}
       </v-card-title>
       <v-card-text>
-        <v-alert
-          v-if="current.changed"
-          type="error"
-          variant="tonal"
-          density="compact"
-          class="mb-3"
-        >
+        <v-alert v-if="current.changed" type="error" variant="tonal" density="compact" class="mb-3">
           {{ $t('hostkey.changedWarning') }}
         </v-alert>
         <p class="mb-2">{{ $t('hostkey.intro', { host: `${current.host}:${current.port}` }) }}</p>

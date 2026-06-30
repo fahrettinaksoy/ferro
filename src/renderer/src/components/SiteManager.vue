@@ -110,7 +110,7 @@ async function connect(): Promise<void> {
   >
     <v-card>
       <v-toolbar density="compact" color="surface">
-        <v-icon icon="mdi-server-network" class="ml-3" />
+        <v-icon icon="$serverNetwork" class="ml-3" />
         <v-toolbar-title class="text-body-1">{{ $t('sites.title') }}</v-toolbar-title>
         <v-spacer />
         <v-btn icon="mdi-close" size="small" @click="emit('update:modelValue', false)" />
@@ -144,7 +144,7 @@ async function connect(): Promise<void> {
               @click="selectSite(s)"
             >
               <template #prepend>
-                <v-icon :icon="s.protocol === 'sftp' ? 'mdi-shield-lock' : 'mdi-server'" />
+                <v-icon :icon="s.protocol === 'sftp' ? '$sftp' : '$server'" />
               </template>
               <v-list-item-title>{{ s.name }}</v-list-item-title>
               <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
@@ -158,19 +158,10 @@ async function connect(): Promise<void> {
         <!-- Form -->
         <div class="flex-grow-1 pa-4">
           <div class="d-flex ga-2">
-            <v-text-field
-              v-model="form.name"
-              :label="$t('sites.siteName')"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
+            <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
             <v-text-field
               v-model="form.folder"
               :label="$t('sites.folder')"
-              density="compact"
-              variant="outlined"
-              hide-details
               style="max-width: 180px"
             />
           </div>
@@ -179,25 +170,13 @@ async function connect(): Promise<void> {
               v-model="form.protocol"
               :items="protocols"
               :label="$t('sites.protocol')"
-              density="compact"
-              variant="outlined"
-              hide-details
               style="max-width: 200px"
             />
-            <v-text-field
-              v-model="form.host"
-              :label="$t('connect.server')"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
+            <v-text-field v-model="form.host" :label="$t('connect.server')" />
             <v-text-field
               v-model.number="form.port"
               :label="$t('connect.port')"
               type="number"
-              density="compact"
-              variant="outlined"
-              hide-details
               style="max-width: 100px"
             />
           </div>
@@ -205,9 +184,6 @@ async function connect(): Promise<void> {
             <v-text-field
               v-model="form.user"
               :label="$t('connect.user')"
-              density="compact"
-              variant="outlined"
-              hide-details
               :disabled="form.anonymous"
             />
             <v-text-field
@@ -216,25 +192,15 @@ async function connect(): Promise<void> {
               type="password"
               :placeholder="passwordPlaceholder"
               persistent-placeholder
-              density="compact"
-              variant="outlined"
-              hide-details
               :disabled="form.anonymous"
             />
           </div>
           <div class="d-flex ga-4 mt-2">
-            <v-checkbox
-              v-model="form.anonymous"
-              :label="$t('connect.anonymous')"
-              density="compact"
-              hide-details
-            />
+            <v-checkbox v-model="form.anonymous" :label="$t('connect.anonymous')" />
             <v-checkbox
               v-if="form.protocol === 'ftps' || form.protocol === 'ftps-implicit'"
               v-model="form.rejectUnauthorized"
               :label="$t('connect.verifyCert')"
-              density="compact"
-              hide-details
             />
           </div>
         </div>
@@ -242,19 +208,20 @@ async function connect(): Promise<void> {
 
       <v-divider />
       <v-card-actions>
-        <v-btn v-if="isEditing" color="error" variant="text" prepend-icon="mdi-delete" @click="remove()">
+        <v-btn
+          v-if="isEditing"
+          color="error"
+          variant="text"
+          prepend-icon="mdi-delete"
+          @click="remove()"
+        >
           {{ $t('common.delete') }}
         </v-btn>
         <v-spacer />
-        <v-btn :disabled="!canSave" variant="tonal" prepend-icon="mdi-content-save" @click="save()">
+        <v-btn :disabled="!canSave" variant="tonal" prepend-icon="$save" @click="save()">
           {{ $t('common.save') }}
         </v-btn>
-        <v-btn
-          v-if="isEditing"
-          color="primary"
-          prepend-icon="mdi-lan-connect"
-          @click="connect()"
-        >
+        <v-btn v-if="isEditing" color="primary" prepend-icon="$connect" @click="connect()">
           {{ $t('common.connect') }}
         </v-btn>
       </v-card-actions>

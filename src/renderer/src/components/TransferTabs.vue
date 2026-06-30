@@ -19,7 +19,7 @@ function percent(bytes: number, total: number | null): number {
 }
 
 const statusIcon: Record<string, string> = {
-  queued: 'mdi-tray-full',
+  queued: '$queuePanel',
   active: 'mdi-progress-upload',
   completed: 'mdi-check-circle',
   failed: 'mdi-alert-circle',
@@ -84,7 +84,8 @@ const statusColor: Record<string, string> = {
           <v-icon :icon="statusIcon[t.status]" :color="statusColor[t.status]" size="x-small" />
           <v-spacer />
           <span class="text-disabled">
-            {{ formatSize(t.bytes) }}<template v-if="t.total"> / {{ formatSize(t.total) }}</template>
+            {{ formatSize(t.bytes)
+            }}<template v-if="t.total"> / {{ formatSize(t.total) }}</template>
           </span>
           <v-btn
             v-if="t.status === 'active' || t.status === 'queued'"

@@ -44,7 +44,10 @@ function mapEntry(info: SftpFileInfo): RemoteEntry {
     type: mapType(info.type),
     size: info.size,
     modifiedAt: info.modifyTime ?? null,
-    permissions
+    permissions,
+    // SFTP yalnızca sayısal uid/gid verir (isim çözümü protokolde yok).
+    owner: info.owner != null ? String(info.owner) : null,
+    group: info.group != null ? String(info.group) : null
   }
 }
 
@@ -135,7 +138,9 @@ export class SftpAdapter implements IFileTransferClient {
         type: s.isDirectory ? 'directory' : s.isSymbolicLink ? 'symlink' : 'file',
         size: s.size,
         modifiedAt: s.modifyTime ?? null,
-        permissions: s.mode & 0o777
+        permissions: s.mode & 0o777,
+        owner: s.uid != null ? String(s.uid) : null,
+        group: s.gid != null ? String(s.gid) : null
       }
     } catch (err) {
       throw this.translate(err, 'FS_ERROR', `Bilgi alınamadı: ${target}`)

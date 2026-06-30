@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useTheme } from 'vuetify'
 import { storeToRefs } from 'pinia'
-import { onMounted, onBeforeUnmount, watch } from 'vue'
+import { onMounted, onBeforeUnmount } from 'vue'
+import { useHotkey } from 'vuetify'
+// <v-hotkey> şablonda kullanılır; autoImport otomatik içe aktarır (elle import yok).
 import { onEvent, invoke } from '@renderer/lib/ipc'
 import { useUiStore } from '@renderer/stores/ui'
 import { useConnectionStore } from '@renderer/stores/connection'
@@ -22,12 +23,12 @@ import { ref } from 'vue'
 
 const ui = useUiStore()
 const { theme } = storeToRefs(ui)
-const vTheme = useTheme()
-watch(theme, (t) => vTheme.change(t), { immediate: true })
 
 const siteManagerOpen = ref(false)
 const siteManagerFocusId = ref<string | null>(null)
 const drawerOpen = ref(true)
+const logOpen = ref(true)
+const queueOpen = ref(true)
 const syncOpen = ref(false)
 const conn = useConnectionStore()
 const remote = useRemoteFsStore()
@@ -107,61 +108,94 @@ function onRemoteEdit(entry: { name: string }): void {
 
 // Hata yakalama: işlem hataları log paneline düşer (SessionManager) veya store error'una.
 function run(p: Promise<unknown>): void {
-  void p.catch((err) => log.append({ sessionId: '', level: 'error', text: String(err?.message ?? err) }))
+  void p.catch((err) =>
+    log.append({ sessionId: '', level: 'error', text: String(err?.message ?? err) })
+  )
 }
+
+// ── Klavye kısayolları (Vuetify useHotkey) ──
+// 'cmd' platform-aware: macOS'ta ⌘, Windows/Linux'ta Ctrl. inputs:false (varsayılan)
+// olduğundan bir metin alanına yazarken tetiklenmezler. Tek yerde tanımlı →
+// hem kayıt hem de yardım diyaloğu aynı listeyi kullanır.
+const hotkeysHelpOpen = ref(false)
+interface HotkeyDef {
+  keys: string
+  labelKey: string
+  run: () => void
+}
+const hotkeys: HotkeyDef[] = [
+  { keys: 'cmd+,', labelKey: 'settings.title', run: () => ui.openDrawer('settings') },
+  { keys: 'cmd+s', labelKey: 'settings.siteManager', run: () => openSiteManager(null) },
+  {
+    keys: 'cmd+shift+s',
+    labelKey: 'sync.title',
+    run: () => {
+      if (conn.isConnected) syncOpen.value = true
+    }
+  },
+  { keys: 'cmd+b', labelKey: 'sites.servers', run: () => (drawerOpen.value = !drawerOpen.value) },
+  { keys: 'cmd+l', labelKey: 'log.title', run: () => (logOpen.value = !logOpen.value) },
+  { keys: 'cmd+j', labelKey: 'transfer.title', run: () => (queueOpen.value = !queueOpen.value) },
+  {
+    keys: 'f5',
+    labelKey: 'hotkeys.refresh',
+    run: () => (conn.isConnected ? remote.refresh() : local.refresh())
+  },
+  { keys: 'cmd+/', labelKey: 'hotkeys.title', run: () => (hotkeysHelpOpen.value = true) }
+]
+hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 </script>
 
 <template>
-  <v-app>
+  <div class="ferro-root">
     <v-app-bar :elevation="2" density="comfortable">
-      <v-app-bar-nav-icon @click="drawerOpen = !drawerOpen" />
       <v-app-bar-title>
-        <v-icon icon="mdi-folder-network" class="mr-2" />
+        <v-icon icon="$ferroLogo" class="mr-2" />
         Ferro
       </v-app-bar-title>
+      <v-btn
+        icon="$serverNetwork"
+        :color="drawerOpen ? 'primary' : undefined"
+        :title="$t('sites.servers')"
+        @click="drawerOpen = !drawerOpen"
+      />
+      <v-btn
+        icon="$logPanel"
+        :color="logOpen ? 'primary' : undefined"
+        :title="$t('log.title')"
+        @click="logOpen = !logOpen"
+      />
+      <v-btn
+        icon="$queuePanel"
+        :color="queueOpen ? 'primary' : undefined"
+        :title="$t('transfer.title')"
+        @click="queueOpen = !queueOpen"
+      />
       <v-spacer />
       <v-btn
-        prepend-icon="mdi-sync"
+        prepend-icon="$sync"
         variant="text"
         :disabled="!conn.isConnected"
         @click="syncOpen = true"
       >
         {{ $t('sync.title') }}
       </v-btn>
-      <v-btn prepend-icon="mdi-server-network" variant="text" @click="openSiteManager(null)">
+      <v-btn prepend-icon="$serverNetwork" variant="text" @click="openSiteManager(null)">
         {{ $t('settings.siteManager') }}
       </v-btn>
-      <v-menu :close-on-content-click="false">
-        <template #activator="{ props }">
-          <v-btn icon="mdi-cog" v-bind="props" />
-        </template>
-        <v-list density="compact" min-width="260">
-          <v-list-subheader>{{ $t('settings.language') }}</v-list-subheader>
-          <v-list-item :active="ui.language === 'tr'" title="Türkçe" @click="ui.setLanguage('tr')" />
-          <v-list-item :active="ui.language === 'en'" title="English" @click="ui.setLanguage('en')" />
-          <v-divider />
-          <v-list-item>
-            <v-text-field
-              :model-value="ui.bandwidthKBs"
-              :label="$t('settings.bandwidth')"
-              type="number"
-              density="compact"
-              variant="outlined"
-              hide-details
-              @update:model-value="ui.setBandwidth(Number($event))"
-            />
-          </v-list-item>
-        </v-list>
-      </v-menu>
+      <v-btn icon="$keyboard" :title="$t('hotkeys.title')" @click="hotkeysHelpOpen = true" />
+      <v-btn icon="$settings" :title="$t('settings.title')" @click="ui.openDrawer('settings')" />
       <v-btn
-        :icon="theme === 'ferroDark' ? 'mdi-weather-night' : 'mdi-weather-sunny'"
+        :icon="theme === 'ferroDark' ? '$themeDark' : '$themeLight'"
         @click="ui.toggleTheme()"
       />
     </v-app-bar>
 
     <v-navigation-drawer v-model="drawerOpen" width="280">
-      <v-list-subheader>{{ $t('sites.servers') }}</v-list-subheader>
-      <v-divider />
+      <template #prepend>
+        <div class="drawer-title">{{ $t('sites.servers') }}</div>
+        <v-divider />
+      </template>
 
       <v-list density="compact" nav class="drawer-list">
         <v-list-item
@@ -171,12 +205,8 @@ function run(p: Promise<unknown>): void {
           @click="connectSite(s.id)"
         >
           <template #prepend>
-            <v-icon
-              v-if="isActiveSite(s.host, s.port)"
-              icon="mdi-lan-connect"
-              color="success"
-            />
-            <v-icon v-else :icon="s.protocol === 'sftp' ? 'mdi-shield-lock' : 'mdi-server'" />
+            <v-icon v-if="isActiveSite(s.host, s.port)" icon="$connect" color="success" />
+            <v-icon v-else :icon="s.protocol === 'sftp' ? '$sftp' : '$server'" />
           </template>
           <v-list-item-title>{{ s.name }}</v-list-item-title>
           <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
@@ -212,20 +242,20 @@ function run(p: Promise<unknown>): void {
 
     <v-main class="main-area">
       <div class="layout">
-        <div class="log-area">
+        <div v-if="logOpen" class="log-area">
           <LogPanel />
         </div>
 
         <div class="panes">
           <FilePane
             :title="$t('panes.local')"
-            icon="mdi-laptop"
+            icon="$localPc"
             side="local"
             :cwd="local.cwd"
             :entries="local.entries"
             :loading="local.loading"
             :error="local.error"
-            transfer-icon="mdi-arrow-right-bold"
+            transfer-icon="$transferOut"
             :transfer-tooltip="$t('panes.uploadToServer')"
             @open="(e) => local.open(e as LocalEntry)"
             @up="local.up()"
@@ -238,7 +268,7 @@ function run(p: Promise<unknown>): void {
           />
           <FilePane
             :title="$t('panes.remote')"
-            icon="mdi-server"
+            icon="$server"
             side="remote"
             :cwd="remote.cwd"
             :entries="remote.entries"
@@ -247,7 +277,7 @@ function run(p: Promise<unknown>): void {
             :disabled="!conn.isConnected"
             supports-chmod
             supports-edit
-            transfer-icon="mdi-arrow-left-bold"
+            transfer-icon="$transferIn"
             :transfer-tooltip="$t('panes.downloadToLocal')"
             @open="(e) => remote.open(e as RemoteEntry)"
             @up="remote.up()"
@@ -262,7 +292,7 @@ function run(p: Promise<unknown>): void {
           />
         </div>
 
-        <div class="transfer-area">
+        <div v-if="queueOpen" class="transfer-area">
           <TransferTabs />
         </div>
       </div>
@@ -271,14 +301,46 @@ function run(p: Promise<unknown>): void {
       <TlsDialog />
       <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
       <SyncDialog v-model="syncOpen" />
+
+      <!-- Klavye kısayolları yardımı -->
+      <v-dialog v-model="hotkeysHelpOpen" max-width="460">
+        <v-card>
+          <v-toolbar density="compact" color="surface">
+            <v-icon icon="$keyboard" class="ml-3" />
+            <v-toolbar-title class="text-body-1">{{ $t('hotkeys.title') }}</v-toolbar-title>
+            <v-spacer />
+            <v-btn icon="mdi-close" size="small" @click="hotkeysHelpOpen = false" />
+          </v-toolbar>
+          <v-list>
+            <v-list-item v-for="h in hotkeys" :key="h.keys">
+              <v-list-item-title>{{ $t(h.labelKey) }}</v-list-item-title>
+              <template #append>
+                <v-hotkey :keys="h.keys" />
+              </template>
+            </v-list-item>
+          </v-list>
+          <v-divider />
+          <div class="pa-3 text-caption text-medium-emphasis">{{ $t('hotkeys.hint') }}</div>
+        </v-card>
+      </v-dialog>
     </v-main>
-  </v-app>
+  </div>
 </template>
 
 <style scoped>
+/* Kök sarmalayıcı layout'a şeffaf — app-bar/main doğrudan v-app'in (App.vue) çocuğu gibi davranır. */
+.ferro-root {
+  display: contents;
+}
 /* v-main, uygulama çubuğunun yüksekliği kadar padding ile içeriği aşağı iter.
    Yüksekliği görünüm alanına sabitleyince (border-box) içerik kutusu
    tam olarak "ekran − app-bar" kadar olur; böylece sayfa hiç kaydırılmaz. */
+.drawer-title {
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+}
 .main-area {
   height: 100vh;
   overflow: hidden;
