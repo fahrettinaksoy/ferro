@@ -91,6 +91,8 @@ export default {
     newSite: 'New site',
     siteName: 'Site name',
     folder: 'Folder (opt.)',
+    group: 'Group (opt.)',
+    ungrouped: 'Ungrouped',
     protocol: 'Protocol',
     noSites: 'No saved sites',
     encWarning: 'OS encryption unavailable — passwords stored insecurely (base64).',
@@ -98,6 +100,7 @@ export default {
     servers: 'Servers',
     addServer: 'Add Server',
     edit: 'Edit',
+    disconnect: 'Disconnect',
     tabs: {
       general: 'General',
       advanced: 'Advanced',

@@ -100,6 +100,7 @@ export const vuetify = createVuetify({
     // — Form alanları: kompakt + outlined + detay gizli —
     VTextField: { variant: 'outlined', density: 'compact', hideDetails: true },
     VSelect: { variant: 'outlined', density: 'compact', hideDetails: true },
+    VCombobox: { variant: 'outlined', density: 'compact', hideDetails: true },
     VTextarea: { variant: 'outlined', density: 'compact', hideDetails: true },
 
     // — Seçim kontrolleri: kompakt + detay gizli —

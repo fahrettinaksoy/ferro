@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useTransferStore } from '@renderer/stores/transfer'
+import { useConnectionStore } from '@renderer/stores/connection'
 import type { TransferJob } from '@shared/transfer'
 import { formatSize } from '@renderer/lib/format'
 
 const transfer = useTransferStore()
+const conn = useConnectionStore()
 const tab = ref<'queued' | 'completed' | 'failed'>('queued')
+
+// İş → ait olduğu sunucunun adı (kapanmış oturumlarda host'a düşer).
+function serverName(sessionId: string): string {
+  const s = conn.sessions.find((x) => x.sessionId === sessionId)
+  return s?.name ?? s?.config.host ?? '—'
+}
 
 const rows = computed<TransferJob[]>(() => {
   if (tab.value === 'completed') return transfer.completed
@@ -85,6 +93,10 @@ const statusColor: Record<string, string> = {
             size="x-small"
           />
           <span class="text-truncate" style="max-width: 320px">{{ t.name }}</span>
+          <v-chip size="x-small" variant="tonal" color="primary" label class="flex-shrink-0">
+            <v-icon icon="$server" start size="x-small" />
+            {{ serverName(t.sessionId) }}
+          </v-chip>
           <v-icon :icon="statusIcon[t.status]" :color="statusColor[t.status]" size="x-small" />
           <v-spacer />
           <span class="text-disabled">

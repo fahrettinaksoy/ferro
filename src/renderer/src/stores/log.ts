@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { EventMap } from '@shared/ipc'
+import { useConnectionStore } from './connection'
 
 export type LogEntry = EventMap['session:log'] & { id: number; time: string }
 
@@ -7,15 +8,29 @@ const MAX = 1000
 let counter = 0
 
 export const useLogStore = defineStore('log', {
-  state: (): { entries: LogEntry[] } => ({ entries: [] }),
+  state: (): { bySession: Record<string, LogEntry[]> } => ({ bySession: {} }),
+  getters: {
+    /** Etkin oturumun günlük satırları (yoksa boş). */
+    entries(): LogEntry[] {
+      const id = useConnectionStore().sessionId
+      return (id && this.bySession[id]) || []
+    }
+  },
   actions: {
     append(e: EventMap['session:log']): void {
       const time = new Date().toLocaleTimeString('tr-TR')
-      this.entries.push({ ...e, id: ++counter, time })
-      if (this.entries.length > MAX) this.entries.splice(0, this.entries.length - MAX)
+      const list = (this.bySession[e.sessionId] ??= [])
+      list.push({ ...e, id: ++counter, time })
+      if (list.length > MAX) list.splice(0, list.length - MAX)
     },
+    /** Etkin oturumun günlüğünü temizler. */
     clear(): void {
-      this.entries = []
+      const id = useConnectionStore().sessionId
+      if (id) this.bySession[id] = []
+    },
+    /** Bir oturum kapatıldığında günlüğünü temizler. */
+    dropSession(sessionId: string): void {
+      delete this.bySession[sessionId]
     }
   }
 })

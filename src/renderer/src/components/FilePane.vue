@@ -261,9 +261,10 @@ const dialogTitle = computed(() => {
 
     <v-divider />
 
-    <v-alert v-if="error" type="error" density="compact" variant="tonal" class="ma-2">
-      {{ error }}
-    </v-alert>
+    <div v-if="error" class="pane-error px-3 d-flex align-center text-error text-caption">
+      <v-icon icon="mdi-alert-circle" size="small" class="mr-2 flex-shrink-0" />
+      <span class="text-truncate" :title="error">{{ error }}</span>
+    </div>
 
     <div
       class="table-scroll flex-grow-1"
@@ -472,6 +473,13 @@ const dialogTitle = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Hata çubuğu: ince, tek satır — paneli şişirmeyen zarif bir uyarı. */
+.pane-error {
+  flex: 0 0 auto;
+  min-height: 28px;
+  background: rgba(var(--v-theme-error), 0.08);
+  border-bottom: 1px solid rgba(var(--v-theme-error), 0.25);
 }
 .font-monospace {
   font-family: monospace;

@@ -91,6 +91,8 @@ export default {
     newSite: 'Yeni site',
     siteName: 'Site adı',
     folder: 'Klasör (ops.)',
+    group: 'Grup (ops.)',
+    ungrouped: 'Gruplandırılmamış',
     protocol: 'Protokol',
     noSites: 'Henüz kayıt yok',
     encWarning: 'OS şifreleme kullanılamıyor — parolalar güvensiz (base64) saklanır.',
@@ -98,6 +100,7 @@ export default {
     servers: 'Sunucular',
     addServer: 'Sunucu Ekle',
     edit: 'Düzenle',
+    disconnect: 'Bağlantıyı kes',
     tabs: {
       general: 'Genel',
       advanced: 'Gelişmiş',

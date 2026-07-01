@@ -50,14 +50,14 @@ const specs = [
   ['Test FTP (vsftpd)', 'ftp', '127.0.0.1', 'Development', 'ferro', { port: 21 }],
   ['Test SFTP (atmoz)', 'sftp', 'localhost', 'Development', 'ferro', { port: 2200 }],
   ['Feature Branch Demo', 'sftp', 'demo.ferro.example.com', 'Development', 'demo'],
-  ['Sandbox', 'ftps', 'sandbox.ferro.example.com', 'Development', 'sandbox', { rejectUnauthorized: false }],
+  ['Sandbox', 'ftps', 'sandbox.ferro.example.com', '', 'sandbox', { rejectUnauthorized: false }],
 
   // — Backups —
   ['Yedek Sunucu (Gece)', 'sftp', 'backup01.ferro.example.com', 'Backups', 'backup'],
   ['Yedek Sunucu (Haftalık)', 'sftp', 'backup02.ferro.example.com', 'Backups', 'backup', { port: 2222 }],
   ['Off-site Yedek', 'ftps-implicit', 'offsite.ferro.example.com', 'Backups', 'archive', { rejectUnauthorized: false }],
   ['Veritabanı Dump Arşivi', 'sftp', 'dumps.ferro.example.com', 'Backups', 'pgdump'],
-  ['Log Arşivi', 'ftps', 'logs.ferro.example.com', 'Backups', 'logship'],
+  ['Log Arşivi', 'ftps', 'logs.ferro.example.com', '', 'logship'],
 
   // — CDN / Edge —
   ['CDN Origin (EU)', 'ftps-implicit', 'origin-eu.cdn.example.com', 'CDN', 'cdn-eu'],
@@ -78,7 +78,7 @@ const specs = [
   ['Debian Aynası', 'ftp', 'ftp.debian.org', 'Aynalar', 'anonymous', { anonymous: true }],
   ['GNU Aynası', 'ftp', 'ftp.gnu.org', 'Aynalar', 'anonymous', { anonymous: true }],
   ['Mozilla Aynası', 'ftp', 'ftp.mozilla.org', 'Aynalar', 'anonymous', { anonymous: true }],
-  ['Kernel.org', 'ftp', 'mirrors.kernel.org', 'Aynalar', 'anonymous', { anonymous: true }],
+  ['Kernel.org', 'ftp', 'mirrors.kernel.org', '', 'anonymous', { anonymous: true }],
   ['Ubuntu Releases', 'ftp', 'releases.ubuntu.com', 'Aynalar', 'anonymous', { anonymous: true }],
 
   // — Bulut / Sağlayıcılar —
@@ -86,7 +86,7 @@ const specs = [
   ['DigitalOcean Droplet', 'sftp', 'do-fra1.example', 'Bulut', 'root'],
   ['Hetzner Storage Box', 'ftps-implicit', 'u123456.your-storagebox.de', 'Bulut', 'u123456'],
   ['Hetzner Storage (SFTP)', 'sftp', 'u123456.your-storagebox.de', 'Bulut', 'u123456', { port: 23 }],
-  ['OVH VPS', 'sftp', 'vps.ovh.example', 'Bulut', 'ubuntu'],
+  ['OVH VPS', 'sftp', 'vps.ovh.example', '', 'ubuntu'],
   ['Azure Web App', 'ftps', 'waws-ferro.ftp.azurewebsites.windows.net', 'Bulut', '$ferro', { rejectUnauthorized: false }],
   ['Google Cloud VM', 'sftp', 'gcp-vm.example', 'Bulut', 'gcpuser', { port: 22 }],
   ['Cloudflare R2 Gateway', 'ftps', 'r2-gw.example', 'Bulut', 'r2-access']

@@ -131,6 +131,14 @@ watch(charsetMode, (m) => {
 const isEditing = computed(() => selectedId.value !== null)
 const canSave = computed(() => !!form.name.trim() && !!form.host.trim())
 
+// Grup seçimi: mevcut grup adları arasından seç veya yeni ad yaz; boş = grupsuz.
+const group = computed<string>({
+  get: () => form.folder ?? '',
+  set: (v) => {
+    form.folder = (v ?? '').toString().trim()
+  }
+})
+
 function selectNew(): void {
   selectedId.value = null
   passwordPlaceholder.value = ''
@@ -246,8 +254,10 @@ async function connect(): Promise<void> {
               @click="selectNew()"
             />
             <v-divider />
+
+            <!-- Grupsuz siteler üstte -->
             <v-list-item
-              v-for="s in sites.sites"
+              v-for="s in sites.grouped.ungrouped"
               :key="s.id"
               :active="selectedId === s.id"
               @click="selectSite(s)"
@@ -258,6 +268,26 @@ async function connect(): Promise<void> {
               <v-list-item-title>{{ s.name }}</v-list-item-title>
               <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
             </v-list-item>
+
+            <!-- Gruplar: klasör ikonlu açılır alt grup -->
+            <v-list-group v-for="g in sites.grouped.groups" :key="g.name" :value="g.name">
+              <template #activator="{ props }">
+                <v-list-item v-bind="props" prepend-icon="mdi-folder" :title="g.name" />
+              </template>
+              <v-list-item
+                v-for="s in g.sites"
+                :key="s.id"
+                :active="selectedId === s.id"
+                @click="selectSite(s)"
+              >
+                <template #prepend>
+                  <v-icon :icon="s.protocol === 'sftp' ? '$sftp' : '$server'" />
+                </template>
+                <v-list-item-title>{{ s.name }}</v-list-item-title>
+                <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list-group>
+
             <v-list-item v-if="!sites.sites.length" class="text-disabled text-caption">
               {{ $t('sites.noSites') }}
             </v-list-item>
@@ -266,7 +296,7 @@ async function connect(): Promise<void> {
 
         <!-- Sekmeli form -->
         <div class="flex-grow-1 d-flex flex-column">
-          <v-tabs v-model="tab" density="compact" color="primary" grow class="site-tabs">
+          <v-tabs v-model="tab" color="primary" grow height="48" class="site-tabs">
             <v-tab value="general">{{ $t('sites.tabs.general') }}</v-tab>
             <v-tab value="advanced">{{ $t('sites.tabs.advanced') }}</v-tab>
             <v-tab value="transfer">{{ $t('sites.tabs.transfer') }}</v-tab>
@@ -279,14 +309,7 @@ async function connect(): Promise<void> {
           <div class="form-window flex-grow-1 pa-4">
             <!-- ── Genel ── -->
             <div v-if="tab === 'general'" class="d-flex flex-column ga-3">
-                <div class="d-flex ga-2">
-                  <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
-                  <v-text-field
-                    v-model="form.folder"
-                    :label="$t('sites.folder')"
-                    style="max-width: 200px"
-                  />
-                </div>
+                <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
                 <v-select
                   v-model="baseProtocol"
                   :items="baseProtocols"
@@ -326,6 +349,13 @@ async function connect(): Promise<void> {
 
                 <v-divider class="my-1" />
 
+                <v-combobox
+                  v-model="group"
+                  :items="sites.groupNames"
+                  :label="$t('sites.group')"
+                  prepend-inner-icon="mdi-folder"
+                  clearable
+                />
                 <v-select
                   v-model="form.colorLabel"
                   :items="colorLabels"
@@ -450,7 +480,7 @@ async function connect(): Promise<void> {
 }
 /* v-tabs aslında bir v-slide-group → CSS'i ona flex:1 1 auto veriyor; dikey flex
    sütununda büyüyüp şeridi (~175px) şişiriyor ve içeriği aşağı itiyordu. Büyümesini
-   engelleyince şerit doğal yüksekliğinde (36px) kalır, içerik üstte başlar. */
+   engelleyince şerit sabit yüksekliğinde (height="48") kalır, içerik üstte başlar. */
 .site-tabs {
   flex: 0 0 auto !important;
 }

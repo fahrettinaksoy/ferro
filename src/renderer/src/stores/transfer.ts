@@ -70,10 +70,11 @@ export const useTransferStore = defineStore('transfer', {
       if (idx >= 0) this.items[idx] = job
       else this.items.unshift(job)
 
-      // Tamamlanınca ilgili paneli tazele.
+      // Tamamlanınca ilgili paneli tazele. Yükleme yalnızca işin ait olduğu
+      // oturum etkinse uzak paneli tazeler (arka plan sekmesinin yanlış tazelenmesini önler).
       if (job.status === 'completed') {
         if (job.direction === 'download') void useLocalStore().refresh()
-        else void useRemoteFsStore().refresh()
+        else if (useConnectionStore().sessionId === job.sessionId) void useRemoteFsStore().refresh()
       }
     },
 
