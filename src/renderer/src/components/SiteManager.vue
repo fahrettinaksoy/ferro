@@ -478,6 +478,20 @@ async function connect(): Promise<void> {
   flex: 0 0 240px;
   overflow-y: auto;
 }
+/* Sol girinti/boşluğu daralt: üst seviye öğeler ve grup başlıkları küçük
+   sol boşluk, grup içindeki (nested) öğeler ise daha az girinti alsın. */
+.site-list :deep(.v-list-item) {
+  padding-inline-start: 8px !important;
+}
+.site-list :deep(.v-list-group__items .v-list-item) {
+  padding-inline-start: 22px !important;
+}
+/* İkon ile metin arası boşluğu daralt. Vuetify 4'te bu boşluk sabit değil,
+   --v-list-prepend-gap değişkeninden gelir (varsayılan 32px). Değişkeni ezmek
+   spacer'ın genişliğini doğrudan belirler. */
+.site-list :deep(.v-list) {
+  --v-list-prepend-gap: 8px;
+}
 /* v-tabs aslında bir v-slide-group → CSS'i ona flex:1 1 auto veriyor; dikey flex
    sütununda büyüyüp şeridi (~175px) şişiriyor ve içeriği aşağı itiyordu. Büyümesini
    engelleyince şerit sabit yüksekliğinde (height="48") kalır, içerik üstte başlar. */

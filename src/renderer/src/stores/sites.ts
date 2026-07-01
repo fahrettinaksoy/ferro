@@ -66,6 +66,13 @@ export const useSitesStore = defineStore('sites', {
       await this.load()
     },
 
+    /** Bir grubu (klasörü) yeniden adlandır: gruptaki tüm siteler taşınır. */
+    async renameGroup(from: string, to: string): Promise<number> {
+      const res = await invoke('sites:renameGroup', { from, to })
+      await this.load()
+      return res.count
+    },
+
     /** Siteye bağlan ve uzak paneli yükle. */
     async connect(site: SavedSite): Promise<void> {
       const conn = useConnectionStore()

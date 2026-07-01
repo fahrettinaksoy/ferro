@@ -1,6 +1,6 @@
 [
   {
-    "id": "08f242dc-c708-42e7-bbef-26741b9234c0",
+    "id": "e9478453-4a8c-47d8-b809-bc54bfb8a7c6",
     "name": "Web Sunucusu (App)",
     "folder": "Production",
     "protocol": "sftp",
@@ -10,7 +10,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "605845aa-8847-4070-b9f6-40b973b7c89d",
+    "id": "561f4557-f9a6-477c-b6a3-0c31cfeab311",
     "name": "Web Sunucusu (App2)",
     "folder": "Production",
     "protocol": "sftp",
@@ -20,7 +20,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "c0d65345-dbff-4304-9b47-4772609a6931",
+    "id": "50f1ad32-a850-4938-b7e8-c11865cce3d7",
     "name": "API Gateway",
     "folder": "Production",
     "protocol": "sftp",
@@ -30,7 +30,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "871c2b89-73db-445f-a6d1-f2c6d83f447f",
+    "id": "5003ebdf-a46d-4878-9db5-42dca14f8579",
     "name": "Yük Dengeleyici",
     "folder": "Production",
     "protocol": "sftp",
@@ -40,7 +40,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "4f1552a8-39e2-4752-acf8-fb55d5e344b1",
+    "id": "5a03c3a9-eeb3-4092-88c8-6e7df7c43003",
     "name": "Statik İçerik (FTPS)",
     "folder": "Production",
     "protocol": "ftps",
@@ -50,7 +50,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "dedf18de-c03e-42d3-b12a-7661cfdb3fb8",
+    "id": "9ecccfd0-b657-4316-803f-fbf1193dd3ae",
     "name": "Medya Deposu",
     "folder": "Production",
     "protocol": "ftps-implicit",
@@ -61,7 +61,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "5d489e8f-adc7-4974-a65c-557a15416ba2",
+    "id": "ec8dcd8e-c3f5-4d0a-8740-bae78f1affc8",
     "name": "Ödeme Servisi",
     "folder": "Production",
     "protocol": "sftp",
@@ -71,7 +71,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "ba7d362f-6fd5-4d44-8b59-4ede30eac22d",
+    "id": "e2cf0e31-ed4c-49cf-b7dd-f69c8971b47f",
     "name": "Kuyruk İşleyici",
     "folder": "Production",
     "protocol": "sftp",
@@ -81,7 +81,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "1d917989-bfca-4489-b567-e8abb3f4d48f",
+    "id": "0ba7afdc-b90b-43f3-acaa-67a16b54efe8",
     "name": "Staging Web",
     "folder": "Staging",
     "protocol": "sftp",
@@ -91,7 +91,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "a6606cf4-5fd6-496f-9b18-8b5c1de10011",
+    "id": "b4a8d9f7-c9ec-42be-aef5-ba82907ce669",
     "name": "Staging API",
     "folder": "Staging",
     "protocol": "ftps",
@@ -102,7 +102,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "5f1ea843-ca1a-4848-bf01-f3c99dc8b711",
+    "id": "0679a557-5c64-4b0a-aa75-758a2fbe9943",
     "name": "Staging DB Dosyaları",
     "folder": "Staging",
     "protocol": "sftp",
@@ -112,7 +112,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "107e13cc-a6b4-4ed6-92f5-7604337be4af",
+    "id": "2c66cbb2-de68-4c29-91a4-b6057014cedc",
     "name": "QA Test Sunucu",
     "folder": "Staging",
     "protocol": "ftp",
@@ -123,7 +123,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "d4e4bf95-fe53-483e-af85-5f3bfa61a954",
+    "id": "2cab8adf-b18c-457a-b42f-1d77787e97e4",
     "name": "UAT Ortamı",
     "folder": "Staging",
     "protocol": "ftps",
@@ -133,7 +133,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "1f1a9c33-76fe-470a-b7a9-02057b6f41b1",
+    "id": "1bb28a1c-ed9b-4162-b8b4-35c458cbef7d",
     "name": "Dev Box (Local VM)",
     "folder": "Development",
     "protocol": "ftp",
@@ -143,7 +143,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "1ac56bd4-03ec-4c36-a8d2-1abd6aa61494",
+    "id": "7e95e28e-43e1-4bda-8748-34f66911af90",
     "name": "Dev Box (Docker)",
     "folder": "Development",
     "protocol": "sftp",
@@ -153,7 +153,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "fe6ed5ea-bb11-4e79-908f-3f88fdbe2c29",
+    "id": "15a8100c-d6d6-4c55-8f23-000985de9440",
     "name": "Test FTP (vsftpd)",
     "folder": "Development",
     "protocol": "ftp",
@@ -163,7 +163,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "329948f0-bb2f-40ae-8d53-d5d97b2a296a",
+    "id": "7e8f4b04-ebc2-4c8a-8ae9-735b0381f6ae",
     "name": "Test SFTP (atmoz)",
     "folder": "Development",
     "protocol": "sftp",
@@ -173,7 +173,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "b899ff46-2b18-415d-90a2-908937ba9a40",
+    "id": "953b4e04-bf71-4505-9ba0-bb2bc52fe0ee",
     "name": "Feature Branch Demo",
     "folder": "Development",
     "protocol": "sftp",
@@ -183,7 +183,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "34280fc5-a782-431a-b68a-feb1ae6a55d6",
+    "id": "fc1902f5-c46f-445b-b7af-9cb1622d5d52",
     "name": "Sandbox",
     "folder": "",
     "protocol": "ftps",
@@ -194,7 +194,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "d12b3faf-2b15-4380-9463-173753d12347",
+    "id": "c1587fe4-5d48-408a-b923-b1837e6b5bfe",
     "name": "Yedek Sunucu (Gece)",
     "folder": "Backups",
     "protocol": "sftp",
@@ -204,7 +204,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "7cead8db-58e8-4ba6-949f-efb965521d6f",
+    "id": "10d789cb-222b-426b-9642-a865e179f844",
     "name": "Yedek Sunucu (Haftalık)",
     "folder": "Backups",
     "protocol": "sftp",
@@ -214,7 +214,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "ed0d1e92-1222-453f-a6e3-1fd5d1313e6a",
+    "id": "14c2e876-80e5-4544-8d18-40e36ed2a83c",
     "name": "Off-site Yedek",
     "folder": "Backups",
     "protocol": "ftps-implicit",
@@ -225,7 +225,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "69c4cd6b-9a0a-47a3-afea-a8752c81f595",
+    "id": "b1b9d53a-7c4b-4ae7-9abf-cb85a7b7e34a",
     "name": "Veritabanı Dump Arşivi",
     "folder": "Backups",
     "protocol": "sftp",
@@ -235,7 +235,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "3a5b94f0-0880-44c0-a641-4c2bff949d3f",
+    "id": "bc3767d8-5fbc-4993-80fb-deb693a6064e",
     "name": "Log Arşivi",
     "folder": "",
     "protocol": "ftps",
@@ -245,7 +245,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "10a95c4e-ea8f-4c6d-8313-f566e5403118",
+    "id": "0dcd0941-b556-420d-861f-85284f171fb8",
     "name": "CDN Origin (EU)",
     "folder": "CDN",
     "protocol": "ftps-implicit",
@@ -255,7 +255,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "58ea5a44-ceb6-453d-b2e4-41bbc8c35d5b",
+    "id": "59cf0a7b-8e32-4f8e-bb1b-4334163a85a7",
     "name": "CDN Origin (US)",
     "folder": "CDN",
     "protocol": "ftps-implicit",
@@ -265,7 +265,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "88f097b4-a018-4040-9e6e-d806a1ecca25",
+    "id": "fbdb4121-348f-439f-af89-f83f7446f7f5",
     "name": "CDN Origin (APAC)",
     "folder": "CDN",
     "protocol": "ftps",
@@ -276,7 +276,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "d4c538a2-2933-4e21-b400-b37f92079833",
+    "id": "beca8783-7645-4da9-a022-c198a49df410",
     "name": "Edge Cache Node 1",
     "folder": "CDN",
     "protocol": "sftp",
@@ -286,7 +286,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "14948195-b46b-4b86-953e-048955b43f2a",
+    "id": "9d31beb5-39a4-42a4-aebf-3509eaf1e296",
     "name": "Acme Corp",
     "folder": "Müşteriler",
     "protocol": "ftps",
@@ -296,7 +296,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "c180bbe7-5efd-44a8-9704-3a12aedd7a02",
+    "id": "19c61fba-323a-4fa1-9198-1eb553018d2b",
     "name": "Globex",
     "folder": "Müşteriler",
     "protocol": "sftp",
@@ -306,7 +306,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "f7296e89-4497-49df-8f9c-96957c09a6b2",
+    "id": "7083ce26-aee9-437a-92e6-c26b7d3a5ff0",
     "name": "Initech",
     "folder": "Müşteriler",
     "protocol": "ftp",
@@ -317,7 +317,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "52adc88f-8f05-4ae6-88b7-59d45831ed31",
+    "id": "a51055d2-57c2-462b-a2ed-15934cebb4d4",
     "name": "Umbrella Health",
     "folder": "Müşteriler",
     "protocol": "ftps-implicit",
@@ -328,7 +328,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "dbff840e-20d3-455d-9897-cf0b8f891244",
+    "id": "7711cbc9-3a02-44f6-abd6-29ecd98ce0b3",
     "name": "Wonka Industries",
     "folder": "Müşteriler",
     "protocol": "sftp",
@@ -338,7 +338,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "72fd2d45-a1ae-4243-8323-c089aa7bc4f0",
+    "id": "a1e921eb-740e-48da-9138-38a62192cf9a",
     "name": "Stark Endüstri",
     "folder": "Müşteriler",
     "protocol": "ftps",
@@ -348,7 +348,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "785f8ca7-62c0-4ff9-a07c-79d23205cdac",
+    "id": "bbfcdc1d-b9bf-4d4b-8ca3-4662c5b59d2e",
     "name": "Wayne Holding",
     "folder": "Müşteriler",
     "protocol": "sftp",
@@ -358,7 +358,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "d297dde8-9e97-4740-b9d8-ce2ce2654c39",
+    "id": "1f41ba9a-19e1-488c-941f-c2bb490a4e71",
     "name": "Debian Aynası",
     "folder": "Aynalar",
     "protocol": "ftp",
@@ -368,7 +368,7 @@
     "anonymous": true
   },
   {
-    "id": "913c9f59-3b0e-4974-87a8-87bc3dd55d5c",
+    "id": "95a741ea-9171-4575-8571-92bc88c8423d",
     "name": "GNU Aynası",
     "folder": "Aynalar",
     "protocol": "ftp",
@@ -378,7 +378,7 @@
     "anonymous": true
   },
   {
-    "id": "2534b7ff-8698-4393-b1f1-ec031c29c61d",
+    "id": "6f565712-54c7-43d0-b87f-ad11170d59dd",
     "name": "Mozilla Aynası",
     "folder": "Aynalar",
     "protocol": "ftp",
@@ -388,7 +388,7 @@
     "anonymous": true
   },
   {
-    "id": "eceb942b-8f43-4e28-bc23-9299a7a5a752",
+    "id": "67a43fca-c0f8-4059-af42-70b73aa74f2a",
     "name": "Kernel.org",
     "folder": "",
     "protocol": "ftp",
@@ -398,7 +398,7 @@
     "anonymous": true
   },
   {
-    "id": "5112f0b2-dc87-4e54-8804-920548520bf8",
+    "id": "2afc71ea-d6a2-4bad-b68f-bc8e4fe2ee00",
     "name": "Ubuntu Releases",
     "folder": "Aynalar",
     "protocol": "ftp",
@@ -408,7 +408,7 @@
     "anonymous": true
   },
   {
-    "id": "9c4c0f06-cfd7-4f99-a138-b9e9a0ec4512",
+    "id": "7993d958-53ff-4b95-a3ea-875a919bb401",
     "name": "AWS EC2 (Bastion)",
     "folder": "Bulut",
     "protocol": "sftp",
@@ -418,7 +418,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "996ad363-91d3-4c67-8354-d55d6bdadd29",
+    "id": "404e4466-64b4-45ee-bf01-00117716a583",
     "name": "DigitalOcean Droplet",
     "folder": "Bulut",
     "protocol": "sftp",
@@ -428,7 +428,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "0654e2b3-5b98-4b64-9eb6-e0c13fb61ebf",
+    "id": "e0c377a0-fae5-43bc-9288-72ef64698d29",
     "name": "Hetzner Storage Box",
     "folder": "Bulut",
     "protocol": "ftps-implicit",
@@ -438,7 +438,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "2b131f88-5391-46b1-9e23-ac77de5309ef",
+    "id": "23785f39-9bba-4d70-b37c-e7092f0c856c",
     "name": "Hetzner Storage (SFTP)",
     "folder": "Bulut",
     "protocol": "sftp",
@@ -448,7 +448,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "e120b209-4e89-40a9-a205-c0f2c00e2314",
+    "id": "1a6346fe-e29a-4591-90c7-1b4d53ea6450",
     "name": "OVH VPS",
     "folder": "",
     "protocol": "sftp",
@@ -458,7 +458,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "7e98cc42-205f-450d-a22f-ad38ff7088b9",
+    "id": "a172ab08-2658-4611-a030-2c32d9af2fde",
     "name": "Azure Web App",
     "folder": "Bulut",
     "protocol": "ftps",
@@ -469,7 +469,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "300da37f-d0fa-402f-8b5a-414ee1cbcfe0",
+    "id": "9a82ca41-c730-462a-b5fa-d5aceecd8dc5",
     "name": "Google Cloud VM",
     "folder": "Bulut",
     "protocol": "sftp",
@@ -479,7 +479,7 @@
     "secret": "p0:ZmVycm9wYXNz"
   },
   {
-    "id": "6e761110-9e50-421c-a66a-6d84f5e4ead8",
+    "id": "6e220905-c1af-4bf0-b1ac-ae6b0d56d8ce",
     "name": "Cloudflare R2 Gateway",
     "folder": "Bulut",
     "protocol": "ftps",

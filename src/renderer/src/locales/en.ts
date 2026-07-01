@@ -101,6 +101,8 @@ export default {
     addServer: 'Add Server',
     edit: 'Edit',
     disconnect: 'Disconnect',
+    renameGroup: 'Rename group',
+    newGroupName: 'New group name',
     tabs: {
       general: 'General',
       advanced: 'Advanced',

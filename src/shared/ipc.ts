@@ -75,6 +75,7 @@ export interface InvokeMap {
   'sites:list': { req: void; res: { sites: SavedSite[]; encryptionAvailable: boolean } }
   'sites:save': { req: SiteInput; res: { id: string } }
   'sites:delete': { req: { id: string }; res: { ok: true } }
+  'sites:renameGroup': { req: { from: string; to: string }; res: { ok: true; count: number } }
   'sites:connect': { req: { id: string }; res: { sessionId: string; cwd: string } }
 }
 

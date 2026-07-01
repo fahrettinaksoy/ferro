@@ -209,6 +209,24 @@ class SiteStore {
     this.save()
   }
 
+  /** Bir grubu (klasörü) yeniden adlandırır: o klasördeki tüm sitelerin folder
+   *  alanını günceller. Boş hedef → siteler grupsuz olur. Diğer alanlar (parola,
+   *  gelişmiş ayarlar) korunur. Etkilenen site sayısını döndürür. */
+  renameGroup(from: string, to: string): number {
+    const store = this.load()
+    const target = from.trim()
+    const next = to.trim() || undefined
+    let count = 0
+    for (const s of store) {
+      if ((s.folder ?? '').trim() === target) {
+        s.folder = next
+        count++
+      }
+    }
+    if (count) this.save()
+    return count
+  }
+
   /** Bağlanmak için tam config (parola çözülmüş) üretir. */
   buildConfig(id: string): ConnectionConfig | null {
     const s = this.load().find((x) => x.id === id)

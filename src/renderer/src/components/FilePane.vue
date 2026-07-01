@@ -459,6 +459,25 @@ const dialogTitle = computed(() => {
   flex: 1 1 auto;
   min-height: 0;
 }
+/* Dar panelde sütunlar alt satıra düşmesin; yatay (ve dikey) kaydırma
+   __wrapper'da olsun. Tabloya alt sınır genişliği ver ki sığmadığında
+   sarmalayan alan sağa/sola kaysın, hücreler ezilmesin. */
+.table-scroll :deep(.v-table__wrapper) {
+  overflow: auto;
+}
+.table-scroll :deep(.v-table__wrapper > table) {
+  min-width: 640px;
+}
+.table-scroll :deep(th),
+.table-scroll :deep(td) {
+  white-space: nowrap;
+}
+/* Ad sütunu esnek ama tümden ezilmesin; taşan uzun adı üç nokta ile kes. */
+.table-scroll :deep(td:first-child) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .drop-active {
   outline: 2px dashed rgb(var(--v-theme-primary));
   outline-offset: -2px;

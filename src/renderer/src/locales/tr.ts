@@ -101,6 +101,8 @@ export default {
     addServer: 'Sunucu Ekle',
     edit: 'Düzenle',
     disconnect: 'Bağlantıyı kes',
+    renameGroup: 'Grubu yeniden adlandır',
+    newGroupName: 'Yeni grup adı',
     tabs: {
       general: 'Genel',
       advanced: 'Gelişmiş',

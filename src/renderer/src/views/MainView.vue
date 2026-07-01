@@ -30,7 +30,9 @@ const siteManagerOpen = ref(false)
 const siteManagerFocusId = ref<string | null>(null)
 const drawerOpen = ref(true)
 // Sol panel sekmesi: yerel sürücüler ↔ site yöneticisi (sunucu listesi).
-const leftTab = ref<'local' | 'sites'>('local')
+// Varsayılan: site yöneticisi (bağlanılacak sunucu seçilir); bağlandıktan
+// sonra otomatik olarak yerel diske geçilir (bkz. connectSite).
+const leftTab = ref<'local' | 'sites'>('sites')
 const logOpen = ref(true)
 const queueOpen = ref(true)
 const syncOpen = ref(false)
@@ -50,6 +52,25 @@ function openSiteManager(siteId: string | null = null): void {
 // Bir site için açık bir bağlantı sekmesi var mı (kenar listesi vurgusu)?
 function isActiveSite(host: string, port: number): boolean {
   return conn.hasOpen(host, port)
+}
+
+// ── Grup (klasör) yeniden adlandırma ──
+const renameGroupOpen = ref(false)
+const renameGroupFrom = ref('')
+const renameGroupTo = ref('')
+function openRenameGroup(name: string): void {
+  renameGroupFrom.value = name
+  renameGroupTo.value = name
+  renameGroupOpen.value = true
+}
+function confirmRenameGroup(): void {
+  const to = renameGroupTo.value.trim()
+  if (!to || to === renameGroupFrom.value) {
+    renameGroupOpen.value = false
+    return
+  }
+  run(sites.renameGroup(renameGroupFrom.value, to))
+  renameGroupOpen.value = false
 }
 
 // Bağlantı sekmeleri (v-tabs) için etkin sekme köprüsü.
@@ -93,12 +114,17 @@ function connectSite(id: string): void {
   )
   if (existing) {
     conn.setActive(existing.sessionId)
+    leftTab.value = 'local'
     return
   }
   toast
     .promise(t('toast.connecting'), sites.connect(site), {
       success: t('toast.connected', { name: site.name }),
       error: (e) => t('toast.connectFailed', { msg: errText(e) })
+    })
+    .then(() => {
+      // Bağlantı kurulunca yerel disk sekmesine geç.
+      leftTab.value = 'local'
     })
     .catch(() => {})
 }
@@ -245,8 +271,8 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
           <div v-if="drawerOpen" class="left-panel">
             <v-card variant="flat" border class="d-flex flex-column fill-height">
               <v-tabs v-model="leftTab" density="compact" color="primary" grow class="left-tabs">
-                <v-tab value="local">{{ $t('panes.local') }}</v-tab>
                 <v-tab value="sites">{{ $t('settings.siteManager') }}</v-tab>
+                <v-tab value="local">{{ $t('panes.local') }}</v-tab>
               </v-tabs>
               <v-divider />
 
@@ -299,6 +325,13 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                     <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
                     <template #append>
                       <v-btn
+                        icon="mdi-connection"
+                        size="x-small"
+                        variant="text"
+                        :title="$t('common.connect')"
+                        @click.stop="connectSite(s.id)"
+                      />
+                      <v-btn
                         icon="mdi-pencil"
                         size="x-small"
                         variant="text"
@@ -310,8 +343,21 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 
                   <!-- Gruplar: klasör ikonlu açılır alt grup -->
                   <v-list-group v-for="g in sites.grouped.groups" :key="g.name" :value="g.name">
-                    <template #activator="{ props }">
-                      <v-list-item v-bind="props" prepend-icon="mdi-folder" :title="g.name" />
+                    <template #activator="{ props, isOpen }">
+                      <!-- Klasör başlığı: yeniden adlandırma butonu + aç/kapa oku.
+                           #append oku ezdiği için chevron'ı isOpen ile elle çiziyoruz. -->
+                      <v-list-item v-bind="props" prepend-icon="mdi-folder" :title="g.name">
+                        <template #append>
+                          <v-btn
+                            icon="mdi-folder-edit"
+                            size="x-small"
+                            variant="text"
+                            :title="$t('sites.renameGroup')"
+                            @click.stop="openRenameGroup(g.name)"
+                          />
+                          <v-icon :icon="isOpen ? '$collapse' : '$expand'" class="ms-1" />
+                        </template>
+                      </v-list-item>
                     </template>
                     <v-list-item
                       v-for="s in g.sites"
@@ -335,6 +381,13 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                       <v-list-item-title>{{ s.name }}</v-list-item-title>
                       <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
                       <template #append>
+                        <v-btn
+                          icon="mdi-connection"
+                          size="x-small"
+                          variant="text"
+                          :title="$t('common.connect')"
+                          @click.stop="connectSite(s.id)"
+                        />
                         <v-btn
                           icon="mdi-pencil"
                           size="x-small"
@@ -451,6 +504,33 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
       <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
       <SyncDialog v-model="syncOpen" />
 
+      <!-- Grup (klasör) yeniden adlandırma -->
+      <v-dialog v-model="renameGroupOpen" max-width="420">
+        <v-card :title="$t('sites.renameGroup')">
+          <v-card-text>
+            <v-text-field
+              v-model="renameGroupTo"
+              :label="$t('sites.newGroupName')"
+              autofocus
+              hide-details
+              @keyup.enter="confirmRenameGroup()"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="renameGroupOpen = false">{{ $t('common.cancel') }}</v-btn>
+            <v-btn
+              color="primary"
+              variant="tonal"
+              :disabled="!renameGroupTo.trim() || renameGroupTo.trim() === renameGroupFrom"
+              @click="confirmRenameGroup()"
+            >
+              {{ $t('common.save') }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
       <!-- Klavye kısayolları yardımı -->
       <v-dialog v-model="hotkeysHelpOpen" max-width="460">
         <v-card>
@@ -521,6 +601,18 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 }
 .drawer-list {
   overflow-y: auto;
+}
+/* İkon ile metin arası boşluğu daralt. Vuetify 4'te bu boşluk --v-list-prepend-gap
+   değişkeninden gelir (varsayılan 32px); değişkeni ezmek spacer genişliğini belirler. */
+.drawer-list.v-list {
+  --v-list-prepend-gap: 8px;
+}
+/* Sol girinti/boşluğu daralt: üst seviye küçük, grup içi öğeler daha az girinti. */
+.drawer-list :deep(.v-list-item) {
+  padding-inline-start: 0px !important;
+}
+.drawer-list :deep(.v-list-group__items .v-list-item) {
+  padding-inline-start: 0px !important;
 }
 /* Sağ sütun: uzak sunucu üstte (esner), log altta (sabit). */
 .right-col {
