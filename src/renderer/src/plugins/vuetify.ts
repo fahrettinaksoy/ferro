@@ -5,6 +5,29 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import { createVueI18nAdapter } from 'vuetify/locale/adapters/vue-i18n'
 import { useI18n } from 'vue-i18n'
 import { i18n } from '@renderer/plugins/i18n'
+import { buildThemes, type SchemeKey } from '@renderer/lib/theme'
+
+// Başlangıç tema tohumu/şeması (Ayarlar → Temalar'dan değiştirilebilir; kalıcı).
+export const DEFAULT_SEED = '#40692c'
+export const DEFAULT_SCHEME: SchemeKey = 'tonalSpot'
+function loadSeed(): string {
+  return localStorage.getItem('ferro.themeSeed') || DEFAULT_SEED
+}
+function loadScheme(): SchemeKey {
+  return (localStorage.getItem('ferro.themeScheme') as SchemeKey | null) || DEFAULT_SCHEME
+}
+function loadDefaultThemeName(): string {
+  const mode = localStorage.getItem('ferro.themeMode')
+  const contrast = localStorage.getItem('ferro.themeContrast')
+  const resolvedMode =
+    mode === 'light' || mode === 'dark'
+      ? mode
+      : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true)
+        ? 'dark'
+        : 'light'
+  const suffix = contrast === 'medium' ? '-medium-contrast' : contrast === 'high' ? '-high-contrast' : ''
+  return resolvedMode + suffix
+}
 
 // İkon-fonts best practice: uygulamaya özgü ANLAMSAL ikon sözlüğü.
 // Vuetify'ın yerleşik bileşen alias'larının ($close, $edit, $next ...) YANINA
@@ -52,44 +75,12 @@ export const vuetify = createVuetify({
   // Böylece color="success" / type="error" gibi kullanımlar Vuetify varsayılanına
   // düşmez, uygulama paletiyle tutarlı olur. Başlangıç teması ui store'da OS
   // tercihine (prefers-color-scheme) göre seçilir; kullanıcı seçimi kalıcıdır.
+  // Tema: Material Design 3 üretimi (Theme Studio). 6 tema — light/dark ×
+  // standard/medium/high kontrast — bir seed renginden dinamik üretilir ve
+  // Ayarlar → Arayüz → Temalar'dan (renk/şema/varyant/kontrast) canlı değişir.
   theme: {
-    defaultTheme: 'ferroDark',
-    themes: {
-      ferroLight: {
-        dark: false,
-        colors: {
-          primary: '#1565C0',
-          secondary: '#37474F',
-          success: '#2E7D32',
-          warning: '#ED6C02',
-          error: '#C62828',
-          info: '#0277BD',
-          surface: '#FFFFFF',
-          background: '#F5F5F5'
-        },
-        variables: {
-          'border-color': '#000000',
-          'border-opacity': 0.12
-        }
-      },
-      ferroDark: {
-        dark: true,
-        colors: {
-          primary: '#42A5F5',
-          secondary: '#90A4AE',
-          success: '#66BB6A',
-          warning: '#FFA726',
-          error: '#EF5350',
-          info: '#29B6F6',
-          surface: '#1E1E1E',
-          background: '#121212'
-        },
-        variables: {
-          'border-color': '#FFFFFF',
-          'border-opacity': 0.16
-        }
-      }
-    }
+    defaultTheme: loadDefaultThemeName(),
+    themes: buildThemes(loadSeed(), loadScheme())
   },
   icons: {
     defaultSet: 'mdi',

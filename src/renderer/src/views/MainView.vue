@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { storeToRefs } from 'pinia'
 import { onMounted, onBeforeUnmount } from 'vue'
 import { useHotkey } from 'vuetify'
+import { useI18n } from 'vue-i18n'
 // <v-hotkey> şablonda kullanılır; autoImport otomatik içe aktarır (elle import yok).
 import { onEvent, invoke } from '@renderer/lib/ipc'
 import { useUiStore } from '@renderer/stores/ui'
 import { useConnectionStore } from '@renderer/stores/connection'
+import { useToastStore } from '@renderer/stores/toast'
 import { useSitesStore } from '@renderer/stores/sites'
 import { useRemoteFsStore } from '@renderer/stores/remoteFs'
 import { useLocalStore } from '@renderer/stores/local'
@@ -22,7 +23,8 @@ import SyncDialog from '@renderer/components/SyncDialog.vue'
 import { ref } from 'vue'
 
 const ui = useUiStore()
-const { theme } = storeToRefs(ui)
+const { t } = useI18n()
+const toast = useToastStore()
 
 const siteManagerOpen = ref(false)
 const siteManagerFocusId = ref<string | null>(null)
@@ -47,6 +49,20 @@ function isActiveSite(host: string, port: number): boolean {
   return conn.isConnected && conn.config?.host === host && conn.config?.port === port
 }
 
+// Site renk etiketi → CSS rengi (Site Yöneticisi "Arka plan rengi").
+const SITE_COLORS: Record<string, string> = {
+  red: '#E53935',
+  green: '#43A047',
+  blue: '#1E88E5',
+  yellow: '#FDD835',
+  cyan: '#00ACC1',
+  orange: '#FB8C00',
+  purple: '#8E24AA'
+}
+function siteColor(label: string): string {
+  return SITE_COLORS[label] ?? 'transparent'
+}
+
 // Kenar çubuğundaki bir sunucuya tıklama: bağlıysa kes, değilse bağlan.
 // Başka bir sunucuya geçişte önce mevcut oturum kapatılır.
 function connectSite(id: string): void {
@@ -54,18 +70,27 @@ function connectSite(id: string): void {
   if (!site) return
   if (isActiveSite(site.host, site.port)) {
     remote.reset()
-    run(conn.disconnect())
+    toast
+      .promise(t('toast.disconnecting'), conn.disconnect(), { success: t('toast.disconnected') })
+      .catch(() => {})
     return
   }
-  run(
-    (async () => {
-      if (conn.isConnected) {
-        remote.reset()
-        await conn.disconnect()
+  toast
+    .promise(
+      t('toast.connecting'),
+      (async () => {
+        if (conn.isConnected) {
+          remote.reset()
+          await conn.disconnect()
+        }
+        await sites.connect(site)
+      })(),
+      {
+        success: t('toast.connected', { name: site.name }),
+        error: (e) => t('toast.connectFailed', { msg: errText(e) })
       }
-      await sites.connect(site)
-    })()
-  )
+    )
+    .catch(() => {})
 }
 
 let unsubLog: (() => void) | null = null
@@ -73,7 +98,11 @@ let unsubProgress: (() => void) | null = null
 
 onMounted(async () => {
   unsubLog = onEvent('session:log', (e) => log.append(e))
-  unsubProgress = onEvent('transfer:update', (job) => transfer.onUpdate(job))
+  unsubProgress = onEvent('transfer:update', (job) => {
+    transfer.onUpdate(job)
+    if (job.status === 'completed') toast.success(t('toast.transferDone', { name: job.name }))
+    else if (job.status === 'failed') toast.error(t('toast.transferFailed', { name: job.name }))
+  })
   await ui.applyBandwidth()
   await local.init()
   await sites.load()
@@ -106,11 +135,19 @@ function onRemoteEdit(entry: { name: string }): void {
   run(invoke('edit:open', { sessionId: conn.sessionId, remotePath, name: entry.name }))
 }
 
-// Hata yakalama: işlem hataları log paneline düşer (SessionManager) veya store error'una.
-function run(p: Promise<unknown>): void {
-  void p.catch((err) =>
-    log.append({ sessionId: '', level: 'error', text: String(err?.message ?? err) })
-  )
+function errText(err: unknown): string {
+  if (err instanceof Error) return err.message
+  return String((err as { message?: string })?.message ?? err)
+}
+
+// İşlem çalıştır: başarıda (verilirse) başarı toast'ı, hatada log + hata toast'ı.
+function run(p: Promise<unknown>, successMsg?: string): void {
+  p.then(() => {
+    if (successMsg) toast.success(successMsg)
+  }).catch((err) => {
+    log.append({ sessionId: '', level: 'error', text: errText(err) })
+    toast.error(t('toast.error', { msg: errText(err) }))
+  })
 }
 
 // ── Klavye kısayolları (Vuetify useHotkey) ──
@@ -186,7 +223,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
       <v-btn icon="$keyboard" :title="$t('hotkeys.title')" @click="hotkeysHelpOpen = true" />
       <v-btn icon="$settings" :title="$t('settings.title')" @click="ui.openDrawer('settings')" />
       <v-btn
-        :icon="theme === 'ferroDark' ? '$themeDark' : '$themeLight'"
+        :icon="ui.themeMode === 'dark' ? '$themeDark' : '$themeLight'"
         @click="ui.toggleTheme()"
       />
     </v-app-bar>
@@ -202,6 +239,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
           v-for="s in sites.sites"
           :key="s.id"
           :active="isActiveSite(s.host, s.port)"
+          :style="s.colorLabel ? { borderLeft: `3px solid ${siteColor(s.colorLabel)}` } : undefined"
           @click="connectSite(s.id)"
         >
           <template #prepend>
@@ -261,9 +299,12 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
             @up="local.up()"
             @refresh="local.refresh()"
             @transfer="onLocalTransfer"
-            @mkdir="(name) => run(local.makeDir(name))"
-            @rename="({ entry, newName }) => run(local.rename(entry as LocalEntry, newName))"
-            @remove="(entry) => run(local.remove(entry as LocalEntry))"
+            @mkdir="(name) => run(local.makeDir(name), $t('toast.folderCreated'))"
+            @rename="
+              ({ entry, newName }) =>
+                run(local.rename(entry as LocalEntry, newName), $t('toast.renamed'))
+            "
+            @remove="(entry) => run(local.remove(entry as LocalEntry), $t('toast.deleted'))"
             @drop-entry="onDropToLocal"
           />
           <FilePane
@@ -283,10 +324,16 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
             @up="remote.up()"
             @refresh="remote.refresh()"
             @transfer="onRemoteTransfer"
-            @mkdir="(name) => run(remote.makeDir(name))"
-            @rename="({ entry, newName }) => run(remote.rename(entry as RemoteEntry, newName))"
-            @remove="(entry) => run(remote.remove(entry as RemoteEntry))"
-            @chmod="({ entry, mode }) => run(remote.chmod(entry as RemoteEntry, mode))"
+            @mkdir="(name) => run(remote.makeDir(name), $t('toast.folderCreated'))"
+            @rename="
+              ({ entry, newName }) =>
+                run(remote.rename(entry as RemoteEntry, newName), $t('toast.renamed'))
+            "
+            @remove="(entry) => run(remote.remove(entry as RemoteEntry), $t('toast.deleted'))"
+            @chmod="
+              ({ entry, mode }) =>
+                run(remote.chmod(entry as RemoteEntry, mode), $t('toast.permsUpdated'))
+            "
             @edit="onRemoteEdit"
             @drop-entry="onDropToRemote"
           />

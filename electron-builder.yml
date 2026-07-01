@@ -17,6 +17,10 @@ files:
 asar: true
 asarUnpack:
   - resources/**
+# İlk açılış tohum verisi: process.resourcesPath/seed/sites.seed.json altında erişilir.
+extraResources:
+  - from: seed/sites.seed.json
+    to: seed/sites.seed.json
 artifactName: ${productName}-${version}-${arch}.${ext}
 
 mac:

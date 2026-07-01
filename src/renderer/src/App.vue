@@ -3,13 +3,44 @@ import { useTheme } from 'vuetify'
 import { storeToRefs } from 'pinia'
 import { watch } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
+import { useToastStore, type ToastColor, type ToastMessage } from '@renderer/stores/toast'
+import { applyThemes, applyFonts } from '@renderer/lib/theme'
 import SettingsDialog from '@renderer/components/SettingsDialog.vue'
 
 // Tema state'i uygulama kökünde uygulanır (v-app burada).
 const ui = useUiStore()
-const { theme } = storeToRefs(ui)
+const { theme, themeSeed, themeScheme, fonts } = storeToRefs(ui)
 const vTheme = useTheme()
+
+// Aktif tema (mode + kontrast) değişince uygula.
 watch(theme, (t) => vTheme.change(t), { immediate: true })
+
+// Kaynak renk / şema değişince 6 temayı yeniden üret ve canlı uygula.
+watch(
+  [themeSeed, themeScheme],
+  () => applyThemes(vTheme.themes.value, ui.themeSeed, ui.themeScheme),
+  { immediate: true }
+)
+
+// Yazı tipleri değişince (başlık/gövde/kök boyut) uygula.
+watch(fonts, (f) => applyFonts(f), { immediate: true, deep: true })
+
+// Global bildirim kuyruğu (oluşturma/kaydetme/silme/bağlantı vb.).
+const toast = useToastStore()
+
+// Bildirim rengine göre ikon (mesaj nesnesinde extra prop tutmamak için slot'ta türetilir).
+const TOAST_ICON: Record<ToastColor, string> = {
+  success: '$success',
+  error: '$error',
+  warning: '$warning',
+  info: '$info'
+}
+function toastIcon(item: unknown): string {
+  return TOAST_ICON[(item as ToastMessage).color] ?? '$info'
+}
+function toastText(item: unknown): string {
+  return (item as ToastMessage).text
+}
 </script>
 
 <template>
@@ -17,15 +48,39 @@ watch(theme, (t) => vTheme.change(t), { immediate: true })
     <router-view />
     <!-- Sağdan açılan, her şeyin üzerine gelen genel panel(ler) -->
     <SettingsDialog />
+
+    <!-- Global bildirim kuyruğu: tüm CRUD/bağlantı işlemleri buraya düşer.
+         İkon, mesajın color'ından #text slot'unda türetilir (extra prop yok). -->
+    <v-snackbar-queue v-model="toast.messages" location="bottom right" closable>
+      <template #text="{ item }">
+        <span class="d-inline-flex align-center">
+          <v-icon :icon="toastIcon(item)" size="small" class="mr-2" />
+          {{ toastText(item) }}
+        </span>
+      </template>
+    </v-snackbar-queue>
   </v-app>
 </template>
 
 <style>
-/* Masaüstü için sistem yazı tipi yığını (SASS $body-font-family yerine — bkz.
-   vite.config: configFile devre dışı). Vuetify stilleri @layer içinde olduğundan
-   bu katmansız kural önceliklidir. */
+/* Yazı tipleri Ayarlar → Temalar'dan gelen CSS değişkenleriyle sürülür
+   (applyFonts). Değişken yoksa masaüstü sistem yığınına düşer. Vuetify stilleri
+   @layer içinde olduğundan bu katmansız kurallar önceliklidir. */
 .v-application {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(
+    --ferro-font-body,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
+}
+.v-application :is(h1, h2, h3, h4, h5, h6),
+.v-application :is(.text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6),
+.v-application :is(.text-subtitle-1, .text-subtitle-2) {
+  font-family: var(--ferro-font-heading, var(--ferro-font-body, inherit));
 }
 </style>

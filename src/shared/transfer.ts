@@ -77,8 +77,45 @@ export interface TransferJob {
   error?: string
 }
 
+/** FTP aktarım modu (Aktarım ayarları sekmesi). */
+export type TransferMode = 'default' | 'active' | 'passive'
+
+/**
+ * Site Yöneticisi'nin gelişmiş sekmelerindeki alanlar (Genel/Gelişmiş/Aktarım/
+ * Karakter kümesi). Tamamı opsiyonel ve site başına saklanır; bir kısmı şu an
+ * yalnızca UI'da tutulur (motora bağlanması ayrı iş), `encoding` ise bağlantıda kullanılır.
+ */
+export interface SiteAdvanced {
+  /** Genel: serbest not. */
+  comment?: string
+  /** Genel: kenar çubuğu/listede renk etiketi (örn. 'red', 'green'). */
+  colorLabel?: string
+  /** Gelişmiş: sunucu türü (örn. 'unix', 'windows', 'auto'). */
+  serverType?: string
+  /** Gelişmiş: vekil sunucu atlansın. */
+  bypassProxy?: boolean
+  /** Gelişmiş: varsayılan yerel klasör. */
+  localDir?: string
+  /** Gelişmiş: varsayılan uzak klasör. */
+  remoteDir?: string
+  /** Gelişmiş: eş zamanlı tarama. */
+  syncBrowsing?: boolean
+  /** Gelişmiş: klasör karşılaştırma. */
+  dirComparison?: boolean
+  /** Gelişmiş: sunucu saat dilimi farkı (saat bileşeni). */
+  timezoneHours?: number
+  /** Gelişmiş: sunucu saat dilimi farkı (dakika bileşeni). */
+  timezoneMinutes?: number
+  /** Aktarım: yöntem (varsayılan/aktif/pasif). */
+  transferMode?: TransferMode
+  /** Aktarım: eş zamanlı bağlantı sayısı sınırlansın. */
+  limitConnections?: boolean
+  /** Aktarım: en fazla bağlantı sayısı. */
+  maxConnections?: number
+}
+
 /** Kaydedilmiş bir bağlantı (Site Yöneticisi). Parola İÇERMEZ — yalnızca var/yok bilgisi. */
-export interface SavedSite {
+export interface SavedSite extends SiteAdvanced {
   id: string
   name: string
   folder?: string
@@ -93,7 +130,7 @@ export interface SavedSite {
 }
 
 /** Site kaydetme/güncelleme girdisi (renderer → main). Parola opsiyonel olarak iletilir. */
-export interface SiteInput {
+export interface SiteInput extends SiteAdvanced {
   /** Verilirse mevcut site güncellenir. */
   id?: string
   name: string

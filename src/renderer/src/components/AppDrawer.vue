@@ -68,8 +68,10 @@ useHotkey(
 .app-drawer-overlay {
   position: fixed;
   inset: 0;
-  /* Vuetify app-bar (~1005) ve çoğu overlay'in üstünde kalsın. */
-  z-index: 3000;
+  /* app-bar/navigation-drawer (~1005) ÜSTÜNDE ama Vuetify overlay'lerinin
+     (VOverlay tabanı 2000: select/menu/color-picker/dialog) ALTINDA kalır.
+     Böylece panel içindeki açılır menüler panelin üstünde görünür (z-index sorunu). */
+  z-index: 1500;
 }
 .app-drawer-scrim {
   position: absolute;

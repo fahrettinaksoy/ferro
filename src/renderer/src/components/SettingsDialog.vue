@@ -5,7 +5,6 @@ import { useI18n } from 'vue-i18n'
 // autoImport bunları otomatik (tree-shake ederek) içe aktarır — elle import gerekmez.
 import {
   useUiStore,
-  type ThemeName,
   type LangChoice,
   type TlsVersion,
   type ConnectionPrefs,
@@ -33,9 +32,29 @@ import {
 
 import AppDrawer from '@renderer/components/AppDrawer.vue'
 import LocalePreview from '@renderer/components/LocalePreview.vue'
+import {
+  SCHEME_OPTIONS,
+  FONT_OPTIONS,
+  type ThemeContrast,
+  type ThemeFonts
+} from '@renderer/lib/theme'
 
 const { t } = useI18n()
 const ui = useUiStore()
+
+// ── Tema Studio (Ayarlar → Arayüz → Temalar) — canlı uygular ──
+const contrastOptions = computed<{ value: ThemeContrast; icon: string; title: string }[]>(() => [
+  { value: 'standard', icon: 'mdi-brightness-7', title: t('settings.themesPage.contrastStandard') },
+  { value: 'medium', icon: 'mdi-brightness-6', title: t('settings.themesPage.contrastMedium') },
+  { value: 'high', icon: 'mdi-brightness-5', title: t('settings.themesPage.contrastHigh') }
+])
+function setFontField(field: keyof ThemeFonts, value: string | number): void {
+  ui.setFonts({ ...ui.fonts, [field]: value })
+}
+function onSeedInput(v: string): void {
+  const hex = (v ?? '').trim()
+  if (/^#?[0-9a-fA-F]{6}$/.test(hex)) ui.setThemeSeed(hex.startsWith('#') ? hex : '#' + hex)
+}
 
 // Açık/kapalı durumu store'dan gelir (genel panel kontrolcüsü).
 const isOpen = computed(() => ui.openPanel === 'settings')
@@ -101,7 +120,6 @@ function onActivated(val: unknown): void {
 
 // ── Taslak (draft): açılışta store'dan kopyalanır, Tamam'da uygulanır. ──
 interface Draft {
-  theme: ThemeName
   languageChoice: LangChoice
   connection: ConnectionPrefs
   ftp: FtpPrefs
@@ -129,7 +147,6 @@ const draft = reactive<Draft>(snapshot())
 
 function snapshot(): Draft {
   return {
-    theme: ui.theme,
     languageChoice: ui.languageChoice,
     connection: { ...ui.prefs.connection },
     ftp: { ...ui.prefs.ftp },
@@ -298,7 +315,7 @@ function close(): void {
 }
 
 async function apply(): Promise<void> {
-  if (draft.theme !== ui.theme) ui.setTheme(draft.theme)
+  // Tema (renk/şema/varyant/kontrast/font) canlı uygulanır — Theme Studio deseni.
   if (draft.languageChoice !== ui.languageChoice) ui.setLanguageChoice(draft.languageChoice)
   // Hız sınırı motora uygulanır (etkin değilse 0 = sınırsız).
   const effBw = draft.transfer.enableSpeedLimit ? draft.transfer.downloadLimitKiB : 0
@@ -804,23 +821,119 @@ async function apply(): Promise<void> {
           </fieldset>
         </template>
 
-        <!-- Arayüz → Temalar -->
+        <!-- Arayüz → Temalar (Material Design 3 Theme Studio — canlı) -->
         <template v-else-if="selected === 'themes'">
+          <!-- COLORS -->
           <fieldset class="section">
-            <legend>{{ $t('settings.themesPage.selectionTitle') }}</legend>
-            <div class="text-caption text-medium-emphasis mb-1">{{ $t('settings.theme') }}</div>
-            <v-btn-toggle
-              v-model="draft.theme"
-              mandatory
-              density="comfortable"
-              variant="outlined"
-              divided
-            >
-              <v-btn value="ferroLight" prepend-icon="$themeLight">{{
-                $t('settings.light')
-              }}</v-btn>
-              <v-btn value="ferroDark" prepend-icon="$themeDark">{{ $t('settings.dark') }}</v-btn>
-            </v-btn-toggle>
+            <legend>{{ $t('settings.themesPage.colorsTitle') }}</legend>
+            <div class="d-flex align-center ga-3">
+              <v-menu :close-on-content-click="false">
+                <template #activator="{ props }">
+                  <div
+                    v-bind="props"
+                    class="color-swatch"
+                    :style="{ background: ui.themeSeed }"
+                  />
+                </template>
+                <v-color-picker
+                  :model-value="ui.themeSeed"
+                  mode="hex"
+                  :modes="['hex']"
+                  @update:model-value="ui.setThemeSeed($event as unknown as string)"
+                />
+              </v-menu>
+              <v-text-field
+                :model-value="ui.themeSeed"
+                :label="$t('settings.themesPage.primaryLabel')"
+                style="max-width: 180px"
+                @update:model-value="onSeedInput($event)"
+              />
+            </div>
+          </fieldset>
+
+          <!-- SCHEME -->
+          <fieldset class="section">
+            <legend>{{ $t('settings.themesPage.schemeTitle') }}</legend>
+            <v-select
+              :model-value="ui.themeScheme"
+              :items="SCHEME_OPTIONS"
+              :label="$t('settings.themesPage.schemeLabel')"
+              prepend-inner-icon="mdi-palette-swatch"
+              @update:model-value="ui.setThemeScheme($event)"
+            />
+          </fieldset>
+
+          <!-- VARIANT & CONTRAST -->
+          <fieldset class="section">
+            <legend>{{ $t('settings.themesPage.variantTitle') }}</legend>
+            <div class="d-flex ga-6 flex-wrap">
+              <div>
+                <div class="text-caption text-medium-emphasis mb-1">{{ $t('settings.theme') }}</div>
+                <v-btn-toggle
+                  :model-value="ui.themeMode"
+                  mandatory
+                  density="comfortable"
+                  variant="outlined"
+                  divided
+                  @update:model-value="ui.setThemeMode($event)"
+                >
+                  <v-btn value="light" prepend-icon="$themeLight">{{ $t('settings.light') }}</v-btn>
+                  <v-btn value="dark" prepend-icon="$themeDark">{{ $t('settings.dark') }}</v-btn>
+                </v-btn-toggle>
+              </div>
+              <div>
+                <div class="text-caption text-medium-emphasis mb-1">
+                  {{ $t('settings.themesPage.contrastLabel') }}
+                </div>
+                <v-btn-toggle
+                  :model-value="ui.themeContrast"
+                  mandatory
+                  density="comfortable"
+                  variant="outlined"
+                  divided
+                  @update:model-value="ui.setThemeContrast($event)"
+                >
+                  <v-btn
+                    v-for="c in contrastOptions"
+                    :key="c.value"
+                    :value="c.value"
+                    :prepend-icon="c.icon"
+                  >
+                    {{ c.title }}
+                  </v-btn>
+                </v-btn-toggle>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- FONTS -->
+          <fieldset class="section">
+            <legend>{{ $t('settings.themesPage.fontsTitle') }}</legend>
+            <div class="d-flex ga-2 flex-wrap">
+              <v-select
+                :model-value="ui.fonts.heading"
+                :items="FONT_OPTIONS"
+                :label="$t('settings.themesPage.headingFont')"
+                style="min-width: 200px"
+                @update:model-value="setFontField('heading', $event)"
+              />
+              <v-select
+                :model-value="ui.fonts.body"
+                :items="FONT_OPTIONS"
+                :label="$t('settings.themesPage.bodyFont')"
+                style="min-width: 200px"
+                @update:model-value="setFontField('body', $event)"
+              />
+              <v-text-field
+                :model-value="ui.fonts.rootSize"
+                :label="$t('settings.themesPage.fontSizeRoot')"
+                type="number"
+                min="10"
+                max="24"
+                style="max-width: 130px"
+                @update:model-value="setFontField('rootSize', Number($event) || 16)"
+              />
+            </div>
             <div class="d-flex align-center ga-2 mt-3">
               <span class="field-label">{{ $t('settings.themesPage.scaleLabel') }}</span>
               <v-text-field
@@ -832,26 +945,25 @@ async function apply(): Promise<void> {
                 style="max-width: 110px"
               />
             </div>
-            <p class="text-caption text-medium-emphasis mt-2 mb-3">
-              {{ $t('settings.themesPage.note') }}
-            </p>
+          </fieldset>
 
-            <!-- Seçilen temanın önizlemesi: <v-theme-provider> bu alt-ağacı,
-                 uygulamanın mevcut (global) temasından BAĞIMSIZ olarak seçilen
-                 temada render eder. with-background, temanın arka planını da gösterir.
-                 Kaydet'ten önce dark/light görünümünü görmeyi sağlar. -->
-            <div class="text-body-2 mb-1">{{ $t('settings.themesPage.previewLabel') }}</div>
-            <v-theme-provider :theme="draft.theme" with-background>
-              <div class="theme-preview pa-3">
-                <div class="text-body-2 mb-2">{{ $t('settings.themesPage.previewSample') }}</div>
-                <div class="d-flex ga-2 flex-wrap">
-                  <v-chip color="primary" size="small" label>primary</v-chip>
-                  <v-chip color="success" size="small" label>success</v-chip>
-                  <v-chip color="warning" size="small" label>warning</v-chip>
-                  <v-chip color="error" size="small" label>error</v-chip>
-                </div>
+          <!-- Önizleme (aktif tema) -->
+          <fieldset class="section">
+            <legend>{{ $t('settings.themesPage.previewLabel') }}</legend>
+            <div class="theme-preview pa-3">
+              <div class="text-h6 mb-1">{{ $t('settings.themesPage.previewSample') }}</div>
+              <div class="text-body-2 mb-2 text-medium-emphasis">
+                {{ ui.themeSeed }} · {{ ui.themeMode }} · {{ ui.themeContrast }}
               </div>
-            </v-theme-provider>
+              <div class="d-flex ga-2 flex-wrap">
+                <v-chip color="primary" size="small" label>primary</v-chip>
+                <v-chip color="secondary" size="small" label>secondary</v-chip>
+                <v-chip color="tertiary" size="small" label>tertiary</v-chip>
+                <v-chip color="success" size="small" label>success</v-chip>
+                <v-chip color="warning" size="small" label>warning</v-chip>
+                <v-chip color="error" size="small" label>error</v-chip>
+              </div>
+            </div>
           </fieldset>
         </template>
 
@@ -1475,5 +1587,13 @@ async function apply(): Promise<void> {
   border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
   border-radius: 4px;
   max-width: 420px;
+}
+.color-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  flex: 0 0 auto;
 }
 </style>

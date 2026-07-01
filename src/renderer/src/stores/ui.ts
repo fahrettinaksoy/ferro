@@ -1,8 +1,23 @@
 import { defineStore } from 'pinia'
 import { setLocale, type Locale } from '@renderer/plugins/i18n'
 import { invoke } from '@renderer/lib/ipc'
+import {
+  themeName,
+  type SchemeKey,
+  type ThemeContrast,
+  type ThemeFonts,
+  type ThemeMode
+} from '@renderer/lib/theme'
 
-export type ThemeName = 'ferroLight' | 'ferroDark'
+/** Aktif tema adı (Material Design 3): mode + kontrast birleşimi. */
+export type ThemeName =
+  | 'light'
+  | 'light-medium-contrast'
+  | 'light-high-contrast'
+  | 'dark'
+  | 'dark-medium-contrast'
+  | 'dark-high-contrast'
+export type { SchemeKey, ThemeContrast, ThemeFonts, ThemeMode }
 export type TlsVersion = '1.0' | '1.1' | '1.2' | '1.3'
 /** Kullanıcının dil seçimi — 'system' ise OS diline göre çözülür. */
 export type LangChoice = 'system' | Locale
@@ -242,7 +257,18 @@ export interface AppPrefs {
 }
 
 interface UiState {
+  /** Aktif tema adı (mode + kontrast'tan türetilir). */
   theme: ThemeName
+  /** Açık/koyu varyant. */
+  themeMode: ThemeMode
+  /** Kontrast düzeyi. */
+  themeContrast: ThemeContrast
+  /** Kaynak (primary) renk — tüm palet bundan üretilir. */
+  themeSeed: string
+  /** Renk şeması (Material/Content/Vibrant …). */
+  themeScheme: SchemeKey
+  /** Yazı tipleri (başlık/gövde/kök boyut). */
+  fonts: ThemeFonts
   language: Locale
   languageChoice: LangChoice
   /** Bant genişliği sınırı (KB/s). 0 = sınırsız. */
@@ -384,12 +410,34 @@ const DEFAULT_PREFS: AppPrefs = {
   }
 }
 
-function loadTheme(): ThemeName {
-  const saved = localStorage.getItem('ferro.theme') as ThemeName | null
-  if (saved === 'ferroLight' || saved === 'ferroDark') return saved
+function loadThemeMode(): ThemeMode {
+  const saved = localStorage.getItem('ferro.themeMode')
+  if (saved === 'light' || saved === 'dark') return saved
   // Kayıt yoksa OS tercihini izle (best practice: prefers-color-scheme).
   const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
-  return prefersDark ? 'ferroDark' : 'ferroLight'
+  return prefersDark ? 'dark' : 'light'
+}
+function loadThemeContrast(): ThemeContrast {
+  const v = localStorage.getItem('ferro.themeContrast')
+  return v === 'medium' || v === 'high' ? v : 'standard'
+}
+function loadThemeSeed(): string {
+  return localStorage.getItem('ferro.themeSeed') || '#40692c'
+}
+function loadThemeScheme(): SchemeKey {
+  return (localStorage.getItem('ferro.themeScheme') as SchemeKey | null) || 'tonalSpot'
+}
+function loadFonts(): ThemeFonts {
+  try {
+    const raw = JSON.parse(localStorage.getItem('ferro.fonts') ?? '{}')
+    return {
+      heading: typeof raw.heading === 'string' ? raw.heading : 'system',
+      body: typeof raw.body === 'string' ? raw.body : 'system',
+      rootSize: Number(raw.rootSize) || 16
+    }
+  } catch {
+    return { heading: 'system', body: 'system', rootSize: 16 }
+  }
 }
 function loadLang(): Locale {
   return (localStorage.getItem('ferro.lang') as Locale | null) ?? 'tr'
@@ -443,7 +491,12 @@ function loadPrefs(): AppPrefs {
 // Uygulama geneli UI durumu (tema + dil + tercihler), localStorage'da kalıcı.
 export const useUiStore = defineStore('ui', {
   state: (): UiState => ({
-    theme: loadTheme(),
+    themeMode: loadThemeMode(),
+    themeContrast: loadThemeContrast(),
+    themeSeed: loadThemeSeed(),
+    themeScheme: loadThemeScheme(),
+    fonts: loadFonts(),
+    theme: themeName(loadThemeMode(), loadThemeContrast()) as ThemeName,
     language: loadLang(),
     languageChoice: loadLangChoice(),
     bandwidthKBs: loadBandwidth(),
@@ -459,12 +512,35 @@ export const useUiStore = defineStore('ui', {
     closeDrawer(): void {
       this.openPanel = null
     },
-    toggleTheme(): void {
-      this.setTheme(this.theme === 'ferroDark' ? 'ferroLight' : 'ferroDark')
+    /** Aktif tema adını mode + kontrast'tan yeniden hesaplar. */
+    syncThemeName(): void {
+      this.theme = themeName(this.themeMode, this.themeContrast) as ThemeName
     },
-    setTheme(theme: ThemeName): void {
-      this.theme = theme
-      localStorage.setItem('ferro.theme', theme)
+    toggleTheme(): void {
+      this.setThemeMode(this.themeMode === 'dark' ? 'light' : 'dark')
+    },
+    setThemeMode(mode: ThemeMode): void {
+      this.themeMode = mode
+      localStorage.setItem('ferro.themeMode', mode)
+      this.syncThemeName()
+    },
+    setThemeContrast(contrast: ThemeContrast): void {
+      this.themeContrast = contrast
+      localStorage.setItem('ferro.themeContrast', contrast)
+      this.syncThemeName()
+    },
+    /** Kaynak rengi değiştirir (palet App.vue'da yeniden üretilir). */
+    setThemeSeed(seed: string): void {
+      this.themeSeed = seed
+      localStorage.setItem('ferro.themeSeed', seed)
+    },
+    setThemeScheme(scheme: SchemeKey): void {
+      this.themeScheme = scheme
+      localStorage.setItem('ferro.themeScheme', scheme)
+    },
+    setFonts(fonts: ThemeFonts): void {
+      this.fonts = { ...fonts }
+      localStorage.setItem('ferro.fonts', JSON.stringify(this.fonts))
     },
     setLanguage(lang: Locale): void {
       this.language = lang

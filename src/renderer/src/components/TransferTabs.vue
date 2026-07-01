@@ -36,37 +36,41 @@ const statusColor: Record<string, string> = {
 
 <template>
   <v-card variant="flat" border class="d-flex flex-column fill-height">
-    <v-tabs v-model="tab" density="compact" color="primary" grow>
-      <v-tab value="queued">
-        {{ $t('transfer.queued') }}
-        <v-chip v-if="transfer.queued.length" size="x-small" class="ml-2" color="primary">
-          {{ transfer.queued.length }}
-        </v-chip>
-      </v-tab>
-      <v-tab value="completed">
-        {{ $t('transfer.completed') }}
-        <v-chip v-if="transfer.completed.length" size="x-small" class="ml-2" color="success">
-          {{ transfer.completed.length }}
-        </v-chip>
-      </v-tab>
-      <v-tab value="failed">
-        {{ $t('transfer.failed') }}
-        <v-chip v-if="transfer.failed.length" size="x-small" class="ml-2" color="error">
-          {{ transfer.failed.length }}
-        </v-chip>
-      </v-tab>
-      <v-spacer />
-      <v-btn
-        v-if="tab !== 'queued'"
-        size="small"
-        variant="text"
-        prepend-icon="mdi-broom"
-        class="align-self-center mr-2"
-        @click="transfer.clearFinished()"
-      >
-        {{ $t('transfer.clearCompleted') }}
-      </v-btn>
-    </v-tabs>
+    <!-- Sekme şeridi ile "temizle" butonu ayrı: buton sabit genişlikli yuvada
+         durur; böylece sekme genişlikleri (grow) tüm sekmelerde aynı kalır. -->
+    <div class="d-flex align-center tab-header">
+      <v-tabs v-model="tab" density="compact" color="primary" class="flex-grow-1">
+        <v-tab value="queued">
+          {{ $t('transfer.queued') }}
+          <v-chip v-if="transfer.queued.length" size="x-small" class="ml-2" color="primary">
+            {{ transfer.queued.length }}
+          </v-chip>
+        </v-tab>
+        <v-tab value="completed">
+          {{ $t('transfer.completed') }}
+          <v-chip v-if="transfer.completed.length" size="x-small" class="ml-2" color="success">
+            {{ transfer.completed.length }}
+          </v-chip>
+        </v-tab>
+        <v-tab value="failed">
+          {{ $t('transfer.failed') }}
+          <v-chip v-if="transfer.failed.length" size="x-small" class="ml-2" color="error">
+            {{ transfer.failed.length }}
+          </v-chip>
+        </v-tab>
+      </v-tabs>
+      <div class="clear-slot d-flex justify-end align-center">
+        <v-btn
+          v-if="tab !== 'queued'"
+          size="x-small"
+          variant="tonal"
+          prepend-icon="mdi-broom"
+          @click="transfer.clearFinished()"
+        >
+          {{ $t('transfer.clearCompleted') }}
+        </v-btn>
+      </div>
+    </div>
 
     <v-divider />
 
@@ -113,6 +117,13 @@ const statusColor: Record<string, string> = {
 </template>
 
 <style scoped>
+/* "Temizle" butonu yuvası: her zaman sabit genişlik → sekme şeridi (grow)
+   tüm sekmelerde aynı kalır, sekmeye tıklayınca genişlik değişmez. */
+.clear-slot {
+  flex: 0 0 210px;
+  width: 210px;
+  padding-right: 10px;
+}
 .tab-scroll {
   overflow-y: auto;
   min-height: 0;

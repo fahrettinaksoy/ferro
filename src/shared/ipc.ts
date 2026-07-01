@@ -17,6 +17,7 @@ import type {
 /** invoke(): renderer → main istek/yanıt kanalları. */
 export interface InvokeMap {
   'app:ping': { req: void; res: { pong: true; version: string } }
+  'dialog:pickDirectory': { req: { defaultPath?: string }; res: { path: string | null } }
 
   // ── Bağlantı ──
   'connection:connect': { req: ConnectionConfig; res: { sessionId: string; cwd: string } }

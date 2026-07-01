@@ -265,8 +265,6 @@ const dialogTitle = computed(() => {
       {{ error }}
     </v-alert>
 
-    <v-progress-linear v-if="loading" indeterminate color="primary" />
-
     <div
       class="table-scroll flex-grow-1"
       :class="{ 'drop-active': dragOver }"
@@ -315,6 +313,16 @@ const dialogTitle = computed(() => {
           </tr>
         </thead>
         <tbody>
+          <!-- Yükleme: iskelet (skeleton) satırları. Sütun sayısına göre hücre üretilir. -->
+          <template v-if="loading">
+            <tr v-for="n in 9" :key="'skeleton-' + n" class="skeleton-row">
+              <td v-for="c in colCount" :key="c">
+                <v-skeleton-loader type="text" class="skeleton-cell" />
+              </td>
+            </tr>
+          </template>
+
+          <template v-else>
           <tr
             v-for="entry in sortedEntries"
             :key="entry.name"
@@ -351,11 +359,12 @@ const dialogTitle = computed(() => {
               />
             </td>
           </tr>
-          <tr v-if="!entries.length && !loading">
+          <tr v-if="!entries.length">
             <td :colspan="colCount" class="text-center text-medium-emphasis py-4">
               {{ disabled ? $t('panes.noConnection') : $t('common.empty') }}
             </td>
           </tr>
+          </template>
         </tbody>
       </v-table>
     </div>
@@ -483,5 +492,17 @@ const dialogTitle = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* İskelet satırları: hücre içinde tek satırlık "kemik", saydam zemin. */
+.skeleton-row td {
+  cursor: default;
+}
+.skeleton-cell {
+  background: transparent;
+}
+.skeleton-cell :deep(.v-skeleton-loader__text) {
+  margin: 0;
+  height: 12px;
+  border-radius: 4px;
 }
 </style>
