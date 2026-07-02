@@ -22,8 +22,8 @@ export function registerSiteHandlers(): void {
     count: siteStore.renameGroup(from, to)
   }))
 
-  registerHandler('sites:connect', async ({ id }, ctx) => {
-    const config = siteStore.buildConfig(id)
+  registerHandler('sites:connect', async ({ id, password }, ctx) => {
+    const config = siteStore.buildConfig(id, password)
     if (!config) throw new FerroError('VALIDATION', 'Site bulunamadı')
     return sessionManager.connect(config, ctx.sender)
   })

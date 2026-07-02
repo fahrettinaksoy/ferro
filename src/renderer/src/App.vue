@@ -83,4 +83,19 @@ function toastText(item: unknown): string {
 .v-application :is(.text-subtitle-1, .text-subtitle-2) {
   font-family: var(--ferro-font-heading, var(--ferro-font-body, inherit));
 }
+/* M3 tonal yüzey kabı: paneller sınır çizgisiyle değil, zeminden bir ton açık
+   kap rengi (surface-container-low) ve 12px köşeyle ayrışır. */
+.m3-surface {
+  background: rgb(var(--v-theme-surface-container-low)) !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* Tooltip: M3 ters yüzey (inverse-surface) — açık temada koyu, koyu temada açık
+   balon; zemin/yazı çifti aynı rolden geldiği için her temada okunur kalır. */
+.v-tooltip > .v-overlay__content {
+  background: rgb(var(--v-theme-inverse-surface)) !important;
+  color: rgb(var(--v-theme-inverse-on-surface)) !important;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
 </style>

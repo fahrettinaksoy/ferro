@@ -57,6 +57,11 @@ class SessionManager {
       this.emitLog(sender, id, level, line.trim())
     })
 
+    // Renderer'ın bekleyen sekmesi bu kimliğe bağlanır; günlük akışı bağlantı
+    // kurulmadan önce de görünür olur.
+    if (!sender.isDestroyed()) {
+      emitEvent(sender, 'session:connecting', { sessionId: id, host: config.host, port: config.port })
+    }
     this.emitLog(sender, id, 'info', `Bağlanılıyor: ${config.host}:${config.port} (${config.protocol})`)
     try {
       await client.connect()

@@ -43,11 +43,12 @@ const statusColor: Record<string, string> = {
 </script>
 
 <template>
-  <v-card variant="flat" border class="d-flex flex-column fill-height">
+  <v-card variant="flat" class="d-flex flex-column fill-height m3-surface">
     <!-- Sekme şeridi ile "temizle" butonu ayrı: buton sabit genişlikli yuvada
          durur; böylece sekme genişlikleri (grow) tüm sekmelerde aynı kalır. -->
+    <!-- Kart başlığı olarak sekmeler: diğer panellerle aynı 44px yükseklik. -->
     <div class="d-flex align-center tab-header">
-      <v-tabs v-model="tab" density="compact" color="primary" class="flex-grow-1">
+      <v-tabs v-model="tab" density="compact" color="primary" height="44" class="flex-grow-1">
         <v-tab value="queued">
           {{ $t('transfer.queued') }}
           <v-chip v-if="transfer.queued.length" size="x-small" class="ml-2" color="primary">
@@ -105,12 +106,14 @@ const statusColor: Record<string, string> = {
           </span>
           <v-btn
             v-if="t.status === 'active' || t.status === 'queued'"
-            icon="mdi-close"
+            icon
             size="x-small"
             variant="text"
-            :title="$t('transfer.cancel')"
             @click="transfer.cancel(t.id)"
-          />
+          >
+            <v-icon icon="mdi-close" />
+            <v-tooltip activator="parent" location="top">{{ $t('transfer.cancel') }}</v-tooltip>
+          </v-btn>
         </div>
         <v-progress-linear
           v-if="t.status === 'active' || t.status === 'queued'"

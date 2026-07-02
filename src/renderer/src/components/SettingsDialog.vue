@@ -354,6 +354,7 @@ async function apply(): Promise<void> {
   <AppDrawer
     :model-value="isOpen"
     :title="$t('settings.title')"
+    :subtitle="$t('settings.subtitle')"
     icon="$settings"
     :width="960"
     @update:model-value="
@@ -363,8 +364,8 @@ async function apply(): Promise<void> {
     "
   >
     <div class="settings-body d-flex flex-grow-1">
-      <!-- Sol: sayfa ağacı -->
-      <div class="page-tree border-e">
+      <!-- Sol: sayfa ağacı — çizgi yerine tonal M3 alt-kabı -->
+      <div class="page-tree">
         <div class="px-3 pt-3 pb-1 text-caption text-medium-emphasis">
           {{ $t('settings.selectPage') }}
         </div>
@@ -1517,11 +1518,19 @@ async function apply(): Promise<void> {
   min-width: 0;
   min-height: 0;
 }
+/* M3: sınır çizgisi yok — ağaç, içerikten bir ton farklı kap ile ayrışır. */
 .page-tree {
   flex: 0 0 220px;
   overflow-y: auto;
   /* Scrollbar belirip kaybolurken genişlik oynamasın. */
   scrollbar-gutter: stable;
+  margin: 8px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container));
+}
+.page-tree :deep(.v-list),
+.page-tree :deep(.v-treeview) {
+  background: transparent;
 }
 /* Ağaç satırlarını daha sıkışık yap. */
 .page-tree :deep(.v-list-item) {
@@ -1539,15 +1548,21 @@ async function apply(): Promise<void> {
   overflow-y: auto;
   scrollbar-gutter: stable;
 }
+/* Bölümler: M3 tonal kart — çizgisiz, kap rengi + köşe yumuşamasıyla ayrışır. */
 .section {
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border: none;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container));
   padding: 12px 16px 16px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .section legend {
-  padding: 0 6px;
+  /* fieldset çizgisi olmadığından legend bölüm başlığı gibi davranır. */
+  padding: 0;
+  margin-bottom: 4px;
   font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
 }
 .reconnect-label {
@@ -1559,33 +1574,41 @@ async function apply(): Promise<void> {
 .font-monospace {
   font-family: monospace;
 }
+/* Bölüm içi kutular: çizgi yerine bir ton daha koyu M3 kabı. İçlerindeki
+   v-list/v-table kendi yüzey rengini basmasın — kap rengi görünsün. */
+.ext-list :deep(.v-list),
+.lang-list :deep(.v-list) {
+  background: transparent;
+}
 .key-table {
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container-high)) !important;
+  overflow: hidden;
 }
 .ext-list {
   flex: 1 1 auto;
   height: 180px;
   overflow-y: auto;
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container-high));
 }
 .lang-list {
   height: 280px;
   overflow-y: auto;
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container-high));
   max-width: 420px;
 }
 .preview-box {
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container-high));
   padding: 8px 12px;
   max-width: 420px;
 }
 .theme-preview {
-  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container-high));
+  overflow: hidden;
   max-width: 420px;
 }
 .color-swatch {

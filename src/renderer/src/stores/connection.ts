@@ -6,13 +6,22 @@ import { useLogStore } from './log'
 
 /** Açık bir bağlantı sekmesi (oturum). */
 export interface OpenSession {
+  /** Sekmenin DEĞİŞMEZ kimliği (v-for :key). sessionId bağlanınca geçici
+      kimlikten gerçek kimliğe dönüştüğünden :key olarak kullanılamaz — sekme
+      sökülüp yeniden takılır ve v-tabs seçimi eski sekmeye geri yazar. */
+  tabId: string
   sessionId: string
   config: ConnectionConfig
   /** Sekmede gösterilecek ad (site adı ya da host). */
   name: string
-  status: 'connected' | 'error'
+  /** Kaydedilmiş bir siteden açıldıysa site kimliği (yeniden bağlanmada kullanılır). */
+  siteId?: string
+  status: 'connecting' | 'connected' | 'error'
   error: string | null
 }
+
+/** Geçici (main'in kimliği henüz gelmemiş) bekleyen oturum sayacı. */
+let pendingSeq = 0
 
 interface ConnectionState {
   /** Açık oturumlar — her biri bir sekme. */
@@ -37,43 +46,87 @@ export const useConnectionStore = defineStore('connection', {
     /** Etkin oturumun yapılandırması. */
     config(): ConnectionConfig | null {
       return this.active?.config ?? null
-    },
-    /** Verilen host/port için açık bir oturum (sekme) var mı? */
-    hasOpen: (s) => (host: string, port: number): boolean =>
-      s.sessions.some((x) => x.config.host === host && x.config.port === port)
+    }
   },
   actions: {
-    /** Etkin sekmeyi değiştirir. */
-    setActive(sessionId: string): void {
-      if (this.sessions.some((x) => x.sessionId === sessionId)) this.activeId = sessionId
+    /** Etkin sekmeyi değiştirir (oturum kimliği ya da değişmez sekme kimliğiyle). */
+    setActive(id: string): void {
+      const s = this.sessions.find((x) => x.sessionId === id || x.tabId === id)
+      if (s) this.activeId = s.sessionId
     },
 
-    /** Kaydedilmiş bir siteye bağlanır; YENİ sekme açar ve onu etkin yapar. */
-    async connectSite(site: SavedSite): Promise<string> {
-      const { sessionId, cwd } = await invoke('sites:connect', { id: site.id })
+    /**
+     * Bağlantı denemesi için hemen bekleyen bir sekme açar ve etkinleştirir —
+     * uzak panel "Bağlanıyor" durumunu, log paneli de canlı akışı gösterebilsin.
+     * Dizideki reaktif nesne döndürülür; sonraki mutasyonlar UI'a yansır.
+     */
+    openPending(name: string, config: ConnectionConfig, siteId?: string): OpenSession {
+      const tabId = `tab-${++pendingSeq}`
       this.sessions.push({
-        sessionId,
-        config: { ...site, password: undefined },
-        name: site.name || site.host,
-        status: 'connected',
+        tabId,
+        sessionId: `pending-${pendingSeq}`,
+        config,
+        name,
+        siteId,
+        status: 'connecting',
         error: null
       })
-      this.activeId = sessionId
-      return cwd
+      const s = this.sessions[this.sessions.length - 1]
+      this.activeId = s.sessionId
+      return s
+    },
+
+    /**
+     * Main'den 'session:connecting' gelince bekleyen sekmeyi gerçek oturum
+     * kimliğine bağlar; böylece o kimlikle akan session:log satırları
+     * bağlantı kurulmadan önce log panelinde görünür.
+     */
+    bindPending(e: { sessionId: string; host: string; port: number }): void {
+      const s = this.sessions.find(
+        (x) =>
+          x.status === 'connecting' &&
+          x.sessionId.startsWith('pending-') &&
+          x.config.host === e.host &&
+          x.config.port === e.port
+      )
+      if (!s) return
+      if (this.activeId === s.sessionId) this.activeId = e.sessionId
+      s.sessionId = e.sessionId
+    },
+
+    /** Bekleyen oturumu sonuca bağlayan ortak akış. */
+    async settlePending(s: OpenSession, p: Promise<{ sessionId: string; cwd: string }>): Promise<string> {
+      try {
+        const { sessionId, cwd } = await p
+        if (!this.sessions.includes(s)) {
+          // Sekme bağlanma sürerken kapatıldı: main'de açılan oturumu sahipsiz bırakma.
+          void invoke('connection:disconnect', { sessionId }).catch(() => {})
+          throw new Error('Bağlantı iptal edildi')
+        }
+        s.sessionId = sessionId
+        s.status = 'connected'
+        s.error = null
+        this.activeId = sessionId
+        return cwd
+      } catch (err) {
+        // Sekme kalır: uzak panel ve log hatayı gösterir; kullanıcı X ile kapatır.
+        s.status = 'error'
+        s.error = err instanceof Error ? err.message : String(err)
+        throw err
+      }
+    },
+
+    /** Kaydedilmiş bir siteye bağlanır; YENİ sekme açar ve onu etkin yapar.
+     *  password: "parola sorulsun" akışında o an girilen parola (saklanmaz). */
+    async connectSite(site: SavedSite, password?: string): Promise<string> {
+      const s = this.openPending(site.name || site.host, { ...site, password: undefined }, site.id)
+      return this.settlePending(s, invoke('sites:connect', { id: site.id, password }))
     },
 
     /** Elle (hızlı) bağlantı; yeni sekme açar. */
     async connect(config: ConnectionConfig): Promise<string> {
-      const { sessionId, cwd } = await invoke('connection:connect', config)
-      this.sessions.push({
-        sessionId,
-        config,
-        name: config.host,
-        status: 'connected',
-        error: null
-      })
-      this.activeId = sessionId
-      return cwd
+      const s = this.openPending(config.host, config)
+      return this.settlePending(s, invoke('connection:connect', config))
     },
 
     /**
@@ -83,8 +136,12 @@ export const useConnectionStore = defineStore('connection', {
     async disconnect(sessionId?: string | null): Promise<void> {
       sessionId = sessionId ?? this.sessionId
       if (!sessionId) return
+      const target = this.sessions.find((x) => x.sessionId === sessionId)
       try {
-        await invoke('connection:disconnect', { sessionId })
+        // Hiç bağlanamamış (hata) sekmede main tarafında oturum yok — IPC gereksiz.
+        if (!target || target.status === 'connected') {
+          await invoke('connection:disconnect', { sessionId })
+        }
       } finally {
         this.sessions = this.sessions.filter((x) => x.sessionId !== sessionId)
         if (this.activeId === sessionId) {

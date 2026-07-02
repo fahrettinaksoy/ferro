@@ -25,6 +25,7 @@ const emptyForm = (): SiteInput => ({
   user: '',
   password: '',
   anonymous: false,
+  askPassword: false,
   rejectUnauthorized: false,
   encoding: '',
   comment: '',
@@ -60,7 +61,8 @@ const encryptions = computed(() => [
 ])
 const logonTypes = computed(() => [
   { value: 'anonymous', title: t('sites.logon.anonymous') },
-  { value: 'normal', title: t('sites.logon.normal') }
+  { value: 'normal', title: t('sites.logon.normal') },
+  { value: 'ask', title: t('sites.logon.ask') }
 ])
 const serverTypes = computed(() => [
   { value: 'auto', title: t('sites.srv.auto') },
@@ -94,10 +96,12 @@ const encryption = computed<Protocol>({
     if (form.protocol !== 'sftp') form.protocol = v
   }
 })
-const logonType = computed<'anonymous' | 'normal'>({
-  get: () => (form.anonymous ? 'anonymous' : 'normal'),
+const logonType = computed<'anonymous' | 'normal' | 'ask'>({
+  get: () => (form.anonymous ? 'anonymous' : form.askPassword ? 'ask' : 'normal'),
   set: (v) => {
     form.anonymous = v === 'anonymous'
+    form.askPassword = v === 'ask'
+    if (form.askPassword) form.password = '' // parola kaydedilmez
     if (form.anonymous) form.user = 'anonymous'
     else if (form.user === 'anonymous') form.user = ''
   }
@@ -143,11 +147,13 @@ function selectNew(): void {
   selectedId.value = null
   passwordPlaceholder.value = ''
   charsetMode.value = 'utf8'
+  tab.value = 'general' // seçim değişince form daima Genel sekmesinden başlar
   Object.assign(form, emptyForm())
 }
 
 function selectSite(s: SavedSite): void {
   selectedId.value = s.id
+  tab.value = 'general' // seçim değişince form daima Genel sekmesinden başlar
   passwordPlaceholder.value = s.hasPassword ? t('sites.savedPassword') : ''
   charsetMode.value = s.encoding && s.encoding.toLowerCase() !== 'utf8' ? 'custom' : 'utf8'
   Object.assign(form, emptyForm(), {
@@ -160,6 +166,7 @@ function selectSite(s: SavedSite): void {
     user: s.user,
     password: '', // boş = değiştirme
     anonymous: s.anonymous ?? false,
+    askPassword: s.askPassword ?? false,
     rejectUnauthorized: s.rejectUnauthorized ?? false,
     encoding: s.encoding ?? '',
     comment: s.comment ?? '',
@@ -193,7 +200,13 @@ async function save(): Promise<void> {
     return // hata toast'ta gösterildi
   }
   const match = sites.sites.find((s) => s.name === form.name && s.host === form.host)
-  if (match) selectSite(match)
+  if (match) {
+    // Kayıt sonrası yeniden seçim sekmeyi Genel'e döndürmesin — kullanıcı
+    // hangi sekmede kaydettiyse orada kalır (sekme sıfırlama tıklamaya özgü).
+    const current = tab.value
+    selectSite(match)
+    tab.value = current
+  }
 }
 
 async function remove(): Promise<void> {
@@ -208,18 +221,15 @@ async function remove(): Promise<void> {
   }
 }
 
-async function connect(): Promise<void> {
+function connect(): void {
   const s = sites.sites.find((x) => x.id === selectedId.value)
   if (!s) return
-  try {
-    await toast.promise(t('toast.connecting'), sites.connect(s), {
-      success: t('toast.connected', { name: s.name }),
-      error: (e) => t('toast.connectFailed', { msg: e instanceof Error ? e.message : String(e) })
-    })
-    emit('update:modelValue', false)
-  } catch {
-    /* hata toast'ta gösterildi */
-  }
+  // Sürükleyici hemen kapanır; bağlanma ilerleyişi bağlantı sekmesinde,
+  // uzak panelde ("Bağlanıyor…") ve log panelinde izlenir — toast yok.
+  emit('update:modelValue', false)
+  sites.connect(s).catch(() => {
+    /* hata sekmesi + panel şeridi + günlük gösterir */
+  })
 }
 </script>
 
@@ -227,6 +237,7 @@ async function connect(): Promise<void> {
   <AppDrawer
     :model-value="modelValue"
     :title="$t('sites.title')"
+    :subtitle="$t('sites.subtitle')"
     icon="$serverNetwork"
     :width="960"
     @update:model-value="emit('update:modelValue', $event)"
@@ -244,8 +255,8 @@ async function connect(): Promise<void> {
       </v-alert>
 
       <div class="d-flex flex-grow-1" style="min-height: 0">
-        <!-- Site listesi -->
-        <div class="site-list border-e">
+        <!-- Site listesi: çizgi yerine bir ton farklı M3 alt-kabı -->
+        <div class="site-list">
           <v-list density="compact" nav>
             <v-list-item
               prepend-icon="mdi-plus"
@@ -253,7 +264,7 @@ async function connect(): Promise<void> {
               :active="!isEditing"
               @click="selectNew()"
             />
-            <v-divider />
+            <v-divider class="my-2" />
 
             <!-- Grupsuz siteler üstte -->
             <v-list-item
@@ -294,15 +305,34 @@ async function connect(): Promise<void> {
           </v-list>
         </div>
 
-        <!-- Sekmeli form -->
-        <div class="flex-grow-1 d-flex flex-column">
-          <v-tabs v-model="tab" color="primary" grow height="48" class="site-tabs">
-            <v-tab value="general">{{ $t('sites.tabs.general') }}</v-tab>
-            <v-tab value="advanced">{{ $t('sites.tabs.advanced') }}</v-tab>
-            <v-tab value="transfer">{{ $t('sites.tabs.transfer') }}</v-tab>
-            <v-tab value="charset">{{ $t('sites.tabs.charset') }}</v-tab>
-          </v-tabs>
-          <v-divider />
+        <!-- Sekmeli form: genişletilmiş toolbar — üst satır hangi sitenin
+             düzenlendiğini / yeni site eklendiğini söyler, sekmeler extension
+             slot'unda durur (M3 "toolbar with tabs" deseni). Form alanı,
+             liste gibi tonal bir M3 alt-kabıdır; eylemler kabın dibinde. -->
+        <div class="site-form flex-grow-1 d-flex flex-column">
+          <v-toolbar density="compact" color="transparent" extended extension-height="48" class="site-toolbar">
+            <v-toolbar-title class="text-body-1">
+              <v-icon
+                :icon="isEditing ? 'mdi-pencil' : 'mdi-plus'"
+                size="small"
+                class="mr-2"
+              />
+              {{
+                isEditing
+                  ? $t('sites.editingSite', { name: form.name || '—' })
+                  : $t('sites.addingSite')
+              }}
+            </v-toolbar-title>
+
+            <template #extension>
+              <v-tabs v-model="tab" color="primary" grow height="48" class="site-tabs flex-grow-1">
+                <v-tab value="general">{{ $t('sites.tabs.general') }}</v-tab>
+                <v-tab value="advanced">{{ $t('sites.tabs.advanced') }}</v-tab>
+                <v-tab value="transfer">{{ $t('sites.tabs.transfer') }}</v-tab>
+                <v-tab value="charset">{{ $t('sites.tabs.charset') }}</v-tab>
+              </v-tabs>
+            </template>
+          </v-toolbar>
 
           <!-- Sekme panelleri: v-window dikey ortalama yaptığından düz v-show
                kullanılır — içerik daima üstten başlar, sekmeler arası kayma olmaz. -->
@@ -333,7 +363,9 @@ async function connect(): Promise<void> {
                 <v-select v-model="logonType" :items="logonTypes" :label="$t('sites.logonType')" />
                 <div v-if="!form.anonymous" class="d-flex ga-2">
                   <v-text-field v-model="form.user" :label="$t('connect.user')" />
+                  <!-- "Parola sorulsun": parola alanı yok — bağlanırken sorulur. -->
                   <v-text-field
+                    v-if="!form.askPassword"
                     v-model="form.password"
                     :label="$t('connect.password')"
                     type="password"
@@ -446,37 +478,53 @@ async function connect(): Promise<void> {
                 </v-alert>
             </div>
           </div>
+
+          <!-- Eylemler: form kabının dibinde, bir ton koyu şerit (M3 katmanı). -->
+          <div class="form-actions d-flex align-center pa-2">
+            <v-btn
+              v-if="isEditing"
+              color="error"
+              variant="text"
+              prepend-icon="mdi-delete"
+              @click="remove()"
+            >
+              {{ $t('common.delete') }}
+            </v-btn>
+            <v-spacer />
+            <v-btn :disabled="!canSave" variant="tonal" prepend-icon="$save" @click="save()">
+              {{ $t('common.save') }}
+            </v-btn>
+            <v-btn
+              v-if="isEditing"
+              color="primary"
+              variant="flat"
+              prepend-icon="$connect"
+              class="ml-2"
+              @click="connect()"
+            >
+              {{ $t('common.connect') }}
+            </v-btn>
+          </div>
         </div>
       </div>
 
     </div>
-
-    <template #footer>
-      <v-btn
-        v-if="isEditing"
-        color="error"
-        variant="text"
-        prepend-icon="mdi-delete"
-        @click="remove()"
-      >
-        {{ $t('common.delete') }}
-      </v-btn>
-      <v-spacer />
-      <v-btn :disabled="!canSave" variant="tonal" prepend-icon="$save" @click="save()">
-        {{ $t('common.save') }}
-      </v-btn>
-      <v-btn v-if="isEditing" color="primary" prepend-icon="$connect" @click="connect()">
-        {{ $t('common.connect') }}
-      </v-btn>
-    </template>
   </AppDrawer>
 </template>
 
 <style scoped>
+/* M3: sınır çizgisi yok — liste, formdan bir ton farklı kap ve köşe
+   yumuşamasıyla ayrışır. */
 .site-list {
   width: 240px;
   flex: 0 0 240px;
   overflow-y: auto;
+  margin: 8px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container));
+}
+.site-list :deep(.v-list) {
+  background: transparent;
 }
 /* Sol girinti/boşluğu daralt: üst seviye öğeler ve grup başlıkları küçük
    sol boşluk, grup içindeki (nested) öğeler ise daha az girinti alsın. */
@@ -484,7 +532,7 @@ async function connect(): Promise<void> {
   padding-inline-start: 8px !important;
 }
 .site-list :deep(.v-list-group__items .v-list-item) {
-  padding-inline-start: 22px !important;
+  padding-inline-start: 8px !important;
 }
 /* İkon ile metin arası boşluğu daralt. Vuetify 4'te bu boşluk sabit değil,
    --v-list-prepend-gap değişkeninden gelir (varsayılan 32px). Değişkeni ezmek
@@ -492,11 +540,29 @@ async function connect(): Promise<void> {
 .site-list :deep(.v-list) {
   --v-list-prepend-gap: 8px;
 }
-/* v-tabs aslında bir v-slide-group → CSS'i ona flex:1 1 auto veriyor; dikey flex
-   sütununda büyüyüp şeridi (~175px) şişiriyor ve içeriği aşağı itiyordu. Büyümesini
-   engelleyince şerit sabit yüksekliğinde (height="48") kalır, içerik üstte başlar. */
+/* Form alanı: liste gibi tonal M3 alt-kabı — soldaki listeyle 8px boşluk,
+   köşe yumuşaması ve bir ton farklı zemin. */
+.site-form {
+  margin: 8px 8px 8px 0;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface-container));
+  min-width: 0;
+  overflow: hidden;
+}
+/* Eylem şeridi: form kabının dibinde, bir ton daha koyu zemin (M3 katmanı). */
+.form-actions {
+  flex: 0 0 auto;
+  background: rgb(var(--v-theme-surface-container-high));
+}
+/* Toolbar dikey flex sütununda büyümesin — başlık + extension (48+48) sabit,
+   form içeriği kalan alanı alır. */
+.site-toolbar {
+  flex: 0 0 auto;
+}
+/* Sekmeler toolbar extension'ında (yatay satır): tüm genişliği kaplasın ki
+   grow eşit bölüşsün. */
 .site-tabs {
-  flex: 0 0 auto !important;
+  flex: 1 1 auto;
 }
 .form-window {
   overflow-y: auto;

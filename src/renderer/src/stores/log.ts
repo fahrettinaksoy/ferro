@@ -19,7 +19,10 @@ export const useLogStore = defineStore('log', {
   actions: {
     append(e: EventMap['session:log']): void {
       const time = new Date().toLocaleTimeString('tr-TR')
-      const list = (this.bySession[e.sessionId] ??= [])
+      // `??=` ham nesne döndürür (bkz. remoteFs.slot) — proxy'den yeniden oku,
+      // yoksa ilk satır ancak ikincisi gelince görünür.
+      if (!this.bySession[e.sessionId]) this.bySession[e.sessionId] = []
+      const list = this.bySession[e.sessionId]
       list.push({ ...e, id: ++counter, time })
       if (list.length > MAX) list.splice(0, list.length - MAX)
     },

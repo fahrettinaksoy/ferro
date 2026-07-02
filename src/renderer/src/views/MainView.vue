@@ -17,6 +17,7 @@ import FilePane from '@renderer/components/FilePane.vue'
 import LogPanel from '@renderer/components/LogPanel.vue'
 import TransferTabs from '@renderer/components/TransferTabs.vue'
 import HostKeyDialog from '@renderer/components/HostKeyDialog.vue'
+import PasswordDialog from '@renderer/components/PasswordDialog.vue'
 import TlsDialog from '@renderer/components/TlsDialog.vue'
 import SiteManager from '@renderer/components/SiteManager.vue'
 import SyncDialog from '@renderer/components/SyncDialog.vue'
@@ -49,9 +50,14 @@ function openSiteManager(siteId: string | null = null): void {
   siteManagerOpen.value = true
 }
 
-// Bir site için açık bir bağlantı sekmesi var mı (kenar listesi vurgusu)?
+// Bir sitenin açık oturumu (bağlanıyor/bağlı/hata) — kenar listesi durumu.
+function siteSession(host: string, port: number): (typeof conn.sessions)[number] | undefined {
+  return conn.sessions.find((x) => x.config.host === host && x.config.port === port)
+}
+
+// Bir site için BAĞLI bir oturum var mı (kenar listesi vurgusu)?
 function isActiveSite(host: string, port: number): boolean {
-  return conn.hasOpen(host, port)
+  return siteSession(host, port)?.status === 'connected'
 }
 
 // ── Grup (klasör) yeniden adlandırma ──
@@ -73,21 +79,42 @@ function confirmRenameGroup(): void {
   renameGroupOpen.value = false
 }
 
-// Bağlantı sekmeleri (v-tabs) için etkin sekme köprüsü.
+// Bağlantı sekmeleri (v-tabs) için etkin sekme köprüsü. Sekme değeri olarak
+// DEĞİŞMEZ tabId kullanılır: sessionId bağlanınca yeniden adlandığından model
+// ona bağlanırsa v-tabs seçimi eski sekmeye geri yazabiliyor.
 const activeTab = computed<string | null>({
-  get: () => conn.activeId,
+  get: () => conn.active?.tabId ?? null,
   set: (v) => {
     if (v) conn.setActive(v)
   }
 })
 
 // Sekmeyi kapat: oturumu keser, uzak/günlük durumu temizlenir (store'da).
+// Toast yok — sekmenin kapanması ve log satırı ("Bağlantı kapatıldı") yeterli.
 function closeTab(sessionId: string): void {
-  toast
-    .promise(t('toast.disconnecting'), conn.disconnect(sessionId), {
-      success: t('toast.disconnected')
-    })
-    .catch(() => {})
+  void conn.disconnect(sessionId)
+}
+
+// Araç çubuğu: etkin oturumun bağlantısını kes.
+function disconnectActive(): void {
+  if (conn.activeId) closeTab(conn.activeId)
+}
+
+// Araç çubuğu: etkin oturumu yeniden bağla — önce kes, sonra aynı siteye
+// (site silinmişse aynı yapılandırmaya) yeni bağlantı aç. Hata sekmesinde
+// "yeniden dene" işlevi görür.
+async function reconnectActive(): Promise<void> {
+  const s = conn.active
+  if (!s || s.status === 'connecting') return
+  const site =
+    (s.siteId ? sites.sites.find((x) => x.id === s.siteId) : undefined) ??
+    sites.sites.find((x) => x.host === s.config.host && x.port === s.config.port)
+  const config = s.config
+  await conn.disconnect(s.sessionId).catch(() => {})
+  const connect = site
+    ? sites.connect(site)
+    : conn.connect(config).then((cwd) => remote.load(cwd))
+  connect.catch(() => {}) // ilerleyiş ve hata sekme/panel/günlükte görünür
 }
 
 // Site renk etiketi → CSS rengi (Site Yöneticisi "Arka plan rengi").
@@ -104,35 +131,41 @@ function siteColor(label: string): string {
   return SITE_COLORS[label] ?? 'transparent'
 }
 
-// Kenar çubuğundaki bir sunucuya tıklama: zaten açıksa o sekmeye geç,
-// değilse YENİ sekme açarak bağlan (çoklu bağlantı).
-function connectSite(id: string): void {
+// Site öğesine tıklama: BAĞLANMAZ — açık bir oturumu varsa yalnızca o sekmeyi
+// etkinleştirir (bağlanma/kesme yalnızca sağdaki butonla yapılır).
+function focusSite(s: { host: string; port: number }): void {
+  const sess = siteSession(s.host, s.port)
+  if (sess) conn.setActive(sess.sessionId)
+}
+
+// Bağlan/Kes butonu: oturum yoksa bağlanır, bağlıysa (veya hata sekmesiyse)
+// bağlantıyı keser; bağlanma sürerken yoksayılır.
+function toggleSite(id: string): void {
   const site = sites.sites.find((s) => s.id === id)
   if (!site) return
-  const existing = conn.sessions.find(
-    (x) => x.config.host === site.host && x.config.port === site.port
-  )
-  if (existing) {
-    conn.setActive(existing.sessionId)
-    leftTab.value = 'local'
+  const sess = siteSession(site.host, site.port)
+  if (sess) {
+    if (sess.status !== 'connecting') closeTab(sess.sessionId)
     return
   }
-  toast
-    .promise(t('toast.connecting'), sites.connect(site), {
-      success: t('toast.connected', { name: site.name }),
-      error: (e) => t('toast.connectFailed', { msg: errText(e) })
-    })
-    .then(() => {
-      // Bağlantı kurulunca yerel disk sekmesine geç.
-      leftTab.value = 'local'
+  // Toast yok: ilerleyiş sekmede/uzak panelde ("Bağlanıyor…") ve log panelinde
+  // akar; hata da hata sekmesi + panel şeridinde görünür.
+  sites
+    .connect(site)
+    .then((ok) => {
+      // Bağlantı kurulunca yerel disk sekmesine geç (parola iptalinde kalınır).
+      if (ok) leftTab.value = 'local'
     })
     .catch(() => {})
 }
 
 let unsubLog: (() => void) | null = null
 let unsubProgress: (() => void) | null = null
+let unsubConnecting: (() => void) | null = null
 
 onMounted(async () => {
+  // Bekleyen sekme gerçek oturum kimliğine bağlanır → bağlanma günlüğü canlı akar.
+  unsubConnecting = onEvent('session:connecting', (e) => conn.bindPending(e))
   unsubLog = onEvent('session:log', (e) => log.append(e))
   unsubProgress = onEvent('transfer:update', (job) => {
     transfer.onUpdate(job)
@@ -147,6 +180,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   unsubLog?.()
   unsubProgress?.()
+  unsubConnecting?.()
 })
 
 function onRemoteTransfer(entry: { name: string; type: string }): void {
@@ -221,47 +255,88 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 
 <template>
   <div class="ferro-root">
-    <v-app-bar :elevation="2" density="comfortable">
-      <v-app-bar-title>
-        <v-icon icon="$ferroLogo" class="mr-2" />
-        Ferro
-      </v-app-bar-title>
-      <v-btn
-        icon="$serverNetwork"
-        :color="drawerOpen ? 'primary' : undefined"
-        :title="$t('sites.servers')"
-        @click="drawerOpen = !drawerOpen"
-      />
-      <v-btn
-        icon="$logPanel"
-        :color="logOpen ? 'primary' : undefined"
-        :title="$t('log.title')"
-        @click="logOpen = !logOpen"
-      />
-      <v-btn
-        icon="$queuePanel"
-        :color="queueOpen ? 'primary' : undefined"
-        :title="$t('transfer.title')"
-        @click="queueOpen = !queueOpen"
-      />
-      <v-spacer />
-      <v-btn
-        prepend-icon="$sync"
-        variant="text"
-        :disabled="!conn.isConnected"
-        @click="syncOpen = true"
-      >
-        {{ $t('sync.title') }}
-      </v-btn>
-      <v-btn prepend-icon="$serverNetwork" variant="text" @click="openSiteManager(null)">
-        {{ $t('settings.siteManager') }}
-      </v-btn>
-      <v-btn icon="$keyboard" :title="$t('hotkeys.title')" @click="hotkeysHelpOpen = true" />
-      <v-btn icon="$settings" :title="$t('settings.title')" @click="ui.openDrawer('settings')" />
-      <v-btn
-        :icon="ui.themeMode === 'dark' ? '$themeDark' : '$themeLight'"
-        @click="ui.toggleTheme()"
-      />
+    <!-- M3 üst uygulama çubuğu: panellerle aynı tonal kap (surface-container-low),
+         sınır çizgisi yok. Marka bloğu + gruplanmış salt-ikon eylemler; yazı yok,
+         her buton alt konumlu tooltip taşır. Gruplar ayraç yerine boşlukla
+         ayrılır; etkin panel butonları M3 tonal dolgu alır. -->
+    <v-app-bar flat density="comfortable" color="surface-container-low" class="app-bar">
+      <v-defaults-provider :defaults="{ VTooltip: { location: 'bottom', openDelay: 350 } }">
+        <div class="brand d-flex align-center">
+          <v-avatar size="30" rounded="lg" color="primary" variant="tonal" class="mr-2">
+            <v-icon icon="$ferroLogo" size="18" />
+          </v-avatar>
+          <span class="brand-name">Ferro</span>
+        </div>
+        <div class="mx-3" />
+
+        <!-- Panel görünürlüğü -->
+        <v-btn
+          :variant="drawerOpen ? 'tonal' : 'text'"
+          :color="drawerOpen ? 'primary' : undefined"
+          icon
+          @click="drawerOpen = !drawerOpen"
+        >
+          <v-icon icon="mdi-dock-left" />
+          <v-tooltip activator="parent">{{ $t('sites.servers') }}</v-tooltip>
+        </v-btn>
+        <v-btn
+          :variant="logOpen ? 'tonal' : 'text'"
+          :color="logOpen ? 'primary' : undefined"
+          icon
+          @click="logOpen = !logOpen"
+        >
+          <v-icon icon="$logPanel" />
+          <v-tooltip activator="parent">{{ $t('log.title') }}</v-tooltip>
+        </v-btn>
+        <v-btn
+          :variant="queueOpen ? 'tonal' : 'text'"
+          :color="queueOpen ? 'primary' : undefined"
+          icon
+          @click="queueOpen = !queueOpen"
+        >
+          <v-icon icon="$queuePanel" />
+          <v-tooltip activator="parent">{{ $t('transfer.title') }}</v-tooltip>
+        </v-btn>
+
+        <v-spacer />
+
+        <!-- Etkin oturum bağlantı denetimleri -->
+        <v-btn icon :disabled="!conn.active" @click="disconnectActive()">
+          <v-icon icon="mdi-lan-disconnect" />
+          <v-tooltip activator="parent">{{ $t('sites.disconnect') }}</v-tooltip>
+        </v-btn>
+        <v-btn
+          icon
+          :disabled="!conn.active || conn.active.status === 'connecting'"
+          @click="reconnectActive()"
+        >
+          <v-icon icon="mdi-restart" />
+          <v-tooltip activator="parent">{{ $t('sites.reconnect') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon :disabled="!conn.isConnected" @click="syncOpen = true">
+          <v-icon icon="$sync" />
+          <v-tooltip activator="parent">{{ $t('sync.title') }}</v-tooltip>
+        </v-btn>
+        <div class="mx-3" />
+
+        <!-- Araçlar -->
+        <v-btn icon @click="openSiteManager(null)">
+          <v-icon icon="$serverNetwork" />
+          <v-tooltip activator="parent">{{ $t('settings.siteManager') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon @click="hotkeysHelpOpen = true">
+          <v-icon icon="$keyboard" />
+          <v-tooltip activator="parent">{{ $t('hotkeys.title') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon @click="ui.openDrawer('settings')">
+          <v-icon icon="$settings" />
+          <v-tooltip activator="parent">{{ $t('settings.title') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon @click="ui.toggleTheme()">
+          <v-icon :icon="ui.themeMode === 'dark' ? '$themeDark' : '$themeLight'" />
+          <v-tooltip activator="parent">{{ $t('settings.theme') }}</v-tooltip>
+        </v-btn>
+      </v-defaults-provider>
     </v-app-bar>
 
     <v-main class="main-area">
@@ -269,8 +344,17 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
         <div class="main-row">
           <!-- Sol panel: "Yerel Sürücüler" ve "Site Yöneticisi" sekmeleri -->
           <div v-if="drawerOpen" class="left-panel">
-            <v-card variant="flat" border class="d-flex flex-column fill-height">
-              <v-tabs v-model="leftTab" density="compact" color="primary" grow class="left-tabs">
+            <v-card variant="flat" class="d-flex flex-column fill-height m3-surface">
+              <!-- Kart başlığı olarak sekmeler: sağdaki bağlantı şeridiyle aynı
+                   yükseklik ve ayırıcı — iki sütun aynı M3 dilinde okunur. -->
+              <v-tabs
+                v-model="leftTab"
+                density="compact"
+                color="primary"
+                grow
+                height="44"
+                class="left-tabs"
+              >
                 <v-tab value="sites">{{ $t('settings.siteManager') }}</v-tab>
                 <v-tab value="local">{{ $t('panes.local') }}</v-tab>
               </v-tabs>
@@ -279,6 +363,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
               <!-- Yerel sürücüler sekmesi -->
               <div v-show="leftTab === 'local'" class="left-tab-pane">
                 <FilePane
+                  class="local-pane"
                   :title="$t('panes.local')"
                   icon="$localPc"
                   side="local"
@@ -315,21 +400,34 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                         ? { borderLeft: `3px solid ${siteColor(s.colorLabel)}` }
                         : undefined
                     "
-                    @click="connectSite(s.id)"
+                    @click="focusSite(s)"
                   >
                     <template #prepend>
-                      <v-icon v-if="isActiveSite(s.host, s.port)" icon="$connect" color="success" />
+                      <v-progress-circular
+                        v-if="siteSession(s.host, s.port)?.status === 'connecting'"
+                        indeterminate
+                        size="18"
+                        width="2"
+                        color="primary"
+                      />
+                      <v-icon
+                        v-else-if="siteSession(s.host, s.port)?.status === 'error'"
+                        icon="mdi-alert-circle"
+                        color="error"
+                      />
+                      <v-icon v-else-if="isActiveSite(s.host, s.port)" icon="$connect" color="success" />
                       <v-icon v-else :icon="s.protocol === 'sftp' ? '$sftp' : '$server'" />
                     </template>
                     <v-list-item-title>{{ s.name }}</v-list-item-title>
                     <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
                     <template #append>
                       <v-btn
-                        icon="mdi-connection"
+                        :icon="siteSession(s.host, s.port) ? 'mdi-lan-disconnect' : 'mdi-connection'"
                         size="x-small"
                         variant="text"
-                        :title="$t('common.connect')"
-                        @click.stop="connectSite(s.id)"
+                        :disabled="siteSession(s.host, s.port)?.status === 'connecting'"
+                        :title="siteSession(s.host, s.port) ? $t('sites.disconnect') : $t('common.connect')"
+                        @click.stop="toggleSite(s.id)"
                       />
                       <v-btn
                         icon="mdi-pencil"
@@ -368,11 +466,23 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                           ? { borderLeft: `3px solid ${siteColor(s.colorLabel)}` }
                           : undefined
                       "
-                      @click="connectSite(s.id)"
+                      @click="focusSite(s)"
                     >
                       <template #prepend>
+                        <v-progress-circular
+                          v-if="siteSession(s.host, s.port)?.status === 'connecting'"
+                          indeterminate
+                          size="18"
+                          width="2"
+                          color="primary"
+                        />
                         <v-icon
-                          v-if="isActiveSite(s.host, s.port)"
+                          v-else-if="siteSession(s.host, s.port)?.status === 'error'"
+                          icon="mdi-alert-circle"
+                          color="error"
+                        />
+                        <v-icon
+                          v-else-if="isActiveSite(s.host, s.port)"
                           icon="$connect"
                           color="success"
                         />
@@ -382,11 +492,18 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                       <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
                       <template #append>
                         <v-btn
-                          icon="mdi-connection"
+                          :icon="
+                            siteSession(s.host, s.port) ? 'mdi-lan-disconnect' : 'mdi-connection'
+                          "
                           size="x-small"
                           variant="text"
-                          :title="$t('common.connect')"
-                          @click.stop="connectSite(s.id)"
+                          :disabled="siteSession(s.host, s.port)?.status === 'connecting'"
+                          :title="
+                            siteSession(s.host, s.port)
+                              ? $t('sites.disconnect')
+                              : $t('common.connect')
+                          "
+                          @click.stop="toggleSite(s.id)"
                         />
                         <v-btn
                           icon="mdi-pencil"
@@ -421,48 +538,91 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 
           <!-- Sağ sütun: bağlantı sekmeleri + uzak sunucu (üst) + oturum günlüğü (alt) -->
           <div class="right-col">
-            <!-- Açık bağlantılar: her sekme bir oturum; uzak panel + günlük onu yansıtır. -->
-            <v-tabs
-              v-if="conn.sessions.length"
-              v-model="activeTab"
-              density="compact"
-              color="primary"
-              show-arrows
-              class="conn-tabs"
-            >
-              <v-tab
-                v-for="s in conn.sessions"
-                :key="s.sessionId"
-                :value="s.sessionId"
-                class="text-none"
+            <!-- Bağlantı sekmeleri: her sekme bir oturum; uzak panel + günlük onu
+                 yansıtır. Şerit HER ZAMAN sabit yükseklikte, panellerle aynı
+                 çerçeveli yüzeyde durur (yerleşim oynamaz). Oturum yokken
+                 tarayıcıdaki boş sekme gibi bir VARSAYILAN sekme görünür;
+                 tıklanınca Site Yöneticisi açılır. İlk bağlantıda yerini oturum
+                 sekmesi alır, sonrakiler yanına eklenir. -->
+            <div class="remote-group">
+            <div class="conn-tabs">
+              <v-tabs
+                v-model="activeTab"
+                density="compact"
+                color="primary"
+                show-arrows
+                height="44"
+                class="flex-grow-1"
               >
-                <v-icon
-                  :icon="s.config.protocol === 'sftp' ? '$sftp' : '$server'"
-                  size="small"
-                  class="mr-2"
-                />
-                {{ s.name }}
-                <v-btn
-                  icon="mdi-close"
-                  size="x-small"
-                  variant="text"
-                  density="comfortable"
-                  class="ml-2"
-                  :title="$t('sites.disconnect')"
-                  @click.stop="closeTab(s.sessionId)"
-                />
-              </v-tab>
-            </v-tabs>
+                <v-tab
+                  v-for="s in conn.sessions"
+                  :key="s.tabId"
+                  :value="s.tabId"
+                  class="text-none"
+                >
+                  <v-progress-circular
+                    v-if="s.status === 'connecting'"
+                    indeterminate
+                    size="14"
+                    width="2"
+                    class="mr-2"
+                  />
+                  <v-icon
+                    v-else-if="s.status === 'error'"
+                    icon="mdi-alert-circle"
+                    color="error"
+                    size="small"
+                    class="mr-2"
+                  />
+                  <v-icon
+                    v-else
+                    :icon="s.config.protocol === 'sftp' ? '$sftp' : '$server'"
+                    size="small"
+                    class="mr-2"
+                  />
+                  {{ s.name }}
+                  <v-btn
+                    icon
+                    size="x-small"
+                    variant="text"
+                    density="comfortable"
+                    class="ml-2"
+                    @click.stop="closeTab(s.sessionId)"
+                  >
+                    <v-icon icon="mdi-close" />
+                    <v-tooltip activator="parent" location="bottom">
+                      {{ $t('sites.disconnect') }}
+                    </v-tooltip>
+                  </v-btn>
+                </v-tab>
+
+                <!-- Varsayılan sekme: bağlantı yokken şeridin sahibi. -->
+                <v-tab
+                  v-if="!conn.sessions.length"
+                  :value="null"
+                  class="text-none"
+                  @click="openSiteManager(null)"
+                >
+                  <v-icon icon="mdi-plus" size="small" class="mr-2" />
+                  {{ $t('panes.defaultTab') }}
+                  <v-tooltip activator="parent" location="bottom">
+                    {{ $t('panes.defaultTabHint') }}
+                  </v-tooltip>
+                </v-tab>
+              </v-tabs>
+            </div>
 
             <div class="remote-area">
               <FilePane
+                class="remote-pane"
                 :title="$t('panes.remote')"
                 icon="$server"
                 side="remote"
                 :cwd="remote.cwd"
                 :entries="remote.entries"
-                :loading="remote.loading"
-                :error="remote.error"
+                :loading="remote.loading || conn.active?.status === 'connecting'"
+                :error="conn.active?.status === 'error' ? conn.active.error : remote.error"
+                :connecting="conn.active?.status === 'connecting'"
                 :disabled="!conn.isConnected"
                 supports-chmod
                 supports-edit
@@ -486,6 +646,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                 @drop-entry="onDropToRemote"
               />
             </div>
+            </div>
 
             <div v-if="logOpen" class="log-area">
               <LogPanel />
@@ -501,7 +662,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 
       <HostKeyDialog />
       <TlsDialog />
-      <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
+      <PasswordDialog />
       <SyncDialog v-model="syncOpen" />
 
       <!-- Grup (klasör) yeniden adlandırma -->
@@ -553,6 +714,11 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
         </v-card>
       </v-dialog>
     </v-main>
+
+    <!-- Sağdan açılan modal navigation drawer — v-app layout'una kaydolması
+         için v-main DIŞINDA durur (ferro-root display:contents olduğundan
+         layout açısından v-app'in doğrudan çocuğudur). -->
+    <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
   </div>
 </template>
 
@@ -561,6 +727,27 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 .ferro-root {
   display: contents;
 }
+/* ── Kurumsal başlık ── */
+.brand {
+  padding-inline: 16px 8px;
+}
+/* Sözcük markası: sıkı, büyük harfli, hafif aralıklı — kurumsal kimlik. */
+.brand-name {
+  font-weight: 650;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+/* Başlık butonları: M3 standart ikon butonu (dairesel), 40px hedef alan,
+   aralarında ince nefes payı. */
+.app-bar :deep(.v-btn--icon) {
+  width: 40px;
+  height: 40px;
+  margin-inline: 2px;
+}
+.app-bar :deep(.v-toolbar__content) {
+  padding-inline-end: 12px;
+}
 /* v-main, uygulama çubuğunun yüksekliği kadar padding ile içeriği aşağı iter.
    Yüksekliği görünüm alanına sabitleyince (border-box) içerik kutusu
    tam olarak "ekran − app-bar" kadar olur; böylece sayfa hiç kaydırılmaz. */
@@ -568,18 +755,19 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
   height: 100vh;
   overflow: hidden;
 }
+/* M3: tonal kaplar arasında nefes payı — sınır yerine boşluk + kap rengi ayrıştırır. */
 .layout {
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: 6px;
-  padding: 6px;
+  gap: 10px;
+  padding: 10px;
   box-sizing: border-box;
 }
 /* Üst satır: sol panel (sekmeli) + sağ sütun (uzak + log). */
 .main-row {
   display: flex;
-  gap: 6px;
+  gap: 10px;
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -593,6 +781,11 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 /* v-tabs bir slide-group'tur; dikey flex sütununda büyümesini engelle. */
 .left-tabs {
   flex: 0 0 auto;
+}
+/* Sol karta gömülü yerel panel: kart içinde kart görünmesin — köşeler düz,
+   kap rengini dıştaki kart verir (renkler zaten aynı, tek parça okunur). */
+.local-pane {
+  border-radius: 0 !important;
 }
 /* Sekme içeriği kalan alanı doldurur; içindeki panel fill-height ile yayılır. */
 .left-tab-pane {
@@ -618,14 +811,39 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 .right-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
-/* Bağlantı sekmeleri: dikey flex sütununda büyümesin (doğal yüksekliğinde kalsın). */
+/* ── Bağlantı sekmeleri + uzak panel: tek M3 kabı ──
+   Sekme şeridi, uzak panel kartının başlığıdır: aynı kap rengi
+   (surface-container-low), üstte 12px köşe; içerikten ince bir ayırıcıyla
+   ayrılır. Alt kart köşeleri düzleştirilir — ikisi tek parça okunur.
+   Şerit SABİT yükseklikte ve oturum yokken de (varsayılan sekmeyle) render
+   edilir; ilk bağlantıda yerleşim oynamaz. */
+.remote-group {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .conn-tabs {
   flex: 0 0 auto;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  background: rgb(var(--v-theme-surface-container-low));
+  border-radius: 12px 12px 0 0;
+  border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.conn-tabs :deep(.v-tab.v-btn) {
+  min-width: 0;
+}
+/* Kartın üst köşeleri şeride ait — m3-surface'ın 12px'ini alt köşelere indir. */
+.remote-pane {
+  border-radius: 0 0 12px 12px !important;
 }
 .remote-area {
   flex: 1 1 auto;

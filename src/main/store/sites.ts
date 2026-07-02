@@ -71,6 +71,8 @@ interface StoredSite extends SiteAdvanced {
   port: number
   user: string
   anonymous?: boolean
+  /** Parola kaydedilmez; her bağlanışta sorulur. */
+  askPassword?: boolean
   encoding?: string
   rejectUnauthorized?: boolean
   /** Şifrelenmiş parola (vault formatı). */
@@ -157,6 +159,7 @@ class SiteStore {
       port: s.port,
       user: s.user,
       anonymous: s.anonymous,
+      askPassword: s.askPassword,
       encoding: s.encoding,
       rejectUnauthorized: s.rejectUnauthorized,
       hasPassword: !!s.secret,
@@ -182,6 +185,8 @@ class SiteStore {
     } else if (input.password === '' && existing) {
       secret = undefined // boş parola → temizle
     }
+    // "Parola sorulsun": parola asla saklanmaz.
+    if (input.askPassword) secret = undefined
 
     const record: StoredSite = {
       id,
@@ -192,6 +197,7 @@ class SiteStore {
       port: input.port,
       user: input.user,
       anonymous: input.anonymous,
+      askPassword: input.askPassword,
       encoding: input.encoding,
       rejectUnauthorized: input.rejectUnauthorized,
       secret,
@@ -227,8 +233,9 @@ class SiteStore {
     return count
   }
 
-  /** Bağlanmak için tam config (parola çözülmüş) üretir. */
-  buildConfig(id: string): ConnectionConfig | null {
+  /** Bağlanmak için tam config (parola çözülmüş) üretir.
+   *  passwordOverride: "parola sorulsun" akışında o an girilen parola. */
+  buildConfig(id: string, passwordOverride?: string): ConnectionConfig | null {
     const s = this.load().find((x) => x.id === id)
     if (!s) return null
     return {
@@ -236,7 +243,7 @@ class SiteStore {
       host: s.host,
       port: s.port,
       user: s.user,
-      password: s.secret ? decryptSecret(s.secret) : undefined,
+      password: passwordOverride ?? (s.secret ? decryptSecret(s.secret) : undefined),
       anonymous: s.anonymous,
       encoding: s.encoding,
       rejectUnauthorized: s.rejectUnauthorized

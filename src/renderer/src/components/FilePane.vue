@@ -34,6 +34,8 @@ const props = defineProps<{
   loading: boolean
   error: string | null
   disabled?: boolean
+  /** Bağlantı kuruluyor: iskelet + durum çubuğunda "Bağlanıyor…" gösterilir. */
+  connecting?: boolean
   transferIcon: string
   transferTooltip: string
   supportsChmod?: boolean
@@ -140,6 +142,7 @@ const colCount = computed(() => (showRemoteCols.value ? 7 : 5))
 
 /** Alt durum çubuğu metni: uzak bağlı değilse "bağlantı yok", aksi halde özet. */
 const statusText = computed(() => {
+  if (props.connecting) return t('panes.connecting')
   if (props.disabled) return t('panes.notConnected')
   const fileEntries = props.entries.filter((e) => e.type !== 'directory')
   const folders = props.entries.length - fileEntries.length
@@ -236,8 +239,8 @@ const dialogTitle = computed(() => {
 </script>
 
 <template>
-  <v-card class="d-flex flex-column fill-height" variant="flat" border>
-    <v-toolbar density="compact" color="surface">
+  <v-card class="d-flex flex-column fill-height m3-surface" variant="flat">
+    <v-toolbar density="compact" color="transparent">
       <v-icon :icon="icon" class="ml-3" />
       <v-toolbar-title class="text-body-1">{{ title }}</v-toolbar-title>
       <v-spacer />
@@ -458,6 +461,12 @@ const dialogTitle = computed(() => {
 .table-scroll > :deep(.v-table) {
   flex: 1 1 auto;
   min-height: 0;
+  background: transparent; /* M3 kap rengi karttan gelir */
+}
+/* Sticky başlık hücreleri kartın kap rengini almalı (varsayılanı surface —
+   kaydırınca altındaki satırlar farklı zeminle sırıtırdı). */
+.table-scroll :deep(th) {
+  background: rgb(var(--v-theme-surface-container-low)) !important;
 }
 /* Dar panelde sütunlar alt satıra düşmesin; yatay (ve dikey) kaydırma
    __wrapper'da olsun. Tabloya alt sınır genişliği ver ki sığmadığında

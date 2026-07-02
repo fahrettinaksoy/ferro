@@ -55,8 +55,13 @@ export const useRemoteFsStore = defineStore('remoteFs', {
     slot(): { id: string; s: RemoteFsSession } {
       const id = useConnectionStore().sessionId
       if (!id) throw new FerroError('NOT_CONNECTED', 'Bağlı değil')
-      const s = (this.bySession[id] ??= { cwd: '/', entries: [], loading: false, error: null })
-      return { id, s }
+      // DİKKAT: `??=` atama anında SAĞ tarafı (ham nesneyi) döndürür — reaktif
+      // proxy'yi değil. Ham nesneye yazılanlar UI'ı tetiklemez (ilk yüklemede
+      // panel sonsuza dek iskelette kalırdı). Atayıp proxy'den yeniden okuyoruz.
+      if (!this.bySession[id]) {
+        this.bySession[id] = { cwd: '/', entries: [], loading: false, error: null }
+      }
+      return { id, s: this.bySession[id] }
     },
 
     async load(path?: string): Promise<void> {

@@ -76,11 +76,22 @@ export interface InvokeMap {
   'sites:save': { req: SiteInput; res: { id: string } }
   'sites:delete': { req: { id: string }; res: { ok: true } }
   'sites:renameGroup': { req: { from: string; to: string }; res: { ok: true; count: number } }
-  'sites:connect': { req: { id: string }; res: { sessionId: string; cwd: string } }
+  /** password: "parola sorulsun" sitelerinde o an girilen parola (kaydedilmez). */
+  'sites:connect': {
+    req: { id: string; password?: string }
+    res: { sessionId: string; cwd: string }
+  }
 }
 
 /** event: main → renderer tek yönlü olay yükleri. */
 export interface EventMap {
+  /** Bağlantı denemesi başladı — renderer bekleyen sekmeyi bu kimliğe bağlar
+      ve günlük akışı (session:log) daha bağlantı kurulmadan görünür olur. */
+  'session:connecting': {
+    sessionId: string
+    host: string
+    port: number
+  }
   'session:log': {
     sessionId: string
     level: 'info' | 'cmd' | 'reply' | 'error'

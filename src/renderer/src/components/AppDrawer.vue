@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Yeniden kullanılabilir sağ panel (overlay). Layout'a bağlı DEĞİL — viewport'u
-// tam kaplayan fixed bir katman olduğundan app-bar dahil HER ŞEYİN üstüne gelir.
-// Header sabit, body esner, footer sabit. v-app içinde render edilir ki tema
-// değişkenleri (--v-theme-*) geçerli olsun.
+// Yeniden kullanılabilir sağ panel — Vuetify v-navigation-drawer (temporary).
+// M3 "modal navigation drawer": panellerle aynı tonal kap, açık kenarda
+// yuvarlatılmış köşeler, scrim tıklamasıyla kapanır. Header sabit, body esner,
+// footer sabit. v-app layout'una kaydolduğundan v-app altında render edilmelidir.
 import { computed } from 'vue'
 import { useHotkey } from 'vuetify'
 
@@ -10,10 +10,12 @@ const props = withDefaults(
   defineProps<{
     modelValue: boolean
     title?: string
+    /** Başlığın altında görünen kısa açıklama satırı (opsiyonel). */
+    subtitle?: string
     icon?: string
     width?: number | string
   }>(),
-  { title: '', icon: '', width: 960 }
+  { title: '', subtitle: '', icon: '', width: 960 }
 )
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
 
@@ -28,87 +30,84 @@ useHotkey(
 </script>
 
 <template>
-  <Transition name="app-drawer">
-    <div v-if="modelValue" class="app-drawer-overlay">
-      <!-- Scrim: tıklayınca kapanır -->
-      <div class="app-drawer-scrim" @click="emit('update:modelValue', false)" />
-
-      <!-- Panel -->
-      <div
-        class="app-drawer-panel"
-        :style="{ width: typeof width === 'number' ? width + 'px' : width }"
-      >
-        <!-- Header -->
-        <v-toolbar density="compact" color="surface" class="flex-grow-0">
-          <v-icon v-if="icon" :icon="icon" class="ml-3" />
-          <v-toolbar-title class="text-body-1">{{ title }}</v-toolbar-title>
-          <v-spacer />
-          <v-btn icon="mdi-close" size="small" @click="emit('update:modelValue', false)" />
-        </v-toolbar>
-        <v-divider />
-
-        <!-- Body -->
-        <div class="app-drawer-body d-flex flex-grow-1">
-          <slot />
-        </div>
-
-        <!-- Footer -->
-        <template v-if="$slots.footer">
-          <v-divider />
-          <div class="d-flex align-center pa-2 flex-grow-0">
-            <slot name="footer" />
+  <!-- order=-1: layout'a app-bar'dan ÖNCE kaydolur → tam yükseklik kaplar ve
+       z-sıralamasında app-bar'ın üstünde kalır (drawer çubuğun altına girmez). -->
+  <v-navigation-drawer
+    :model-value="modelValue"
+    location="right"
+    temporary
+    :width="width"
+    :order="-1"
+    class="app-drawer border-0"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <div class="d-flex flex-column fill-height">
+      <!-- Header: belirgin primary blok — solda büyük ikon, yanında başlık
+           (açıklamadan belirgin büyük) + kısa açıklama, sağda kapat. -->
+      <div class="app-drawer-header bg-primary flex-grow-0 d-flex align-center pa-4">
+        <v-icon v-if="icon" :icon="icon" size="40" class="mr-4 flex-shrink-0" />
+        <div class="flex-grow-1" style="min-width: 0">
+          <div class="header-title">{{ title }}</div>
+          <div v-if="subtitle" class="text-body-2 header-subtitle text-truncate">
+            {{ subtitle }}
           </div>
-        </template>
+        </div>
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          class="align-self-start flex-shrink-0"
+          @click="emit('update:modelValue', false)"
+        >
+          <v-icon icon="mdi-close" />
+          <v-tooltip activator="parent" location="bottom">{{ $t('common.close') }}</v-tooltip>
+        </v-btn>
       </div>
+
+      <!-- Body -->
+      <div class="app-drawer-body d-flex flex-grow-1">
+        <slot />
+      </div>
+
+      <!-- Footer: çizgi yerine bir ton koyu kap — M3 tonal ayrışma. -->
+      <template v-if="$slots.footer">
+        <div class="app-drawer-footer d-flex align-center pa-2 flex-grow-0">
+          <slot name="footer" />
+        </div>
+      </template>
     </div>
-  </Transition>
+  </v-navigation-drawer>
 </template>
 
 <style scoped>
-.app-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  /* app-bar/navigation-drawer (~1005) ÜSTÜNDE ama Vuetify overlay'lerinin
-     (VOverlay tabanı 2000: select/menu/color-picker/dialog) ALTINDA kalır.
-     Böylece panel içindeki açılır menüler panelin üstünde görünür (z-index sorunu). */
-  z-index: 1500;
-}
-.app-drawer-scrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-}
-.app-drawer-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
+/* M3 modal drawer: tonal kap + açık kenarda (solda) 16px köşe. */
+.app-drawer {
+  background: rgb(var(--v-theme-surface-container-low)) !important;
+  overflow: hidden;
   max-width: 100%;
+}
+/* İçerik yüksekliği: drawer'ın kendi content sarmalayıcısı tam boy olsun. */
+.app-drawer :deep(.v-navigation-drawer__content) {
   display: flex;
   flex-direction: column;
-  background: rgb(var(--v-theme-surface));
-  color: rgba(var(--v-theme-on-surface), var(--v-high-emphasis-opacity));
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+  min-height: 0;
 }
 .app-drawer-body {
   min-height: 0;
+  overflow: hidden;
 }
-
-/* Açılış/kapanış: scrim fade + panel sağdan kayma. */
-.app-drawer-enter-active,
-.app-drawer-leave-active {
-  transition: opacity 0.2s ease;
+/* Başlık: açıklamadan belirgin büyük ve ağır. */
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.6rem;
 }
-.app-drawer-enter-active .app-drawer-panel,
-.app-drawer-leave-active .app-drawer-panel {
-  transition: transform 0.2s ease;
+/* Başlık açıklaması: on-primary üzerinde hafif yumuşatılmış vurgu. */
+.header-subtitle {
+  opacity: 0.85;
 }
-.app-drawer-enter-from,
-.app-drawer-leave-to {
-  opacity: 0;
-}
-.app-drawer-enter-from .app-drawer-panel,
-.app-drawer-leave-to .app-drawer-panel {
-  transform: translateX(100%);
+/* Alt eylem şeridi: çizgisiz, bir ton farklı kap. */
+.app-drawer-footer {
+  background: rgb(var(--v-theme-surface-container));
 }
 </style>

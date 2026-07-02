@@ -26,6 +26,14 @@ export default {
     verifyCert: 'Sertifika doğrula',
     connecting: 'Bağlanıyor'
   },
+  pwPrompt: {
+    title: 'Parolayı yazın',
+    intro: 'Lütfen bu sunucunun parolasını yazın:',
+    name: 'Ad:',
+    server: 'Sunucu:',
+    user: 'Kullanıcı adı:',
+    remember: 'Parola, Ferro kapatılana kadar hatırlansın'
+  },
   panes: {
     local: 'Yerel',
     remote: 'Uzak Sunucu',
@@ -46,7 +54,10 @@ export default {
     fileTypeExt: '{ext} dosyası',
     summary: '{files} dosya ve {folders} klasör. Toplam boyut: {bytes} bayt',
     notConnected: 'Bağlantı kurulmamış.',
-    noConnection: 'Herhangi bir sunucu ile bağlantı kurulmamış'
+    noConnection: 'Herhangi bir sunucu ile bağlantı kurulmamış',
+    connecting: 'Bağlanıyor…',
+    defaultTab: 'Yeni Bağlantı',
+    defaultTabHint: 'Bağlantı kurulmamış — sunucu seçmek için tıklayın'
   },
   transfer: {
     title: 'Transferler',
@@ -101,6 +112,10 @@ export default {
     addServer: 'Sunucu Ekle',
     edit: 'Düzenle',
     disconnect: 'Bağlantıyı kes',
+    reconnect: 'Yeniden bağlan',
+    editingSite: '{name} düzenleniyor',
+    addingSite: 'Yeni site ekleniyor',
+    subtitle: 'Sunucu bağlantılarınızı ekleyin, düzenleyin ve bağlanın',
     renameGroup: 'Grubu yeniden adlandır',
     newGroupName: 'Yeni grup adı',
     tabs: {
@@ -117,7 +132,7 @@ export default {
       implicit: 'Örtük TLS üzerinden FTP gerektir'
     },
     logonType: 'Oturum açma türü',
-    logon: { anonymous: 'Anonim', normal: 'Normal' },
+    logon: { anonymous: 'Anonim', normal: 'Normal', ask: 'Parola sorulsun' },
     bgColor: 'Arka plan rengi',
     notes: 'Notlar',
     color: {
@@ -170,6 +185,7 @@ export default {
   },
   settings: {
     title: 'Ayarlar',
+    subtitle: 'Uygulama tercihlerini ve görünümü yapılandırın',
     selectPage: 'Sayfa seçin:',
     language: 'Dil',
     theme: 'Tema',

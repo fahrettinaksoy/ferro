@@ -23,12 +23,15 @@ watch(
 </script>
 
 <template>
-  <v-card variant="flat" border class="d-flex flex-column fill-height">
-    <v-toolbar density="compact" color="surface">
+  <v-card variant="flat" class="d-flex flex-column fill-height m3-surface">
+    <v-toolbar density="compact" color="transparent">
       <v-icon icon="$logPanel" class="ml-3" />
       <v-toolbar-title class="text-body-2">{{ $t('log.title') }}</v-toolbar-title>
       <v-spacer />
-      <v-btn icon="$remove" size="small" :title="$t('log.clear')" @click="logStore.clear()" />
+      <v-btn icon size="small" @click="logStore.clear()">
+        <v-icon icon="$remove" />
+        <v-tooltip activator="parent" location="top">{{ $t('log.clear') }}</v-tooltip>
+      </v-btn>
     </v-toolbar>
     <v-divider />
     <div ref="scroller" class="log-scroll flex-grow-1 px-3 py-2">

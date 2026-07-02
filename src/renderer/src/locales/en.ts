@@ -26,6 +26,14 @@ export default {
     verifyCert: 'Verify certificate',
     connecting: 'Connecting'
   },
+  pwPrompt: {
+    title: 'Enter password',
+    intro: 'Please enter the password for this server:',
+    name: 'Name:',
+    server: 'Host:',
+    user: 'User:',
+    remember: 'Remember password until Ferro is closed'
+  },
   panes: {
     local: 'Local',
     remote: 'Remote Server',
@@ -46,7 +54,10 @@ export default {
     fileTypeExt: '{ext} file',
     summary: '{files} files and {folders} folders. Total size: {bytes} bytes',
     notConnected: 'Not connected.',
-    noConnection: 'Not connected to any server'
+    noConnection: 'Not connected to any server',
+    connecting: 'Connecting…',
+    defaultTab: 'New Connection',
+    defaultTabHint: 'Not connected — click to choose a server'
   },
   transfer: {
     title: 'Transfers',
@@ -101,6 +112,10 @@ export default {
     addServer: 'Add Server',
     edit: 'Edit',
     disconnect: 'Disconnect',
+    reconnect: 'Reconnect',
+    editingSite: 'Editing {name}',
+    addingSite: 'Adding new site',
+    subtitle: 'Add, edit and connect to your server connections',
     renameGroup: 'Rename group',
     newGroupName: 'New group name',
     tabs: {
@@ -117,7 +132,7 @@ export default {
       implicit: 'Require implicit FTP over TLS'
     },
     logonType: 'Logon Type',
-    logon: { anonymous: 'Anonymous', normal: 'Normal' },
+    logon: { anonymous: 'Anonymous', normal: 'Normal', ask: 'Ask for password' },
     bgColor: 'Background color',
     notes: 'Notes',
     color: {
@@ -170,6 +185,7 @@ export default {
   },
   settings: {
     title: 'Settings',
+    subtitle: 'Configure application preferences and appearance',
     selectPage: 'Select page:',
     language: 'Language',
     theme: 'Theme',

@@ -64,6 +64,9 @@ export const useToastStore = defineStore('toast', {
         error?: string | ((err: unknown) => string)
       } = {}
     ): Promise<T> {
+      // Bekleme bildirimi GÖSTERİLMEZ: kuyruk (FIFO) her mesajı tam süresince
+      // oynattığından art arda işlemlerde bildirimler birikip gecikir.
+      // Süren işin geri bildirimi çağıran arayüzün işidir (spinner, panel, log).
       try {
         const data = await p
         this.success(typeof o.success === 'function' ? o.success(data) : (o.success ?? text))

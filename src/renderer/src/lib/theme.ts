@@ -74,6 +74,9 @@ const TOKENS: [string, keyof typeof MaterialDynamicColors][] = [
   ['surface-container-high', 'surfaceContainerHigh'],
   ['surface-container-highest', 'surfaceContainerHighest'],
   ['on-surface', 'onSurface'],
+  // Çift olarak üretilmeli: Vuetify tooltip zemini surface-variant, yazısı
+  // on-surface-variant kullanır — teki eksikse okunmaz kombinasyon çıkar.
+  ['surface-variant', 'surfaceVariant'],
   ['on-surface-variant', 'onSurfaceVariant'],
   ['inverse-surface', 'inverseSurface'],
   ['inverse-on-surface', 'inverseOnSurface'],

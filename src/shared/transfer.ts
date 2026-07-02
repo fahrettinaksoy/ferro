@@ -124,6 +124,8 @@ export interface SavedSite extends SiteAdvanced {
   port: number
   user: string
   anonymous?: boolean
+  /** Parola kaydedilmez; her bağlanışta sorulur (oturum boyunca hatırlanabilir). */
+  askPassword?: boolean
   encoding?: string
   rejectUnauthorized?: boolean
   hasPassword: boolean
@@ -141,6 +143,8 @@ export interface SiteInput extends SiteAdvanced {
   user: string
   password?: string
   anonymous?: boolean
+  /** Parola kaydedilmez; her bağlanışta sorulur. */
+  askPassword?: boolean
   encoding?: string
   rejectUnauthorized?: boolean
 }

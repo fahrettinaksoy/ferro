@@ -8,7 +8,15 @@ interface SitesState {
   sites: SavedSite[]
   encryptionAvailable: boolean
   loaded: boolean
+  /** "Parola sorulsun" diyaloğunun hedefi (null = kapalı). */
+  passwordPrompt: SavedSite | null
+  /** Oturum boyunca hatırlanan parolalar (siteId → parola). BELLEKTE tutulur,
+   *  hiçbir yere yazılmaz; uygulama kapanınca kaybolur. */
+  sessionPasswords: Record<string, string>
 }
+
+/** Açık parola diyaloğunun sonucunu bekleyen çözümleyici (tek diyalog varsayımı). */
+let promptResolve: ((r: { password: string; remember: boolean } | null) => void) | null = null
 
 /** Bir grup (klasör) ve içindeki siteler. */
 export interface SiteGroup {
@@ -17,7 +25,13 @@ export interface SiteGroup {
 }
 
 export const useSitesStore = defineStore('sites', {
-  state: (): SitesState => ({ sites: [], encryptionAvailable: true, loaded: false }),
+  state: (): SitesState => ({
+    sites: [],
+    encryptionAvailable: true,
+    loaded: false,
+    passwordPrompt: null,
+    sessionPasswords: {}
+  }),
   getters: {
     /** Kullanımdaki benzersiz grup adları (alfabetik) — form seçimi için. */
     groupNames(state): string[] {
@@ -73,12 +87,50 @@ export const useSitesStore = defineStore('sites', {
       return res.count
     },
 
-    /** Siteye bağlan ve uzak paneli yükle. */
-    async connect(site: SavedSite): Promise<void> {
+    /** Parola diyaloğunu açar; kullanıcının kararını döndürür (null = iptal). */
+    askPassword(site: SavedSite): Promise<{ password: string; remember: boolean } | null> {
+      return new Promise((resolve) => {
+        promptResolve = resolve
+        this.passwordPrompt = site
+      })
+    },
+
+    /** Parola diyaloğu kapandı (PasswordDialog çağırır). */
+    resolvePassword(r: { password: string; remember: boolean } | null): void {
+      this.passwordPrompt = null
+      promptResolve?.(r)
+      promptResolve = null
+    },
+
+    /**
+     * Siteye bağlan ve uzak paneli yükle. "Parola sorulsun" sitelerinde önce
+     * diyalog açılır; iptal edilirse bağlantı başlatılmaz ve false döner.
+     */
+    async connect(site: SavedSite): Promise<boolean> {
       const conn = useConnectionStore()
       const remote = useRemoteFsStore()
-      const cwd = await conn.connectSite(site)
-      await remote.load(cwd)
+
+      let password: string | undefined
+      if (site.askPassword && !site.anonymous) {
+        password = this.sessionPasswords[site.id]
+        if (password === undefined) {
+          const r = await this.askPassword(site)
+          if (!r) return false // iptal — sekme açılmaz
+          password = r.password
+          if (r.remember) this.sessionPasswords[site.id] = password
+        }
+      }
+
+      try {
+        const cwd = await conn.connectSite(site, password)
+        await remote.load(cwd)
+        return true
+      } catch (err) {
+        // Parola yanlış olabilir: hatırlanan parolayı düşür ki bir sonraki
+        // denemede yeniden sorulsun.
+        if (site.askPassword) delete this.sessionPasswords[site.id]
+        throw err
+      }
     }
   }
 })
