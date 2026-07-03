@@ -1,11 +1,5 @@
 import { deserializeError, FerroError } from '@shared/errors'
-import type {
-  InvokeChannel,
-  InvokeReq,
-  InvokeRes,
-  EventChannel,
-  EventMap
-} from '@shared/ipc'
+import type { InvokeChannel, InvokeReq, InvokeRes, EventChannel, EventMap } from '@shared/ipc'
 
 // Renderer IPC istemcisi: zarfı açar, hata durumunda FerroError fırlatır.
 // FerroError burada (renderer bağlamında) oluşturulduğu için `code` korunur.

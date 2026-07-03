@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import type { Protocol, SavedSite, SiteInput } from '@shared/transfer'
 import { defaultPort } from '@shared/transfer'
 import { useSitesStore } from '@renderer/stores/sites'
-import { useToastStore } from '@renderer/stores/toast'
+import { useToastStore, errText } from '@renderer/stores/toast'
 import { invoke } from '@renderer/lib/ipc'
 import AppDrawer from '@renderer/components/AppDrawer.vue'
 
@@ -50,10 +50,10 @@ const tab = ref<'general' | 'advanced' | 'transfer' | 'charset'>('general')
 const charsetMode = ref<'utf8' | 'custom'>('utf8')
 
 // ── Seçenek listeleri ──
-const baseProtocols = [
-  { value: 'ftp', title: 'FTP — Dosya aktarımı iletişim kuralı' },
-  { value: 'sftp', title: 'SFTP — SSH dosya aktarımı iletişim kuralı' }
-]
+const baseProtocols = computed(() => [
+  { value: 'ftp', title: t('sites.proto.ftp') },
+  { value: 'sftp', title: t('sites.proto.sftp') }
+])
 const encryptions = computed(() => [
   { value: 'ftp', title: t('sites.enc.plain') },
   { value: 'ftps', title: t('sites.enc.explicit') },
@@ -193,9 +193,13 @@ async function browseLocal(): Promise<void> {
 async function save(): Promise<void> {
   if (charsetMode.value === 'utf8') form.encoding = ''
   try {
-    await toast.promise(t('toast.siteSaving'), sites.save({ ...form, id: selectedId.value ?? undefined }), {
-      success: t('toast.siteSaved')
-    })
+    await toast.promise(
+      t('toast.siteSaving'),
+      sites.save({ ...form, id: selectedId.value ?? undefined }),
+      {
+        success: t('toast.siteSaved')
+      }
+    )
   } catch {
     return // hata toast'ta gösterildi
   }
@@ -218,6 +222,37 @@ async function remove(): Promise<void> {
     selectNew()
   } catch {
     /* hata toast'ta gösterildi */
+  }
+}
+
+// ── İçe / dışa aktarma ──
+const exportDialog = ref(false)
+const exportPasswords = ref(false)
+
+async function runImport(): Promise<void> {
+  try {
+    const res = await invoke('sites:import', undefined)
+    if (!res.path) return // kullanıcı dosya seçmedi
+    await sites.load()
+    if (res.imported === 0) {
+      toast.info(t('toast.sitesImportNone', { skipped: res.skipped }))
+    } else {
+      toast.success(t('toast.sitesImported', { imported: res.imported, skipped: res.skipped }))
+    }
+  } catch (err) {
+    toast.error(errText(err))
+  }
+}
+
+async function runExport(): Promise<void> {
+  exportDialog.value = false
+  try {
+    const res = await invoke('sites:export', { includePasswords: exportPasswords.value })
+    if (res.path) toast.success(t('toast.sitesExported', { count: res.count }))
+  } catch (err) {
+    toast.error(errText(err))
+  } finally {
+    exportPasswords.value = false // onay her dışa aktarmada yeniden alınır
   }
 }
 
@@ -255,9 +290,10 @@ function connect(): void {
       </v-alert>
 
       <div class="d-flex flex-grow-1" style="min-height: 0">
-        <!-- Site listesi: çizgi yerine bir ton farklı M3 alt-kabı -->
-        <div class="site-list">
-          <v-list density="compact" nav>
+        <!-- Site listesi: çizgi yerine bir ton farklı M3 alt-kabı.
+             Dikey düzen: kaydırılabilir liste + dipte içe/dışa aktarma şeridi. -->
+        <div class="site-list d-flex flex-column">
+          <v-list density="compact" nav class="site-list-scroll flex-grow-1">
             <v-list-item
               prepend-icon="mdi-plus"
               :title="$t('sites.newSite')"
@@ -282,8 +318,8 @@ function connect(): void {
 
             <!-- Gruplar: klasör ikonlu açılır alt grup -->
             <v-list-group v-for="g in sites.grouped.groups" :key="g.name" :value="g.name">
-              <template #activator="{ props }">
-                <v-list-item v-bind="props" prepend-icon="mdi-folder" :title="g.name" />
+              <template #activator="{ props: activatorProps }">
+                <v-list-item v-bind="activatorProps" prepend-icon="mdi-folder" :title="g.name" />
               </template>
               <v-list-item
                 v-for="s in g.sites"
@@ -303,6 +339,29 @@ function connect(): void {
               {{ $t('sites.noSites') }}
             </v-list-item>
           </v-list>
+
+          <!-- İçe/dışa aktarma: liste kabının dibinde, bir ton koyu şerit. -->
+          <div class="list-actions d-flex pa-1">
+            <v-btn
+              size="small"
+              variant="text"
+              prepend-icon="mdi-tray-arrow-down"
+              class="flex-grow-1"
+              @click="runImport()"
+            >
+              {{ $t('sites.import') }}
+            </v-btn>
+            <v-btn
+              size="small"
+              variant="text"
+              prepend-icon="mdi-tray-arrow-up"
+              class="flex-grow-1"
+              :disabled="!sites.sites.length"
+              @click="exportDialog = true"
+            >
+              {{ $t('sites.export') }}
+            </v-btn>
+          </div>
         </div>
 
         <!-- Sekmeli form: genişletilmiş toolbar — üst satır hangi sitenin
@@ -310,13 +369,15 @@ function connect(): void {
              slot'unda durur (M3 "toolbar with tabs" deseni). Form alanı,
              liste gibi tonal bir M3 alt-kabıdır; eylemler kabın dibinde. -->
         <div class="site-form flex-grow-1 d-flex flex-column">
-          <v-toolbar density="compact" color="transparent" extended extension-height="48" class="site-toolbar">
+          <v-toolbar
+            density="compact"
+            color="transparent"
+            extended
+            extension-height="48"
+            class="site-toolbar"
+          >
             <v-toolbar-title class="text-body-1">
-              <v-icon
-                :icon="isEditing ? 'mdi-pencil' : 'mdi-plus'"
-                size="small"
-                class="mr-2"
-              />
+              <v-icon :icon="isEditing ? 'mdi-pencil' : 'mdi-plus'" size="small" class="mr-2" />
               {{
                 isEditing
                   ? $t('sites.editingSite', { name: form.name || '—' })
@@ -339,143 +400,140 @@ function connect(): void {
           <div class="form-window flex-grow-1 pa-4">
             <!-- ── Genel ── -->
             <div v-if="tab === 'general'" class="d-flex flex-column ga-3">
-                <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
-                <v-select
-                  v-model="baseProtocol"
-                  :items="baseProtocols"
-                  :label="$t('sites.protocolLabel')"
+              <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
+              <v-select
+                v-model="baseProtocol"
+                :items="baseProtocols"
+                :label="$t('sites.protocolLabel')"
+              />
+              <div class="d-flex ga-2">
+                <v-text-field v-model="form.host" :label="$t('connect.server')" />
+                <v-text-field
+                  v-model.number="form.port"
+                  :label="$t('connect.port')"
+                  type="number"
+                  style="max-width: 120px"
                 />
-                <div class="d-flex ga-2">
-                  <v-text-field v-model="form.host" :label="$t('connect.server')" />
-                  <v-text-field
-                    v-model.number="form.port"
-                    :label="$t('connect.port')"
-                    type="number"
-                    style="max-width: 120px"
-                  />
-                </div>
-                <v-select
-                  v-if="isFtpFamily"
-                  v-model="encryption"
-                  :items="encryptions"
-                  :label="$t('sites.encryption')"
+              </div>
+              <v-select
+                v-if="isFtpFamily"
+                v-model="encryption"
+                :items="encryptions"
+                :label="$t('sites.encryption')"
+              />
+              <v-select v-model="logonType" :items="logonTypes" :label="$t('sites.logonType')" />
+              <div v-if="!form.anonymous" class="d-flex ga-2">
+                <v-text-field v-model="form.user" :label="$t('connect.user')" />
+                <!-- "Parola sorulsun": parola alanı yok — bağlanırken sorulur. -->
+                <v-text-field
+                  v-if="!form.askPassword"
+                  v-model="form.password"
+                  :label="$t('connect.password')"
+                  type="password"
+                  :placeholder="passwordPlaceholder"
+                  persistent-placeholder
                 />
-                <v-select v-model="logonType" :items="logonTypes" :label="$t('sites.logonType')" />
-                <div v-if="!form.anonymous" class="d-flex ga-2">
-                  <v-text-field v-model="form.user" :label="$t('connect.user')" />
-                  <!-- "Parola sorulsun": parola alanı yok — bağlanırken sorulur. -->
-                  <v-text-field
-                    v-if="!form.askPassword"
-                    v-model="form.password"
-                    :label="$t('connect.password')"
-                    type="password"
-                    :placeholder="passwordPlaceholder"
-                    persistent-placeholder
-                  />
-                </div>
-                <v-checkbox
-                  v-if="isFtps"
-                  v-model="form.rejectUnauthorized"
-                  :label="$t('connect.verifyCert')"
-                />
+              </div>
+              <v-checkbox
+                v-if="isFtps"
+                v-model="form.rejectUnauthorized"
+                :label="$t('connect.verifyCert')"
+              />
 
-                <v-divider class="my-1" />
+              <v-divider class="my-1" />
 
-                <v-combobox
-                  v-model="group"
-                  :items="sites.groupNames"
-                  :label="$t('sites.group')"
-                  prepend-inner-icon="mdi-folder"
-                  clearable
-                />
-                <v-select
-                  v-model="form.colorLabel"
-                  :items="colorLabels"
-                  :label="$t('sites.bgColor')"
-                  style="max-width: 220px"
-                />
-                <v-textarea v-model="form.comment" :label="$t('sites.notes')" rows="3" auto-grow />
+              <v-combobox
+                v-model="group"
+                :items="sites.groupNames"
+                :label="$t('sites.group')"
+                prepend-inner-icon="mdi-folder"
+                clearable
+              />
+              <v-select
+                v-model="form.colorLabel"
+                :items="colorLabels"
+                :label="$t('sites.bgColor')"
+                style="max-width: 220px"
+              />
+              <v-textarea v-model="form.comment" :label="$t('sites.notes')" rows="3" auto-grow />
             </div>
 
             <!-- ── Gelişmiş ── -->
             <div v-if="tab === 'advanced'" class="d-flex flex-column ga-3">
-                <v-select
-                  v-model="form.serverType"
-                  :items="serverTypes"
-                  :label="$t('sites.serverType')"
-                  style="max-width: 280px"
+              <v-select
+                v-model="form.serverType"
+                :items="serverTypes"
+                :label="$t('sites.serverType')"
+                style="max-width: 280px"
+              />
+              <v-checkbox v-model="form.bypassProxy" :label="$t('sites.bypassProxy')" />
+
+              <div class="d-flex ga-2 align-center">
+                <v-text-field v-model="form.localDir" :label="$t('sites.localDir')" />
+                <v-btn variant="tonal" @click="browseLocal()">{{ $t('sites.browse') }}</v-btn>
+              </div>
+              <v-text-field v-model="form.remoteDir" :label="$t('sites.remoteDir')" />
+
+              <v-checkbox v-model="form.syncBrowsing" :label="$t('sites.syncBrowsing')" />
+              <v-checkbox v-model="form.dirComparison" :label="$t('sites.dirComparison')" />
+
+              <v-divider class="my-1" />
+              <div class="text-body-2">{{ $t('sites.timezone') }}</div>
+              <div class="d-flex ga-2 align-center">
+                <v-text-field
+                  v-model.number="form.timezoneHours"
+                  type="number"
+                  style="max-width: 110px"
                 />
-                <v-checkbox v-model="form.bypassProxy" :label="$t('sites.bypassProxy')" />
-
-                <div class="d-flex ga-2 align-center">
-                  <v-text-field v-model="form.localDir" :label="$t('sites.localDir')" />
-                  <v-btn variant="tonal" @click="browseLocal()">{{ $t('sites.browse') }}</v-btn>
-                </div>
-                <v-text-field v-model="form.remoteDir" :label="$t('sites.remoteDir')" />
-
-                <v-checkbox v-model="form.syncBrowsing" :label="$t('sites.syncBrowsing')" />
-                <v-checkbox v-model="form.dirComparison" :label="$t('sites.dirComparison')" />
-
-                <v-divider class="my-1" />
-                <div class="text-body-2">{{ $t('sites.timezone') }}</div>
-                <div class="d-flex ga-2 align-center">
-                  <v-text-field
-                    v-model.number="form.timezoneHours"
-                    type="number"
-                    style="max-width: 110px"
-                  />
-                  <span class="text-body-2">{{ $t('sites.hours') }}</span>
-                  <v-text-field
-                    v-model.number="form.timezoneMinutes"
-                    type="number"
-                    style="max-width: 110px"
-                  />
-                  <span class="text-body-2">{{ $t('sites.minutes') }}</span>
-                </div>
+                <span class="text-body-2">{{ $t('sites.hours') }}</span>
+                <v-text-field
+                  v-model.number="form.timezoneMinutes"
+                  type="number"
+                  style="max-width: 110px"
+                />
+                <span class="text-body-2">{{ $t('sites.minutes') }}</span>
+              </div>
             </div>
 
             <!-- ── Aktarım ayarları ── -->
             <div v-if="tab === 'transfer'" class="d-flex flex-column ga-2">
-                <div class="text-body-2">{{ $t('sites.transferMode') }}</div>
-                <v-radio-group v-model="form.transferMode" inline>
-                  <v-radio :label="$t('sites.mode.default')" value="default" />
-                  <v-radio :label="$t('sites.mode.active')" value="active" />
-                  <v-radio :label="$t('sites.mode.passive')" value="passive" />
-                </v-radio-group>
+              <div class="text-body-2">{{ $t('sites.transferMode') }}</div>
+              <v-radio-group v-model="form.transferMode" inline>
+                <v-radio :label="$t('sites.mode.default')" value="default" />
+                <v-radio :label="$t('sites.mode.active')" value="active" />
+                <v-radio :label="$t('sites.mode.passive')" value="passive" />
+              </v-radio-group>
 
-                <v-checkbox
-                  v-model="form.limitConnections"
-                  :label="$t('sites.limitConnections')"
+              <v-checkbox v-model="form.limitConnections" :label="$t('sites.limitConnections')" />
+              <div class="d-flex ga-2 align-center ml-8">
+                <span class="text-body-2">{{ $t('sites.maxConnections') }}</span>
+                <v-text-field
+                  v-model.number="form.maxConnections"
+                  type="number"
+                  min="1"
+                  :disabled="!form.limitConnections"
+                  style="max-width: 110px"
                 />
-                <div class="d-flex ga-2 align-center ml-8">
-                  <span class="text-body-2">{{ $t('sites.maxConnections') }}</span>
-                  <v-text-field
-                    v-model.number="form.maxConnections"
-                    type="number"
-                    min="1"
-                    :disabled="!form.limitConnections"
-                    style="max-width: 110px"
-                  />
-                </div>
+              </div>
             </div>
 
             <!-- ── Karakter kümesi ── -->
             <div v-if="tab === 'charset'" class="d-flex flex-column ga-2">
-                <div class="text-body-2">{{ $t('sites.charsetIntro') }}</div>
-                <v-radio-group v-model="charsetMode">
-                  <v-radio :label="$t('sites.charsetUtf8')" value="utf8" />
-                  <v-radio :label="$t('sites.charsetCustom')" value="custom" />
-                </v-radio-group>
-                <v-text-field
-                  v-model="form.encoding"
-                  :label="$t('sites.encodingLabel')"
-                  :disabled="charsetMode !== 'custom'"
-                  placeholder="ISO-8859-9"
-                  style="max-width: 260px"
-                />
-                <v-alert type="info" variant="tonal" density="compact" class="mt-2">
-                  {{ $t('sites.charsetNote') }}
-                </v-alert>
+              <div class="text-body-2">{{ $t('sites.charsetIntro') }}</div>
+              <v-radio-group v-model="charsetMode">
+                <v-radio :label="$t('sites.charsetUtf8')" value="utf8" />
+                <v-radio :label="$t('sites.charsetCustom')" value="custom" />
+              </v-radio-group>
+              <v-text-field
+                v-model="form.encoding"
+                :label="$t('sites.encodingLabel')"
+                :disabled="charsetMode !== 'custom'"
+                placeholder="ISO-8859-9"
+                style="max-width: 260px"
+              />
+              <v-alert type="info" variant="tonal" density="compact" class="mt-2">
+                {{ $t('sites.charsetNote') }}
+              </v-alert>
             </div>
           </div>
 
@@ -507,8 +565,45 @@ function connect(): void {
           </div>
         </div>
       </div>
-
     </div>
+
+    <!-- Dışa aktarma onayı: parolaların düz metin yazılacağı açıkça onaylatılır. -->
+    <v-dialog v-model="exportDialog" max-width="460">
+      <v-card :title="$t('sites.exportTitle')">
+        <v-card-text class="pt-2">
+          <p class="text-body-2 mb-3">
+            {{ $t('sites.exportDesc', { count: sites.sites.length }) }}
+          </p>
+          <v-checkbox
+            v-model="exportPasswords"
+            :label="$t('sites.exportWithPasswords')"
+            density="compact"
+            hide-details
+          />
+          <v-alert
+            v-if="exportPasswords"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mt-2"
+          >
+            {{ $t('sites.exportPasswordWarning') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="exportDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn
+            color="primary"
+            variant="tonal"
+            prepend-icon="mdi-tray-arrow-up"
+            @click="runExport()"
+          >
+            {{ $t('sites.export') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </AppDrawer>
 </template>
 
@@ -518,10 +613,20 @@ function connect(): void {
 .site-list {
   width: 240px;
   flex: 0 0 240px;
-  overflow-y: auto;
   margin: 8px;
   border-radius: 12px;
   background: rgb(var(--v-theme-surface-container));
+  overflow: hidden;
+}
+/* Liste kaydırılır; içe/dışa aktarma şeridi dipte sabit kalır. */
+.site-list-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+/* İçe/dışa aktarma şeridi: form eylem şeridiyle aynı M3 katman tonu. */
+.list-actions {
+  flex: 0 0 auto;
+  background: rgb(var(--v-theme-surface-container-high));
 }
 .site-list :deep(.v-list) {
   background: transparent;

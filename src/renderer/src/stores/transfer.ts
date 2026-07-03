@@ -1,22 +1,16 @@
 import { defineStore } from 'pinia'
 import { invoke, FerroError } from '@renderer/lib/ipc'
+import { joinPosix, joinLocalPath as joinLocal } from '@renderer/lib/paths'
 import type { TransferJob } from '@shared/transfer'
 import { useConnectionStore } from './connection'
 import { useRemoteFsStore } from './remoteFs'
 import { useLocalStore } from './local'
 
-function joinPosix(base: string, name: string): string {
-  return (base.endsWith('/') ? base : base + '/') + name
-}
-function joinLocal(base: string, name: string): string {
-  const sep = base.includes('\\') ? '\\' : '/'
-  return base.endsWith(sep) ? base + name : base + sep + name
-}
-
 export const useTransferStore = defineStore('transfer', {
-  state: (): { items: TransferJob[] } => ({ items: [] }),
+  state: (): { items: TransferJob[]; paused: boolean } => ({ items: [], paused: false }),
   getters: {
-    active: (s): TransferJob[] => s.items.filter((t) => t.status === 'active' || t.status === 'queued'),
+    active: (s): TransferJob[] =>
+      s.items.filter((t) => t.status === 'active' || t.status === 'queued'),
     // Kuyruktakiler: aktif + bekleyen
     queued: (s): TransferJob[] =>
       s.items.filter((t) => t.status === 'active' || t.status === 'queued'),
@@ -62,6 +56,12 @@ export const useTransferStore = defineStore('transfer', {
 
     async cancel(jobId: string): Promise<void> {
       await invoke('transfer:cancel', { jobId })
+    },
+
+    /** Kuyrukları duraklat/sürdür (app bar başlat/durdur düğmesi). */
+    async setPaused(paused: boolean): Promise<void> {
+      const res = await invoke('transfer:setPaused', { paused })
+      this.paused = res.paused
     },
 
     /** main'den gelen transfer:update eventini uygula. */

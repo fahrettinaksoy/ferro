@@ -1,4 +1,5 @@
 import type { SerializedError } from './errors'
+import type { SyncConfigInput, SyncConfigPublic, SyncSettingsSnapshot } from './sync'
 import type {
   ConnectionConfig,
   RemoteEntry,
@@ -7,7 +8,8 @@ import type {
   TransferJob,
   SavedSite,
   SiteInput,
-  SyncEntry
+  SyncEntry,
+  RuntimeSettings
 } from './transfer'
 
 // ── IPC sözleşmesi ─────────────────────────────────────────────────────────
@@ -17,6 +19,19 @@ import type {
 /** invoke(): renderer → main istek/yanıt kanalları. */
 export interface InvokeMap {
   'app:ping': { req: void; res: { pong: true; version: string } }
+  /** Hakkında ekranı: uygulama + çalışma ortamı sürüm bilgileri. */
+  'app:info': {
+    req: void
+    res: {
+      name: string
+      version: string
+      electron: string
+      chrome: string
+      node: string
+      platform: string
+      arch: string
+    }
+  }
   'dialog:pickDirectory': { req: { defaultPath?: string }; res: { path: string | null } }
 
   // ── Bağlantı ──
@@ -47,6 +62,8 @@ export interface InvokeMap {
     res: { jobId: string }
   }
   'transfer:cancel': { req: { jobId: string }; res: { ok: true } }
+  /** Tüm transfer kuyruklarını duraklat/sürdür (aktif transferler sürer). */
+  'transfer:setPaused': { req: { paused: boolean }; res: { paused: boolean } }
   'sync:compare': {
     req: { sessionId: string; localPath: string; remotePath: string }
     res: { entries: SyncEntry[] }
@@ -66,7 +83,48 @@ export interface InvokeMap {
   'tls:decision': { req: { requestId: string; accept: boolean }; res: { ok: true } }
 
   // ── Ayarlar ──
-  'settings:setBandwidth': { req: { bytesPerSec: number }; res: { ok: true } }
+  /** Uygulama geneli çalışma zamanı ayarlarını main sürece uygular
+      (bant genişliği, havuz, timeout, retry, dosya-var politikası, editör,
+      proxy, loglama, güncelleme). Açılışta ve her kaydetmede gönderilir. */
+  'settings:apply': { req: RuntimeSettings; res: { ok: true } }
+  /** Yerinde düzenleme için özel editör yolunu seçtirir (dosya seçici). */
+  'settings:pickEditor': { req: void; res: { path: string | null } }
+
+  // ── Master parola (kimlik deposu kilidi) ──
+  /** Master parola durumunu döndürür: mod + kilitli mi + doğrulayıcı var mı. */
+  'vault:status': {
+    req: void
+    res: { mode: 'os' | 'master'; locked: boolean; hasMaster: boolean }
+  }
+  /** Master parolayı ayarlar/değiştirir (mevcut sırlar yeni anahtara taşınır). */
+  'vault:setMaster': { req: { current?: string; next: string }; res: { ok: true } }
+  /** Master parolayla depoyu açar (oturum boyunca). */
+  'vault:unlock': { req: { password: string }; res: { ok: boolean } }
+  /** OS keychain moduna geri döner (master parolayı kaldırır). */
+  'vault:useOsKeychain': { req: { current: string }; res: { ok: true } }
+
+  /** Panel görünürlükleri değişti — Görünüm menüsündeki onay imleri eşitlenir. */
+  'app:setPanelState': {
+    req: { servers: boolean; log: boolean; queue: boolean }
+    res: { ok: true }
+  }
+
+  /** Bağlantı durumu değişti — Sunucu menüsü öğelerinin etkinliği eşitlenir. */
+  'app:setConnState': {
+    req: {
+      /** Etkin bir sekme var mı (bağlanıyor/bağlı/hata)? */
+      hasActive: boolean
+      /** Etkin sekme bağlanma sürecinde mi? */
+      connecting: boolean
+      /** Etkin sekme bağlı mı? */
+      connected: boolean
+      /** Herhangi bir bağlı oturum var mı? */
+      anyConnected: boolean
+      /** Transfer kuyrukları duraklatılmış mı? */
+      paused: boolean
+    }
+    res: { ok: true }
+  }
 
   // ── Edit-in-place ──
   'edit:open': { req: { sessionId: string; remotePath: string; name: string }; res: { ok: true } }
@@ -81,10 +139,63 @@ export interface InvokeMap {
     req: { id: string; password?: string }
     res: { sessionId: string; cwd: string }
   }
+  /** Siteleri JSON dosyasına dışa aktarır (kaydetme diyaloğu main'de açılır).
+      includePasswords: parolalar DÜZ METİN yazılır — kullanıcı açıkça onaylar.
+      path null = kullanıcı diyaloğu iptal etti. */
+  'sites:export': {
+    req: { includePasswords: boolean }
+    res: { path: string | null; count: number }
+  }
+  /** JSON dosyasından site içe aktarır (açma diyaloğu main'de açılır).
+      Yinelenenler (aynı protokol+host+port+kullanıcı+ad) atlanır.
+      path null = kullanıcı diyaloğu iptal etti. */
+  'sites:import': {
+    req: void
+    res: { path: string | null; imported: number; skipped: number; total: number }
+  }
+
+  // ── Senkronizasyon (uçtan uca şifreli — Gist / WebDAV) ──
+  /** Yapılandırma görünümü: sırlar yalnızca var/yok olarak döner. */
+  'sync:getConfig': { req: void; res: { config: SyncConfigPublic } }
+  /** Yapılandırmayı kaydeder. Sır alanları: undefined = mevcut korunur. */
+  'sync:setConfig': { req: SyncConfigInput; res: { config: SyncConfigPublic } }
+  /** Yerel veriyi şifreleyip uzak depoya yükler. settings: renderer'ın
+      localStorage anlık görüntüsü (yalnızca ayarlar eşitlemesi açıkken). */
+  'sync:push': {
+    req: { settings?: SyncSettingsSnapshot }
+    res: { updatedAt: string; bytes: number; sites: number; settings: boolean }
+  }
+  /** Uzak blob'u indirir/çözer: siteler main'de birleştirilir, ayarlar
+      renderer'a uygulanmak üzere döner. found=false → uzak kopya henüz yok. */
+  'sync:pull': {
+    req: void
+    res: {
+      found: boolean
+      updatedAt?: string
+      sites?: { imported: number; skipped: number; total: number }
+      settings?: SyncSettingsSnapshot
+    }
+  }
 }
 
 /** event: main → renderer tek yönlü olay yükleri. */
 export interface EventMap {
+  /** Uygulama menüsündeki "Hakkında" tıklandı — renderer M3 diyaloğunu açar. */
+  'app:showAbout': null
+  /** Görünüm menüsünden panel göster/gizle tıklandı. */
+  'app:togglePanel': { panel: 'servers' | 'log' | 'queue' }
+  /** Menü eylemi: ilgili diyalog/paneli aç ya da bağlantı eylemini çalıştır. */
+  'app:menuAction': {
+    action:
+      | 'settings'
+      | 'siteManager'
+      | 'hotkeys'
+      | 'connect'
+      | 'disconnect'
+      | 'reconnect'
+      | 'sync'
+      | 'toggleTransfers'
+  }
   /** Bağlantı denemesi başladı — renderer bekleyen sekmeyi bu kimliğe bağlar
       ve günlük akışı (session:log) daha bağlantı kurulmadan görünür olur. */
   'session:connecting': {
@@ -112,6 +223,10 @@ export interface EventMap {
     port: number
     /** Sertifika doğrulama hatası açıklaması (örn. "self signed certificate"). */
     detail: string
+    /** Sunucunun SHA-256 sertifika parmak izi (alınamadıysa null). */
+    fingerprint: string | null
+    /** true ise daha önce pinlenen sertifika DEĞİŞMİŞ demektir (MITM uyarısı!). */
+    changed: boolean
   }
 }
 

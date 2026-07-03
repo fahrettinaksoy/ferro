@@ -26,6 +26,13 @@ export default {
     verifyCert: 'Sertifika doğrula',
     connecting: 'Bağlanıyor'
   },
+  about: {
+    version: 'Sürüm {v}',
+    description: 'Hızlı ve modern FTP / FTPS / SFTP istemcisi',
+    platform: 'Platform',
+    copyright: '© 2026 Fahrettin Aksoy',
+    license: 'MIT Lisansı'
+  },
   pwPrompt: {
     title: 'Parolayı yazın',
     intro: 'Lütfen bu sunucunun parolasını yazın:',
@@ -57,12 +64,18 @@ export default {
     noConnection: 'Herhangi bir sunucu ile bağlantı kurulmamış',
     connecting: 'Bağlanıyor…',
     defaultTab: 'Yeni Bağlantı',
-    defaultTabHint: 'Bağlantı kurulmamış — sunucu seçmek için tıklayın'
+    defaultTabHint: 'Bağlantı kurulmamış — sunucu seçmek için tıklayın',
+    folderSuffix: ' (klasör)',
+    goUp: 'Üst dizine çık',
+    fileList: 'Dosya listesi',
+    sortColumn: '{column} sütununa göre sırala'
   },
   transfer: {
     title: 'Transferler',
     activeCount: '{count} aktif',
     clearCompleted: 'Tamamlananları temizle',
+    pauseAll: 'Aktarımları durdur',
+    resumeAll: 'Aktarımları başlat',
     queued: 'Kuyruktakiler',
     completed: 'Aktarılanlar',
     failed: 'Aktarılmayanlar',
@@ -84,6 +97,9 @@ export default {
     siteSaved: 'Site kaydedildi',
     siteDeleting: 'Siliniyor…',
     siteDeleted: 'Site silindi',
+    sitesExported: '{count} site dışa aktarıldı',
+    sitesImported: '{imported} site içe aktarıldı ({skipped} yinelenen atlandı)',
+    sitesImportNone: 'Yeni site eklenmedi — {skipped} kayıt zaten mevcut',
     folderCreated: 'Klasör oluşturuldu',
     renamed: 'Yeniden adlandırıldı',
     deleted: 'Silindi',
@@ -131,6 +147,10 @@ export default {
       explicit: 'Olabiliyorsa TLS üzerinden açıkta FTP kullanılsın',
       implicit: 'Örtük TLS üzerinden FTP gerektir'
     },
+    proto: {
+      ftp: 'FTP — Dosya aktarımı iletişim kuralı',
+      sftp: 'SFTP — SSH dosya aktarımı iletişim kuralı'
+    },
     logonType: 'Oturum açma türü',
     logon: { anonymous: 'Anonim', normal: 'Normal', ask: 'Parola sorulsun' },
     bgColor: 'Arka plan rengi',
@@ -164,7 +184,15 @@ export default {
     charsetUtf8: 'UTF-8',
     charsetCustom: 'Özel karakter kümesi kullanılsın',
     encodingLabel: 'Kodlama',
-    charsetNote: 'Yanlış karakter kümesi seçilirse dosya adları düzgün görüntülenmeyebilir.'
+    charsetNote: 'Yanlış karakter kümesi seçilirse dosya adları düzgün görüntülenmeyebilir.',
+    import: 'İçe aktar',
+    export: 'Dışa aktar',
+    exportTitle: 'Siteleri dışa aktar',
+    exportDesc:
+      '{count} site JSON dosyasına kaydedilecek. Bu dosyayı başka bir Ferro kurulumunda içe aktarabilirsiniz.',
+    exportWithPasswords: 'Kayıtlı parolalar da dahil edilsin',
+    exportPasswordWarning:
+      'Parolalar dosyaya DÜZ METİN olarak yazılır. Dosyayı güvenli saklayın ve paylaşmadan önce silin.'
   },
   hostkey: {
     unknownTitle: 'Bilinmeyen Host Anahtarı',
@@ -178,10 +206,54 @@ export default {
   },
   tls: {
     title: 'Güvenilmeyen Sertifika',
+    changedTitle: 'Sertifika DEĞİŞTİ',
+    changedWarning:
+      'Sunucu, daha önce güvendiğiniz sertifikadan FARKLI bir sertifika sunuyor. Bu bir ortadaki adam (MITM) saldırısının işareti olabilir. Sertifikanın meşru şekilde yenilendiğinden emin değilseniz reddedin.',
     intro: '{host} sunucusunun TLS sertifikası doğrulanamadı:',
-    note: 'Self-signed sertifikalarda bu normaldir. Sunucuya güveniyorsanız bağlanabilirsiniz; onayınız kaydedilir ve tekrar sorulmaz.',
+    fingerprint: 'SHA-256 parmak izi',
+    note: 'Self-signed sertifikalarda bu normaldir. Sunucuya güveniyorsanız bağlanabilirsiniz; sertifika parmak izi kaydedilir ve ileride değişirse uyarılırsınız.',
+    noteSessionOnly:
+      'Sertifika parmak izi okunamadı; bu onay yalnızca geçerli oturum için kullanılacak.',
     trust: 'Güven ve Bağlan',
     reject: 'Reddet'
+  },
+  errors: {
+    UNKNOWN: 'Beklenmeyen bir hata oluştu',
+    IPC_HANDLER_MISSING: 'İç hata: bilinmeyen işlem',
+    VALIDATION: 'Geçersiz girdi',
+    CONNECTION_FAILED: 'Sunucuya bağlanılamadı',
+    AUTH_FAILED: 'Kimlik doğrulama başarısız',
+    NOT_CONNECTED: 'Bağlı değil',
+    TLS_UNTRUSTED: 'Sertifika reddedildi',
+    HOST_KEY_UNTRUSTED: 'Host anahtarı reddedildi',
+    TRANSFER_FAILED: 'Aktarım başarısız',
+    FS_ERROR: 'Dosya işlemi başarısız',
+    NOT_FOUND: 'Dosya veya dizin bulunamadı',
+    PERMISSION_DENIED: 'İzin reddedildi',
+    TIMEOUT: 'İşlem zaman aşımına uğradı',
+    CANCELLED: 'İptal edildi'
+  },
+  vaultUnlock: {
+    title: 'Kimlik deposunu aç',
+    intro: 'Kayıtlı parolaları bu oturum için açmak üzere ana parolanızı girin.',
+    password: 'Ana parola',
+    unlock: 'Aç',
+    later: 'Sonra',
+    failed: 'Ana parola hatalı.'
+  },
+  themeOptions: {
+    fontSystem: 'Sistem',
+    scheme: {
+      tonalSpot: 'Material (Tonal Spot)',
+      content: 'İçerik (Content)',
+      expressive: 'Etkileyici (Expressive)',
+      fidelity: 'Sadık (Fidelity)',
+      vibrant: 'Canlı (Vibrant)',
+      neutral: 'Nötr (Neutral)',
+      monochrome: 'Monokrom (Monochrome)',
+      fruitSalad: 'Meyve Salatası (Fruit Salad)',
+      rainbow: 'Gökkuşağı (Rainbow)'
+    }
   },
   settings: {
     title: 'Ayarlar',
@@ -215,9 +287,45 @@ export default {
       lang: 'Dil',
       editing: 'Dosya düzenleme',
       fileAssoc: 'Dosya türü ilişkileri',
+      sync: 'Senkronizasyon',
       updates: 'Güncelleme',
       logging: 'Günlük',
       debug: 'Hata ayıklama'
+    },
+    sync: {
+      title: 'Senkronizasyon',
+      intro:
+        'Verileriniz şifreli olarak bir uzak depoya yedeklenir ve cihazlar arasında taşınır. Veri cihazınızdan çıkmadan önce sync parolanızla şifrelenir — uzak depo yalnızca şifreli blob’u görür.',
+      passwordTitle: 'Sync parolası',
+      password: 'Sync parolası',
+      passwordHint:
+        'Uçtan uca şifreleme anahtarı bu paroladan türetilir. Tüm cihazlarınızda aynı parolayı kullanın; parolayı kaybederseniz uzak yedek ÇÖZÜLEMEZ.',
+      includeTitle: 'Neler eşitlensin?',
+      includeSites: 'Site Yöneticisi (sunucular, gruplar ve parolalar)',
+      includeSettings: 'Uygulama ayarları (tema, dil, tercihler)',
+      providerTitle: 'Uzak depo',
+      gist: 'GitHub Gist',
+      webdav: 'WebDAV',
+      gistToken: 'GitHub kişisel erişim belirteci (token)',
+      gistId: 'Gist kimliği (ops.)',
+      gistIdHint: 'Boş bırakılırsa ilk yüklemede gizli bir gist oluşturulur ve kimlik kaydedilir.',
+      gistHint:
+        'Belirtece yalnızca "gist" izni verin. Diğer cihazda aynı belirteci ve gist kimliğini girin.',
+      webdavUrl: 'WebDAV klasör adresi',
+      actionsTitle: 'Eşitleme',
+      saveConfig: 'Ayarları kaydet',
+      push: 'Yükle',
+      pull: 'İndir',
+      pushed: 'Eşitleme yüklendi ({sites} site, şifreli)',
+      pulledSites: 'Siteler eşitlendi: {imported} eklendi, {skipped} yinelenen atlandı',
+      settingsApplied: 'Ayarlar uygulandı — arayüz yeniden yükleniyor…',
+      remoteEmpty: 'Uzak depoda henüz eşitleme verisi yok — önce "Yükle" kullanın',
+      neverSynced: 'Henüz eşitleme yapılmadı.',
+      lastSync: 'Son eşitleme: {when} ({dir})',
+      saved: 'Senkronizasyon ayarları kaydedildi',
+      pullConfirmTitle: 'Uzak veriyi indir?',
+      pullConfirmText:
+        'Siteler mevcut listenizle birleştirilir (yinelenenler atlanır). Uygulama ayarları ise uzak kopyayla DEĞİŞTİRİLİR ve arayüz yeniden yüklenir.'
     },
     // Bağlantı sayfası
     connection: {
@@ -303,7 +411,8 @@ export default {
       timeHint:
         "'Daha yeni ise üzerine yazılsın' seçeneğinin kullanılabilmesi için sistem saati sunucu saati ile aynı olmalıdır. Sistem ile sunucunun saatleri farklı ise (farklı saat dilimlerinde olmaları gibi), site yöneticisi bölümünden saat farkını ayarlayın.",
       asciiResume: 'ASCII dosyalar sürdürülebilsin',
-      asciiResumeHint: 'Sunucu ile istemcinin satır sonu karakteri farklı ise sorunlara yol açabilir.',
+      asciiResumeHint:
+        'Sunucu ile istemcinin satır sonu karakteri farklı ise sorunlara yol açabilir.',
       actAsk: 'Ne yapılacağı sorulsun',
       actOverwrite: 'Üzerine yazılsın',
       actOverwriteNewer: 'Daha yeni ise üzerine yazılsın',
@@ -347,7 +456,16 @@ export default {
       master: 'Parolalar bir ana parola ile korunarak kaydedilsin',
       masterPw: 'Ana parola:',
       masterPwConfirm: 'Parola onayı:',
-      masterWarning: 'Ana parola kaybedilirse kurtarılamaz! Lütfen parolanızı iyi saklayın.'
+      masterWarning: 'Ana parola kaybedilirse kurtarılamaz! Lütfen parolanızı iyi saklayın.',
+      currentMasterPw: 'Mevcut ana parola:',
+      setMaster: 'Ana parolayı ayarla',
+      changeMaster: 'Ana parolayı değiştir',
+      useOsKeychain: 'OS keychain moduna dön',
+      masterActive: 'Şu anda bir ana parola ayarlı.',
+      mismatch: 'Parolalar eşleşmiyor.',
+      masterSet: 'Ana parola kaydedildi.',
+      switchedOs: 'OS keychain moduna geçildi.',
+      wrongCurrent: 'Mevcut ana parola hatalı.'
     },
     // Dil sayfası
     langPage: {
@@ -435,12 +553,14 @@ export default {
       quoteRules: 'Tırnak arasına alma kuralları',
       useAssoc: 'Varsa dosya ilişkilendirmeleri kullanılsın',
       alwaysDefault: 'Her zaman varsayılan düzenleyici kullanılsın',
-      watchChanges: 'Yerel olarak düzenlenen dosyalar izlenerek değişikliklerin kaydedilmesi sorulsun'
+      watchChanges:
+        'Yerel olarak düzenlenen dosyalar izlenerek değişikliklerin kaydedilmesi sorulsun'
     },
     // Dosya türü ilişkileri sayfası
     fileAssoc: {
       label: 'Özel dosya türü ilişkileri:',
-      formatHint: 'Biçim: Dosya türünü izleyecek şekilde tırnak içine komutu ve ardına parametreleri yazın.',
+      formatHint:
+        'Biçim: Dosya türünü izleyecek şekilde tırnak içine komutu ve ardına parametreleri yazın.',
       example: 'Örnek: png "c:\\program files\\viewer\\viewer.exe" -open',
       quoteRules: 'Tırnak arasına alma kuralları'
     },

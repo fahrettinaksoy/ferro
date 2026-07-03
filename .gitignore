@@ -151,3 +151,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Stackvo internal tooling & scaffolding (not part of the OSS project)
+stackvo.json
+Dockerfile
+.dockerignore
+
+# Internal (Turkish) planning documents — kept locally, not published
+gelistirme-plani.md
+ftp-client-analiz-raporu.md

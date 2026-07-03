@@ -1,10 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { Readable } from 'stream'
-import {
-  setBandwidthLimit,
-  getBandwidthLimit,
-  maybeThrottle
-} from '../src/main/transfer/throttle'
+import { setBandwidthLimit, getBandwidthLimit, maybeThrottle } from '../src/main/transfer/throttle'
 
 afterEach(() => setBandwidthLimit(0))
 

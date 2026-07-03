@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount, watch } from 'vue'
 import { useHotkey } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 // <v-hotkey> şablonda kullanılır; autoImport otomatik içe aktarır (elle import yok).
 import { onEvent, invoke } from '@renderer/lib/ipc'
 import { useUiStore } from '@renderer/stores/ui'
 import { useConnectionStore } from '@renderer/stores/connection'
-import { useToastStore } from '@renderer/stores/toast'
+import { useToastStore, errText } from '@renderer/stores/toast'
 import { useSitesStore } from '@renderer/stores/sites'
 import { useRemoteFsStore } from '@renderer/stores/remoteFs'
 import { useLocalStore } from '@renderer/stores/local'
@@ -95,6 +95,10 @@ function closeTab(sessionId: string): void {
   void conn.disconnect(sessionId)
 }
 
+// Herhangi bir BAĞLI oturum var mı? (Kuyruk başlat/durdur yalnızca o zaman anlamlı;
+// etkin sekme hata sekmesi olsa bile başka bir bağlı oturum yeterlidir.)
+const anyConnected = computed(() => conn.sessions.some((s) => s.status === 'connected'))
+
 // Araç çubuğu: etkin oturumun bağlantısını kes.
 function disconnectActive(): void {
   if (conn.activeId) closeTab(conn.activeId)
@@ -111,9 +115,7 @@ async function reconnectActive(): Promise<void> {
     sites.sites.find((x) => x.host === s.config.host && x.port === s.config.port)
   const config = s.config
   await conn.disconnect(s.sessionId).catch(() => {})
-  const connect = site
-    ? sites.connect(site)
-    : conn.connect(config).then((cwd) => remote.load(cwd))
+  const connect = site ? sites.connect(site) : conn.connect(config).then((cwd) => remote.load(cwd))
   connect.catch(() => {}) // ilerleyiş ve hata sekme/panel/günlükte görünür
 }
 
@@ -159,28 +161,94 @@ function toggleSite(id: string): void {
     .catch(() => {})
 }
 
+// Panel görünürlükleri ↔ Görünüm menüsü eşitlemesi (iki yönlü):
+// menü tıklaması paneli açar/kapatır; buradaki her değişiklik menü imlerini günceller.
+watch(
+  [drawerOpen, logOpen, queueOpen],
+  ([servers, logPanel, queue]) => {
+    void invoke('app:setPanelState', { servers, log: logPanel, queue }).catch(() => {})
+  },
+  { immediate: true }
+)
+
+// Bağlantı durumu → Sunucu menüsü öğelerinin etkinlik/onay durumları.
+watch(
+  () => ({
+    hasActive: !!conn.active,
+    connecting: conn.active?.status === 'connecting',
+    connected: conn.isConnected,
+    anyConnected: anyConnected.value,
+    paused: transfer.paused
+  }),
+  (s) => {
+    void invoke('app:setConnState', s).catch(() => {})
+  },
+  { immediate: true }
+)
+
 let unsubLog: (() => void) | null = null
 let unsubProgress: (() => void) | null = null
 let unsubConnecting: (() => void) | null = null
+let unsubTogglePanel: (() => void) | null = null
+let unsubMenuAction: (() => void) | null = null
 
 onMounted(async () => {
   // Bekleyen sekme gerçek oturum kimliğine bağlanır → bağlanma günlüğü canlı akar.
   unsubConnecting = onEvent('session:connecting', (e) => conn.bindPending(e))
+  unsubTogglePanel = onEvent('app:togglePanel', ({ panel }) => {
+    if (panel === 'servers') drawerOpen.value = !drawerOpen.value
+    else if (panel === 'log') logOpen.value = !logOpen.value
+    else queueOpen.value = !queueOpen.value
+  })
+  unsubMenuAction = onEvent('app:menuAction', ({ action }) => {
+    switch (action) {
+      case 'settings':
+        ui.openDrawer('settings')
+        break
+      case 'siteManager':
+      case 'connect': // Bağlan… → sunucu seçmek için Site Yöneticisi
+        openSiteManager(null)
+        break
+      case 'hotkeys':
+        hotkeysHelpOpen.value = true
+        break
+      case 'disconnect':
+        disconnectActive()
+        break
+      case 'reconnect':
+        void reconnectActive()
+        break
+      case 'sync':
+        if (conn.isConnected) syncOpen.value = true
+        break
+      case 'toggleTransfers':
+        // Toolbar butonuyla aynı hata yakalama: IPC hatası toast'a düşer.
+        if (anyConnected.value) run(transfer.setPaused(!transfer.paused))
+        break
+    }
+  })
   unsubLog = onEvent('session:log', (e) => log.append(e))
   unsubProgress = onEvent('transfer:update', (job) => {
     transfer.onUpdate(job)
     if (job.status === 'completed') toast.success(t('toast.transferDone', { name: job.name }))
     else if (job.status === 'failed') toast.error(t('toast.transferFailed', { name: job.name }))
   })
-  await ui.applyBandwidth()
-  await local.init()
-  await sites.load()
+  // Başlangıç IPC çağrıları: hatalar sessizce kaybolmasın — kullanıcıya toast ile bildir.
+  try {
+    await ui.applyRuntimeSettings()
+    await local.init()
+    await sites.load()
+  } catch (err) {
+    toast.error(t('toast.error', { msg: errText(err) }))
+  }
 })
 
 onBeforeUnmount(() => {
   unsubLog?.()
   unsubProgress?.()
   unsubConnecting?.()
+  unsubTogglePanel?.()
+  unsubMenuAction?.()
 })
 
 function onRemoteTransfer(entry: { name: string; type: string }): void {
@@ -203,11 +271,6 @@ function onRemoteEdit(entry: { name: string }): void {
   if (!conn.sessionId) return
   const remotePath = (remote.cwd.endsWith('/') ? remote.cwd : remote.cwd + '/') + entry.name
   run(invoke('edit:open', { sessionId: conn.sessionId, remotePath, name: entry.name }))
-}
-
-function errText(err: unknown): string {
-  if (err instanceof Error) return err.message
-  return String((err as { message?: string })?.message ?? err)
 }
 
 // İşlem çalıştır: başarıda (verilirse) başarı toast'ı, hatada log + hata toast'ı.
@@ -317,20 +380,34 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
           <v-icon icon="$sync" />
           <v-tooltip activator="parent">{{ $t('sync.title') }}</v-tooltip>
         </v-btn>
-        <div class="mx-3" />
+        <!-- Kuyruk başlat/durdur: duraklatınca sıradaki işler bekler
+             (aktif transferler sürer), başlatınca kaldığı yerden devam eder. -->
+        <v-btn
+          icon
+          :color="transfer.paused ? 'warning' : undefined"
+          :disabled="!anyConnected"
+          @click="run(transfer.setPaused(!transfer.paused))"
+        >
+          <v-icon :icon="transfer.paused ? 'mdi-play' : 'mdi-pause'" />
+          <v-tooltip activator="parent">
+            {{ transfer.paused ? $t('transfer.resumeAll') : $t('transfer.pauseAll') }}
+          </v-tooltip>
+        </v-btn>
+        <v-divider vertical inset class="mx-1" />
 
         <!-- Araçlar -->
         <v-btn icon @click="openSiteManager(null)">
           <v-icon icon="$serverNetwork" />
           <v-tooltip activator="parent">{{ $t('settings.siteManager') }}</v-tooltip>
         </v-btn>
-        <v-btn icon @click="hotkeysHelpOpen = true">
-          <v-icon icon="$keyboard" />
-          <v-tooltip activator="parent">{{ $t('hotkeys.title') }}</v-tooltip>
-        </v-btn>
         <v-btn icon @click="ui.openDrawer('settings')">
           <v-icon icon="$settings" />
           <v-tooltip activator="parent">{{ $t('settings.title') }}</v-tooltip>
+        </v-btn>
+        <v-divider vertical inset class="mx-1" />
+        <v-btn icon @click="hotkeysHelpOpen = true">
+          <v-icon icon="$keyboard" />
+          <v-tooltip activator="parent">{{ $t('hotkeys.title') }}</v-tooltip>
         </v-btn>
         <v-btn icon @click="ui.toggleTheme()">
           <v-icon :icon="ui.themeMode === 'dark' ? '$themeDark' : '$themeLight'" />
@@ -341,7 +418,8 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 
     <v-main class="main-area">
       <div class="layout">
-        <div class="main-row">
+        <!-- swapPanes (Ayarlar → Arayüz): kenar çubuğunu sağa alır (row-reverse). -->
+        <div class="main-row" :class="{ 'main-row--swap': ui.prefs.iface.swapPanes }">
           <!-- Sol panel: "Yerel Sürücüler" ve "Site Yöneticisi" sekmeleri -->
           <div v-if="drawerOpen" class="left-panel">
             <v-card variant="flat" class="d-flex flex-column fill-height m3-surface">
@@ -376,6 +454,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                   @open="(e) => local.open(e as LocalEntry)"
                   @up="local.up()"
                   @refresh="local.refresh()"
+                  @navigate="(p) => void local.load(p)"
                   @transfer="onLocalTransfer"
                   @mkdir="(name) => run(local.makeDir(name), $t('toast.folderCreated'))"
                   @rename="
@@ -415,18 +494,28 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                         icon="mdi-alert-circle"
                         color="error"
                       />
-                      <v-icon v-else-if="isActiveSite(s.host, s.port)" icon="$connect" color="success" />
+                      <v-icon
+                        v-else-if="isActiveSite(s.host, s.port)"
+                        icon="$connect"
+                        color="success"
+                      />
                       <v-icon v-else :icon="s.protocol === 'sftp' ? '$sftp' : '$server'" />
                     </template>
                     <v-list-item-title>{{ s.name }}</v-list-item-title>
                     <v-list-item-subtitle>{{ s.host }}:{{ s.port }}</v-list-item-subtitle>
                     <template #append>
                       <v-btn
-                        :icon="siteSession(s.host, s.port) ? 'mdi-lan-disconnect' : 'mdi-connection'"
+                        :icon="
+                          siteSession(s.host, s.port) ? 'mdi-lan-disconnect' : 'mdi-connection'
+                        "
                         size="x-small"
                         variant="text"
                         :disabled="siteSession(s.host, s.port)?.status === 'connecting'"
-                        :title="siteSession(s.host, s.port) ? $t('sites.disconnect') : $t('common.connect')"
+                        :title="
+                          siteSession(s.host, s.port)
+                            ? $t('sites.disconnect')
+                            : $t('common.connect')
+                        "
                         @click.stop="toggleSite(s.id)"
                       />
                       <v-btn
@@ -545,110 +634,111 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                  tıklanınca Site Yöneticisi açılır. İlk bağlantıda yerini oturum
                  sekmesi alır, sonrakiler yanına eklenir. -->
             <div class="remote-group">
-            <div class="conn-tabs">
-              <v-tabs
-                v-model="activeTab"
-                density="compact"
-                color="primary"
-                show-arrows
-                height="44"
-                class="flex-grow-1"
-              >
-                <v-tab
-                  v-for="s in conn.sessions"
-                  :key="s.tabId"
-                  :value="s.tabId"
-                  class="text-none"
+              <div class="conn-tabs">
+                <v-tabs
+                  v-model="activeTab"
+                  density="compact"
+                  color="primary"
+                  show-arrows
+                  height="44"
+                  class="flex-grow-1"
                 >
-                  <v-progress-circular
-                    v-if="s.status === 'connecting'"
-                    indeterminate
-                    size="14"
-                    width="2"
-                    class="mr-2"
-                  />
-                  <v-icon
-                    v-else-if="s.status === 'error'"
-                    icon="mdi-alert-circle"
-                    color="error"
-                    size="small"
-                    class="mr-2"
-                  />
-                  <v-icon
-                    v-else
-                    :icon="s.config.protocol === 'sftp' ? '$sftp' : '$server'"
-                    size="small"
-                    class="mr-2"
-                  />
-                  {{ s.name }}
-                  <v-btn
-                    icon
-                    size="x-small"
-                    variant="text"
-                    density="comfortable"
-                    class="ml-2"
-                    @click.stop="closeTab(s.sessionId)"
+                  <v-tab
+                    v-for="s in conn.sessions"
+                    :key="s.tabId"
+                    :value="s.tabId"
+                    class="text-none"
                   >
-                    <v-icon icon="mdi-close" />
+                    <v-progress-circular
+                      v-if="s.status === 'connecting'"
+                      indeterminate
+                      size="14"
+                      width="2"
+                      class="mr-2"
+                    />
+                    <v-icon
+                      v-else-if="s.status === 'error'"
+                      icon="mdi-alert-circle"
+                      color="error"
+                      size="small"
+                      class="mr-2"
+                    />
+                    <v-icon
+                      v-else
+                      :icon="s.config.protocol === 'sftp' ? '$sftp' : '$server'"
+                      size="small"
+                      class="mr-2"
+                    />
+                    {{ s.name }}
+                    <v-btn
+                      icon
+                      size="x-small"
+                      variant="text"
+                      density="comfortable"
+                      class="ml-2"
+                      @click.stop="closeTab(s.sessionId)"
+                    >
+                      <v-icon icon="mdi-close" />
+                      <v-tooltip activator="parent" location="bottom">
+                        {{ $t('sites.disconnect') }}
+                      </v-tooltip>
+                    </v-btn>
+                  </v-tab>
+
+                  <!-- Varsayılan sekme: bağlantı yokken şeridin sahibi. -->
+                  <v-tab
+                    v-if="!conn.sessions.length"
+                    :value="null"
+                    class="text-none"
+                    @click="openSiteManager(null)"
+                  >
+                    <v-icon icon="mdi-plus" size="small" class="mr-2" />
+                    {{ $t('panes.defaultTab') }}
                     <v-tooltip activator="parent" location="bottom">
-                      {{ $t('sites.disconnect') }}
+                      {{ $t('panes.defaultTabHint') }}
                     </v-tooltip>
-                  </v-btn>
-                </v-tab>
+                  </v-tab>
+                </v-tabs>
+              </div>
 
-                <!-- Varsayılan sekme: bağlantı yokken şeridin sahibi. -->
-                <v-tab
-                  v-if="!conn.sessions.length"
-                  :value="null"
-                  class="text-none"
-                  @click="openSiteManager(null)"
-                >
-                  <v-icon icon="mdi-plus" size="small" class="mr-2" />
-                  {{ $t('panes.defaultTab') }}
-                  <v-tooltip activator="parent" location="bottom">
-                    {{ $t('panes.defaultTabHint') }}
-                  </v-tooltip>
-                </v-tab>
-              </v-tabs>
+              <div class="remote-area">
+                <FilePane
+                  class="remote-pane"
+                  :title="$t('panes.remote')"
+                  icon="$server"
+                  side="remote"
+                  :cwd="remote.cwd"
+                  :entries="remote.entries"
+                  :loading="remote.loading || conn.active?.status === 'connecting'"
+                  :error="conn.active?.status === 'error' ? conn.active.error : remote.error"
+                  :connecting="conn.active?.status === 'connecting'"
+                  :disabled="!conn.isConnected"
+                  supports-chmod
+                  supports-edit
+                  transfer-icon="$transferIn"
+                  :transfer-tooltip="$t('panes.downloadToLocal')"
+                  @open="(e) => remote.open(e as RemoteEntry)"
+                  @up="remote.up()"
+                  @refresh="remote.refresh()"
+                  @navigate="(p) => void remote.load(p)"
+                  @transfer="onRemoteTransfer"
+                  @mkdir="(name) => run(remote.makeDir(name), $t('toast.folderCreated'))"
+                  @rename="
+                    ({ entry, newName }) =>
+                      run(remote.rename(entry as RemoteEntry, newName), $t('toast.renamed'))
+                  "
+                  @remove="(entry) => run(remote.remove(entry as RemoteEntry), $t('toast.deleted'))"
+                  @chmod="
+                    ({ entry, mode }) =>
+                      run(remote.chmod(entry as RemoteEntry, mode), $t('toast.permsUpdated'))
+                  "
+                  @edit="onRemoteEdit"
+                  @drop-entry="onDropToRemote"
+                />
+              </div>
             </div>
 
-            <div class="remote-area">
-              <FilePane
-                class="remote-pane"
-                :title="$t('panes.remote')"
-                icon="$server"
-                side="remote"
-                :cwd="remote.cwd"
-                :entries="remote.entries"
-                :loading="remote.loading || conn.active?.status === 'connecting'"
-                :error="conn.active?.status === 'error' ? conn.active.error : remote.error"
-                :connecting="conn.active?.status === 'connecting'"
-                :disabled="!conn.isConnected"
-                supports-chmod
-                supports-edit
-                transfer-icon="$transferIn"
-                :transfer-tooltip="$t('panes.downloadToLocal')"
-                @open="(e) => remote.open(e as RemoteEntry)"
-                @up="remote.up()"
-                @refresh="remote.refresh()"
-                @transfer="onRemoteTransfer"
-                @mkdir="(name) => run(remote.makeDir(name), $t('toast.folderCreated'))"
-                @rename="
-                  ({ entry, newName }) =>
-                    run(remote.rename(entry as RemoteEntry, newName), $t('toast.renamed'))
-                "
-                @remove="(entry) => run(remote.remove(entry as RemoteEntry), $t('toast.deleted'))"
-                @chmod="
-                  ({ entry, mode }) =>
-                    run(remote.chmod(entry as RemoteEntry, mode), $t('toast.permsUpdated'))
-                "
-                @edit="onRemoteEdit"
-                @drop-entry="onDropToRemote"
-              />
-            </div>
-            </div>
-
-            <div v-if="logOpen" class="log-area">
+            <div v-if="logOpen && ui.prefs.iface.messageLogPos !== 'hidden'" class="log-area">
               <LogPanel />
             </div>
           </div>
@@ -771,6 +861,10 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
   flex: 1 1 auto;
   min-height: 0;
 }
+/* swapPanes: kenar çubuğu sağa geçer. */
+.main-row--swap {
+  flex-direction: row-reverse;
+}
 /* Sol panel: sabit genişlik oranı, ekran örneğindeki gibi. */
 .left-panel {
   flex: 0 0 40%;
@@ -794,6 +888,8 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
 }
 .drawer-list {
   overflow-y: auto;
+  /* v-list kendi surface zeminini basmasın — kartın M3 kap rengi görünsün. */
+  background: transparent;
 }
 /* İkon ile metin arası boşluğu daralt. Vuetify 4'te bu boşluk --v-list-prepend-gap
    değişkeninden gelir (varsayılan 32px); değişkeni ezmek spacer genişliğini belirler. */

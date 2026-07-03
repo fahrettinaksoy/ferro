@@ -95,7 +95,10 @@ export const useConnectionStore = defineStore('connection', {
     },
 
     /** Bekleyen oturumu sonuca bağlayan ortak akış. */
-    async settlePending(s: OpenSession, p: Promise<{ sessionId: string; cwd: string }>): Promise<string> {
+    async settlePending(
+      s: OpenSession,
+      p: Promise<{ sessionId: string; cwd: string }>
+    ): Promise<string> {
       try {
         const { sessionId, cwd } = await p
         if (!this.sessions.includes(s)) {

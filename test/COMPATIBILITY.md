@@ -5,14 +5,14 @@ listeleme formatı, pasif mod, encoding, TLS) doğru ele almaktır. Bu matris te
 
 ## Durum
 
-| Sunucu | Protokol | Listeleme formatı | Durum | Not |
-|--------|----------|-------------------|-------|-----|
-| **vsftpd** (delfer/alpine-ftp) | FTP | MLSD / Unix LIST | ✅ Otomatik test | `localhost:21` — 6+ test geçiyor |
-| **OpenSSH SFTP** (atmoz/sftp) | SFTP | SFTP stat | ✅ Otomatik test | `localhost:2222` — host key TOFU dahil |
-| **Pure-FTPd** (stilliard) | FTP/FTPS | Unix LIST | 🟡 Manuel | `--profile extended`, `localhost:2121` |
-| **ProFTPD** (kibatic) | FTP/FTPS | Unix LIST | 🟡 Manuel | `--profile extended`, `localhost:2122` |
-| **Microsoft IIS FTP** | FTP | **DOS/Windows LIST** | ⬜ Yapılmadı | Linux Docker'da çalışmaz (Windows). basic-ftp DOS parser'ı var; gerçek IIS'e karşı doğrulanmalı |
-| **FileZilla Server** | FTP/FTPS | Unix/MLSD | ⬜ Yapılmadı | Windows. Manuel test gerekir |
+| Sunucu                         | Protokol | Listeleme formatı    | Durum            | Not                                                                                             |
+| ------------------------------ | -------- | -------------------- | ---------------- | ----------------------------------------------------------------------------------------------- |
+| **vsftpd** (delfer/alpine-ftp) | FTP      | MLSD / Unix LIST     | ✅ Otomatik test | `localhost:21` — 6+ test geçiyor                                                                |
+| **OpenSSH SFTP** (atmoz/sftp)  | SFTP     | SFTP stat            | ✅ Otomatik test | `localhost:2222` — host key TOFU dahil                                                          |
+| **Pure-FTPd** (stilliard)      | FTP/FTPS | Unix LIST            | 🟡 Manuel        | `--profile extended`, `localhost:2121`                                                          |
+| **ProFTPD** (kibatic)          | FTP/FTPS | Unix LIST            | 🟡 Manuel        | `--profile extended`, `localhost:2122`                                                          |
+| **Microsoft IIS FTP**          | FTP      | **DOS/Windows LIST** | ⬜ Yapılmadı     | Linux Docker'da çalışmaz (Windows). basic-ftp DOS parser'ı var; gerçek IIS'e karşı doğrulanmalı |
+| **FileZilla Server**           | FTP/FTPS | Unix/MLSD            | ⬜ Yapılmadı     | Windows. Manuel test gerekir                                                                    |
 
 ## Çalıştırma
 

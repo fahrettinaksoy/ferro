@@ -63,9 +63,7 @@ describe('SessionManager (gerçek vsftpd, electron mock)', () => {
     const logs = sentEvents.filter((e) => e.channel === 'session:log')
     expect(logs.length).toBeGreaterThan(0)
     // En az bir "Bağlandı" info satırı olmalı
-    expect(
-      logs.some((e) => (e.payload as { text: string }).text.includes('Bağlandı'))
-    ).toBe(true)
+    expect(logs.some((e) => (e.payload as { text: string }).text.includes('Bağlandı'))).toBe(true)
   })
 
   it('require() ile dizin listeler', async () => {
@@ -87,7 +85,14 @@ describe('SessionManager (gerçek vsftpd, electron mock)', () => {
 
     const localDir = mkdtempSync(join(tmpdir(), 'ferro-rtree-'))
     sentEvents.length = 0
-    sessionManager.enqueueTransfer(sessionId, 'download', 'rtree', join(localDir, 'rtree'), 'rtree', true)
+    sessionManager.enqueueTransfer(
+      sessionId,
+      'download',
+      'rtree',
+      join(localDir, 'rtree'),
+      'rtree',
+      true
+    )
 
     const completed = (): TransferJob[] =>
       sentEvents

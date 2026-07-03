@@ -1,36 +1,47 @@
-# Güvenlik — Ferro
+# Security Policy
 
-Bu belge, analiz raporu §9 güvenlik kontrol listesini uygulama durumuyla eşler ve denetim bulgularını kaydeder.
+## Reporting a vulnerability
 
-## Kontrol Listesi (rapor §9)
+Please **do not** report security vulnerabilities through public GitHub issues.
 
-| # | Madde | Durum | Uygulama |
-|---|-------|-------|----------|
-| 1 | Kimlik bilgileri düz metin saklanmaz | ✅ | `safeStorage` (OS keychain) — [vault.ts](src/main/store/vault.ts). `safeStorage` yoksa base64 fallback + kullanıcı uyarısı |
-| 2 | FTPS/SFTP önerilir, düz FTP'de uyarı | ⚠️ Kısmi | Protokol seçilebilir; bağlantı log'unda protokol gösterilir. (Açık "güvensiz" rozeti eklenebilir) |
-| 3 | SFTP host key doğrulama (TOFU) | ✅ | Parmak izi onayı + `known_hosts.json` + değişiklik uyarısı — [HostKeyVerifier.ts](src/main/transfer/HostKeyVerifier.ts) |
-| 4 | Self-signed TLS'te açık onay | ✅ | Önce katı doğrula (parola sızmaz), hata→onay diyaloğu, `trusted_certs.json` — [TlsVerifier.ts](src/main/transfer/TlsVerifier.ts) |
-| 5 | Electron sertleştirme | ✅ | `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, sıkı CSP, `window.open` → deny |
-| 6 | FTP bounce koruması (`allowSeparateTransferHost`) | ✅ | Set edilmedi → basic-ftp güvenli varsayılanı (kapalı) |
-| 7 | Üretimde kod imzalama | ⚙️ Hazır | mac (`CSC_LINK`/notarization) + win (`WIN_CSC_LINK`) env ile — [electron-builder.yml](electron-builder.yml). İmzalama sertifikası gerektirir |
+Instead, use one of these private channels:
 
-## Sertleştirme ayrıntıları
+- **GitHub Security Advisories** (preferred): [Report a vulnerability](https://github.com/fahrettinaksoy/ferro/security/advisories/new)
+- **Email:** <backend@cyh.com.tr> — include "SECURITY" in the subject line
 
-- **Süreç izolasyonu:** Tüm Node/FTP erişimi yalnızca Main process'te. Renderer ham sokete erişemez; IPC tip güvenli `contextBridge` köprüsünden geçer ([preload](src/preload/index.ts)).
-- **CSP:** `default-src 'self'`; script yalnızca `'self'`; bağlantı `'self'` ([index.html](src/renderer/index.html)).
-- **IPC:** Beyaz listeli kanallar; handler hataları yapısal `FerroError` olarak serileştirilir (stack renderer'a sızmaz).
+Please include: a description of the issue, steps to reproduce, the affected version/platform, and any suggested mitigation. You can expect an acknowledgement within **72 hours** and a status update within **7 days**. We will credit reporters in the release notes unless you prefer otherwise.
 
-## npm audit bulguları (denetim)
+## Supported versions
 
-`npm audit` çalıştırıldı:
+| Version        | Supported           |
+| -------------- | ------------------- |
+| Latest release | ✅                  |
+| Older releases | ❌ — please upgrade |
 
-- **devDependencies (build araçları):** 10 yüksek açık — tümü `electron-builder` zincirinde (`tar`, `cacache`, `node-gyp`). **Paketlenen uygulamaya dahil DEĞİL** (yalnızca build zamanı). Runtime riski yok.
-- **dependencies (runtime):** `basic-ftp`, `ssh2`, `ssh2-sftp-client`, `electron-updater` **temiz**.
-- **Electron (runtime, 1 yüksek):** Electron 33.x için Chromium kaynaklı CVE'ler. CVE'lerin çoğu kullanılmayan özelliklere ait (USB seçimi, offscreen render, özel protokol handler'ları, `setAsDefaultProtocolClient`) ve mevcut sertleştirmeyle (sandbox + contextIsolation + nodeIntegration:false + window.open deny) önemli ölçüde azaltılmış.
-  - **Önerilen takip (yüksek öncelik):** Electron'u en güncel sürüme yükselt (`npm i -D electron@latest`), ardından tüm test + smoke döngüsünü tekrarla. Major atlama olduğundan ayrı bir doğrulama turunda yapılmalıdır.
+## Scope
 
-## İmzalama / notarization (yayın)
+Ferro is a desktop FTP/FTPS/SFTP client. Reports we are especially interested in:
 
-- **macOS:** `CSC_LINK` (.p12), `CSC_KEY_PASSWORD`; notarization için `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
-- **Windows:** `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`.
-- İmzasız derleme için: `CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:unpack`.
+- Credential exposure (vault, logs, memory of persisted files)
+- Bypass of TLS certificate pinning or SSH host key verification
+- Renderer → main privilege escalation (IPC validation bypass, sandbox escape)
+- Path traversal in local or remote file operations
+- Auto-update integrity issues
+
+Plain FTP transmitting data unencrypted is a protocol property, not a vulnerability.
+
+## Security posture
+
+Measures currently in place:
+
+- **Process isolation:** all network and Node.js access is confined to the main process. The renderer runs with `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false` and a strict CSP; the only bridge is the typed `window.ferro` API.
+- **IPC hardening:** a single bridge channel, per-channel schema validation (zod), sender frame verification, and structured error serialization (no stack traces cross the bridge).
+- **Credential storage:** passwords are encrypted with Electron `safeStorage` (OS keychain). When OS-level encryption is unavailable, a clearly-flagged fallback is used and the user is warned.
+- **SFTP host keys:** trust-on-first-use with SHA-256 fingerprint pinning and a prominent warning when a stored key changes.
+- **FTPS certificates:** strict verification first (credentials are never sent to an unverified server); self-signed certificates require explicit user approval and are pinned by SHA-256 fingerprint, with a warning if the certificate later changes.
+- **Local filesystem guardrails:** destructive operations refuse filesystem roots and the home directory; all paths are validated and normalized at the IPC boundary.
+- **Navigation/link hardening:** new windows are denied, external links are restricted to `https:`/`http:`/`mailto:`, in-app navigation is blocked.
+
+## Release integrity
+
+Official builds are published via GitHub Releases by the CI release workflow. macOS and Windows packages are code-signed when signing certificates are configured; Linux packages rely on HTTPS transport and the electron-updater blockmap. Always download Ferro from the official repository's Releases page.

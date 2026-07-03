@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { FerroError } from '@shared/errors'
+import { i18n } from '@renderer/plugins/i18n'
 
 export type ToastColor = 'success' | 'error' | 'warning' | 'info'
 
@@ -25,6 +27,13 @@ const TIMEOUT: Record<ToastColor, number> = {
 }
 
 export function errText(err: unknown): string {
+  // FerroError kodları UI dilinde çevrilir (main süreç mesajları tek dillidir);
+  // teknik ayrıntı log panelinde kalır. Katalogda olmayan kod ham mesaja düşer.
+  if (err instanceof FerroError) {
+    const key = `errors.${err.code}`
+    if (i18n.global.te(key)) return i18n.global.t(key)
+    return err.message
+  }
   if (err instanceof Error) return err.message
   if (typeof err === 'string') return err
   return String((err as { message?: string })?.message ?? err)

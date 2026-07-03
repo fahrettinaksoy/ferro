@@ -33,17 +33,18 @@ export type SchemeKey =
 export type ThemeContrast = 'standard' | 'medium' | 'high'
 export type ThemeMode = 'light' | 'dark'
 
-/** Seçilebilir şemalar (Ayarlar → Temalar → Scheme). */
-export const SCHEME_OPTIONS: { value: SchemeKey; title: string }[] = [
-  { value: 'tonalSpot', title: 'Material (Tonal Spot)' },
-  { value: 'content', title: 'İçerik (Content)' },
-  { value: 'expressive', title: 'Etkileyici (Expressive)' },
-  { value: 'fidelity', title: 'Sadık (Fidelity)' },
-  { value: 'vibrant', title: 'Canlı (Vibrant)' },
-  { value: 'neutral', title: 'Nötr (Neutral)' },
-  { value: 'monochrome', title: 'Monokrom (Monochrome)' },
-  { value: 'fruitSalad', title: 'Meyve Salatası (Fruit Salad)' },
-  { value: 'rainbow', title: 'Gökkuşağı (Rainbow)' }
+/** Seçilebilir şemalar (Ayarlar → Temalar → Scheme). Başlıklar i18n anahtarıdır
+ *  (görüntüleyen bileşen t() ile çözer — lib katmanında sabit dil metni tutulmaz). */
+export const SCHEME_OPTIONS: { value: SchemeKey; titleKey: string }[] = [
+  { value: 'tonalSpot', titleKey: 'themeOptions.scheme.tonalSpot' },
+  { value: 'content', titleKey: 'themeOptions.scheme.content' },
+  { value: 'expressive', titleKey: 'themeOptions.scheme.expressive' },
+  { value: 'fidelity', titleKey: 'themeOptions.scheme.fidelity' },
+  { value: 'vibrant', titleKey: 'themeOptions.scheme.vibrant' },
+  { value: 'neutral', titleKey: 'themeOptions.scheme.neutral' },
+  { value: 'monochrome', titleKey: 'themeOptions.scheme.monochrome' },
+  { value: 'fruitSalad', titleKey: 'themeOptions.scheme.fruitSalad' },
+  { value: 'rainbow', titleKey: 'themeOptions.scheme.rainbow' }
 ]
 
 type SchemeCtor = new (src: Hct, isDark: boolean, contrast: number) => DynamicScheme
@@ -119,7 +120,12 @@ const EXTRA: Record<ThemeMode, Record<string, string>> = {
   dark: { success: '#66BB6A', warning: '#FFB74D', info: '#4FC3F7' }
 }
 
-function genColors(seedHex: string, scheme: SchemeKey, isDark: boolean, contrast: ThemeContrast): Record<string, string> {
+function genColors(
+  seedHex: string,
+  scheme: SchemeKey,
+  isDark: boolean,
+  contrast: ThemeContrast
+): Record<string, string> {
   const Ctor = SCHEMES[scheme]
   const s = new Ctor(Hct.fromInt(argbFromHex(seedHex)), isDark, CONTRAST_LEVEL[contrast])
   const colors: Record<string, string> = {}
@@ -131,7 +137,12 @@ function genColors(seedHex: string, scheme: SchemeKey, isDark: boolean, contrast
   return colors
 }
 
-function def(seedHex: string, scheme: SchemeKey, isDark: boolean, contrast: ThemeContrast): ThemeDefinition {
+function def(
+  seedHex: string,
+  scheme: SchemeKey,
+  isDark: boolean,
+  contrast: ThemeContrast
+): ThemeDefinition {
   return {
     dark: isDark,
     colors: genColors(seedHex, scheme, isDark, contrast),
@@ -157,7 +168,8 @@ export function buildThemes(seedHex: string, scheme: SchemeKey): Record<string, 
 
 /** Mode + kontrast → aktif tema adı. */
 export function themeName(mode: ThemeMode, contrast: ThemeContrast): string {
-  const suffix = contrast === 'medium' ? '-medium-contrast' : contrast === 'high' ? '-high-contrast' : ''
+  const suffix =
+    contrast === 'medium' ? '-medium-contrast' : contrast === 'high' ? '-high-contrast' : ''
   return mode + suffix
 }
 
@@ -189,9 +201,11 @@ export interface ThemeFonts {
 const SYSTEM_STACK =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
-/** Yazı tipi seçenekleri (Ayarlar → Temalar → Yazı tipleri). */
+/** Yazı tipi seçenekleri (Ayarlar → Temalar → Yazı tipleri). Font adları özel
+ *  isimdir (çevrilmez); 'system' girdisinin etiketi görüntüleyen bileşende i18n
+ *  ile çözülür (themeOptions.fontSystem). */
 export const FONT_OPTIONS: { value: string; title: string }[] = [
-  { value: 'system', title: 'Sistem' },
+  { value: 'system', title: 'System' },
   { value: 'Roboto', title: 'Roboto' },
   { value: 'Arial', title: 'Arial' },
   { value: 'Georgia', title: 'Georgia' },
@@ -201,7 +215,12 @@ export const FONT_OPTIONS: { value: string; title: string }[] = [
 
 function fontStack(value: string): string {
   if (value === 'system') return SYSTEM_STACK
-  const generic = value === 'Courier New' ? 'monospace' : value === 'Georgia' || value === 'Times New Roman' ? 'serif' : 'sans-serif'
+  const generic =
+    value === 'Courier New'
+      ? 'monospace'
+      : value === 'Georgia' || value === 'Times New Roman'
+        ? 'serif'
+        : 'sans-serif'
   return `'${value}', ${generic}`
 }
 

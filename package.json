@@ -1,10 +1,31 @@
 {
   "name": "ferro",
   "version": "0.1.0",
-  "description": "Ferro — FTP/FTPS/SFTP masaüstü istemcisi",
+  "description": "Ferro — a modern, security-focused FTP/FTPS/SFTP desktop client",
   "main": "./out/main/index.js",
-  "author": "Ferro",
+  "author": "Fahrettin Aksoy <backend@cyh.com.tr>",
   "license": "MIT",
+  "homepage": "https://github.com/fahrettinaksoy/ferro#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fahrettinaksoy/ferro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fahrettinaksoy/ferro/issues"
+  },
+  "keywords": [
+    "ftp",
+    "ftps",
+    "sftp",
+    "ftp-client",
+    "file-transfer",
+    "electron",
+    "vue",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "start": "electron-vite preview",
@@ -17,9 +38,18 @@
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "vitest run",
+    "test:unit": "vitest run .unit.test.",
+    "test:integration": "vitest run .integration.test.",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint . --cache",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,mjs,cjs,vue}": "eslint --cache --fix",
+    "*.{ts,mjs,cjs,vue,json,md,yml,yaml,scss,css,html}": "prettier --write"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -29,22 +59,34 @@
     "basic-ftp": "^5.0.5",
     "electron-updater": "^6.8.9",
     "pinia": "^3.0.4",
+    "socks": "^2.8.9",
     "ssh2-sftp-client": "^11.0.0",
     "vue-i18n": "^11.4.6",
-    "vue-router": "^4.6.4",
-    "vuetify": "^4.1.2"
+    "vuetify": "^4.1.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.0",
+    "@commitlint/config-conventional": "^21.2.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.1",
     "@types/ssh2-sftp-client": "^9.0.4",
     "@vitejs/plugin-vue": "^5.2.1",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.9.2",
+    "globals": "^17.7.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "prettier": "^3.4.2",
     "sass": "^1.101.0",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.62.1",
     "vite": "^6.0.3",
     "vite-plugin-vuetify": "^2.1.3",
     "vitest": "^4.1.9",
