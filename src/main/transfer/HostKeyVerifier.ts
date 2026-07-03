@@ -5,6 +5,10 @@ import { createLogger } from '../core/logger'
 
 const log = createLogger('hostkey')
 
+/** Kullanıcı kararı beklenirken üst sınır — renderer yanıt veremezse bağlantı
+ *  sonsuza dek asılı kalmaz, güvenli tarafta (reddet) sonuçlanır. */
+const DECISION_TIMEOUT_MS = 5 * 60_000
+
 /**
  * SFTP host key TOFU (Trust On First Use) doğrulaması.
  * Bilinmeyen/değişen anahtarda renderer'a parmak izini gösterir ve kullanıcı kararını bekler.
@@ -28,6 +32,12 @@ class HostKeyVerifier {
 
     const decision = new Promise<boolean>((resolve) => {
       this.pending.set(requestId, resolve)
+      setTimeout(() => {
+        if (this.pending.delete(requestId)) {
+          log.warn(`host key onayı zaman aşımı (${host}:${port}) — reddedildi`)
+          resolve(false)
+        }
+      }, DECISION_TIMEOUT_MS)
     })
     emitEvent(sender, 'hostkey:verify', { requestId, host, port, fingerprint, changed })
 

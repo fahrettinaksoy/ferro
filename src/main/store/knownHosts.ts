@@ -1,12 +1,26 @@
 import { app } from 'electron'
 import { join } from 'path'
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readJsonVersioned, writeJsonVersioned } from './jsonStore'
 import { createLogger } from '../core/logger'
 
 const log = createLogger('knownHosts')
 
-// host:port → sha256 parmak izi. userData altında kalıcı saklanır.
+// host:port → sha256 parmak izi. userData altında sürümlü + atomik saklanır.
+// Bozulma durumunda dosya .corrupt olarak karantinaya alınır ve depo boş açılır;
+// böylece güvenilen anahtarlar sessizce yeni bir TOFU turuna indirgenmez,
+// kayıt kurtarılabilir kalır.
 type Store = Record<string, string>
+
+const STORE_VERSION = 1
+
+function isLegacyStore(v: unknown): v is Store {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    !Array.isArray(v) &&
+    Object.values(v).every((x) => typeof x === 'string')
+  )
+}
 
 class KnownHosts {
   private cache: Store | null = null
@@ -17,19 +31,15 @@ class KnownHosts {
 
   private load(): Store {
     if (this.cache) return this.cache
-    try {
-      this.cache = JSON.parse(readFileSync(this.file(), 'utf8')) as Store
-    } catch {
-      this.cache = {}
-    }
+    this.cache = readJsonVersioned<Store>(this.file(), STORE_VERSION, () => ({}), {
+      legacy: (parsed) => (isLegacyStore(parsed) ? parsed : null)
+    })
     return this.cache
   }
 
   private save(): void {
     try {
-      const path = this.file()
-      mkdirSync(join(path, '..'), { recursive: true })
-      writeFileSync(path, JSON.stringify(this.cache ?? {}, null, 2), 'utf8')
+      writeJsonVersioned(this.file(), STORE_VERSION, this.cache ?? {})
     } catch (err) {
       log.warn('known_hosts yazılamadı', String(err))
     }

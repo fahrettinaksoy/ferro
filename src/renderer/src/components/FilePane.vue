@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, reactive } from 'vue'
+import { computed, ref, reactive, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import type { VVirtualScroll } from 'vuetify/components'
 import type { EntryType } from '@shared/transfer'
 import { formatSize, formatDate, entryIcon, formatPermissions } from '@renderer/lib/format'
+import { dirRank, compareNames } from '@renderer/lib/fsEntries'
+import { useUiStore } from '@renderer/stores/ui'
 
 const { t, locale } = useI18n()
+const ui = useUiStore()
+
+/** Sanal listede satır yüksekliği (px) — CSS .grid-row ile eşleşmeli. */
+const ROW_HEIGHT = 32
 
 interface PaneEntry {
   name: string
@@ -46,6 +53,8 @@ const emit = defineEmits<{
   open: [entry: PaneEntry]
   up: []
   refresh: []
+  /** Breadcrumb tıklaması: mutlak dizine git. */
+  navigate: [path: string]
   transfer: [entry: PaneEntry]
   mkdir: [name: string]
   rename: [payload: { entry: PaneEntry; newName: string }]
@@ -88,6 +97,23 @@ function onDragOver(e: DragEvent): void {
 
 // İzinler ve Sahip/Grup sütunları yalnızca uzak panelde gösterilir (FileZilla gibi).
 const showRemoteCols = computed(() => props.side === 'remote')
+const gridColsClass = computed(() => (showRemoteCols.value ? 'cols-remote' : 'cols-local'))
+
+// ── Yol kırıntıları (breadcrumbs): cwd → tıklanabilir mutlak dizin adımları ──
+const crumbs = computed(() => {
+  const items: { title: string; path: string }[] = [{ title: '/', path: '/' }]
+  let acc = ''
+  for (const part of (props.cwd || '').split('/').filter(Boolean)) {
+    acc += '/' + part
+    items.push({ title: part, path: acc })
+  }
+  return items
+})
+
+function goCrumb(i: number): void {
+  if (props.disabled || i === crumbs.value.length - 1) return
+  emit('navigate', crumbs.value[i].path)
+}
 
 // ── Sütunlar: sıralama + dosya türü (FileZilla benzeri) ──
 type SortKey = 'name' | 'size' | 'type' | 'modified'
@@ -101,6 +127,11 @@ function toggleSort(key: SortKey): void {
   }
 }
 
+function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+  if (sortKey.value !== key) return 'none'
+  return sortAsc.value ? 'ascending' : 'descending'
+}
+
 /** Girdinin "Dosya türü" sütunu metni. */
 function fileType(entry: PaneEntry): string {
   if (entry.type === 'directory') return t('panes.typeFolder')
@@ -112,14 +143,15 @@ function fileType(entry: PaneEntry): string {
   return t('panes.typeFile')
 }
 
-// Klasörler önce; ardından seçili sütuna göre. Sıralama panele özgü (yerel/uzak).
+// Gruplama + ad karşılaştırması Ayarlar → Dosya listeleri tercihlerine göre;
+// seçili sütun ikinci anahtar olarak uygulanır. Sıralama panele özgü.
 const sortedEntries = computed(() => {
+  const fl = ui.prefs.fileLists
   const dir = sortAsc.value ? 1 : -1
   return [...props.entries].sort((a, b) => {
-    const ad = a.type === 'directory' ? 0 : 1
-    const bd = b.type === 'directory' ? 0 : 1
-    if (ad !== bd) return ad - bd
-    let r = 0
+    const g = dirRank(a.type, fl.sortMode) - dirRank(b.type, fl.sortMode)
+    if (g !== 0) return g
+    let r: number
     switch (sortKey.value) {
       case 'size':
         r = a.size - b.size
@@ -131,7 +163,7 @@ const sortedEntries = computed(() => {
         r = fileType(a).localeCompare(fileType(b))
         break
       default:
-        r = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        r = compareNames(a.name, b.name, fl.nameSort)
     }
     return r * dir
   })
@@ -139,6 +171,116 @@ const sortedEntries = computed(() => {
 
 /** Boş satır için sütun sayısı. Uzak: +İzinler +Sahip/Grup. */
 const colCount = computed(() => (showRemoteCols.value ? 7 : 5))
+
+// ── Klavye gezinme + seçim (roving focus, listbox deseni) ──
+const scroller = ref<InstanceType<typeof VVirtualScroll> | null>(null)
+const focusedIndex = ref(-1)
+
+function rowId(index: number): string {
+  return `pane-${props.side}-row-${index}`
+}
+
+function focusRow(index: number): void {
+  focusedIndex.value = index
+}
+
+function moveFocus(delta: number): void {
+  const max = sortedEntries.value.length - 1
+  if (max < 0) return
+  const next = Math.min(
+    max,
+    Math.max(0, (focusedIndex.value < 0 ? -1 : focusedIndex.value) + delta)
+  )
+  focusedIndex.value = next
+  scroller.value?.scrollToIndex(next)
+}
+
+/** Çift tık / Enter davranışı — Ayarlar → Dosya listeleri tercihlerine göre. */
+function activate(entry: PaneEntry): void {
+  const fl = ui.prefs.fileLists
+  if (entry.type === 'directory') {
+    if (fl.dblClickDir === 'open') emit('open', entry)
+    return
+  }
+  switch (fl.dblClickFile) {
+    case 'transfer':
+      if (!props.disabled) emit('transfer', entry)
+      break
+    case 'view-edit':
+      if (props.supportsEdit) emit('edit', entry)
+      else emit('open', entry)
+      break
+    default:
+      break
+  }
+}
+
+function menuAtFocusedRow(): void {
+  const entry = sortedEntries.value[focusedIndex.value]
+  if (!entry) return
+  const el = document.getElementById(rowId(focusedIndex.value))
+  const rect = el?.getBoundingClientRect()
+  menuEntry.value = entry
+  menuTarget.value = rect ? [rect.left + 40, rect.top + rect.height] : [0, 0]
+  menuOpen.value = true
+}
+
+function onKeydown(e: KeyboardEvent): void {
+  const entries = sortedEntries.value
+  if (props.disabled) return
+  switch (e.key) {
+    case 'ArrowDown':
+      e.preventDefault()
+      moveFocus(1)
+      break
+    case 'ArrowUp':
+      e.preventDefault()
+      moveFocus(-1)
+      break
+    case 'Home':
+      e.preventDefault()
+      focusedIndex.value = entries.length ? 0 : -1
+      scroller.value?.scrollToIndex(0)
+      break
+    case 'End':
+      e.preventDefault()
+      focusedIndex.value = entries.length - 1
+      scroller.value?.scrollToIndex(entries.length - 1)
+      break
+    case 'Enter': {
+      const entry = entries[focusedIndex.value]
+      if (entry) activate(entry)
+      break
+    }
+    case 'Backspace':
+      e.preventDefault()
+      emit('up')
+      break
+    case 'Delete': {
+      const entry = entries[focusedIndex.value]
+      if (entry) {
+        menuEntry.value = entry
+        startDelete()
+      }
+      break
+    }
+    case 'ContextMenu':
+      e.preventDefault()
+      menuAtFocusedRow()
+      break
+    case 'F10':
+      if (e.shiftKey) {
+        e.preventDefault()
+        menuAtFocusedRow()
+      }
+      break
+  }
+}
+
+// Liste değişince odak dizinini geçerli aralığa sabitle.
+watch(sortedEntries, (list) => {
+  if (focusedIndex.value >= list.length) focusedIndex.value = list.length - 1
+})
 
 /** Alt durum çubuğu metni: uzak bağlı değilse "bağlantı yok", aksi halde özet. */
 const statusText = computed(() => {
@@ -159,9 +301,10 @@ const menuOpen = ref(false)
 const menuTarget = ref<[number, number]>([0, 0])
 const menuEntry = ref<PaneEntry | null>(null)
 
-function openMenu(e: MouseEvent, entry: PaneEntry): void {
+function openMenu(e: MouseEvent, entry: PaneEntry, index: number): void {
   if (props.disabled) return
   e.preventDefault()
+  focusedIndex.value = index
   menuEntry.value = entry
   menuTarget.value = [e.clientX, e.clientY]
   menuOpen.value = true
@@ -250,17 +393,47 @@ const dialogTitle = computed(() => {
         <v-btn
           icon="$folderAdd"
           :title="$t('common.newFolder')"
+          :aria-label="$t('common.newFolder')"
           :disabled="disabled"
           @click="startMkdir()"
         />
-        <v-btn icon="$navUp" :disabled="disabled" @click="emit('up')" />
-        <v-btn icon="$refresh" :disabled="disabled" @click="emit('refresh')" />
+        <v-btn
+          icon="$navUp"
+          :title="$t('panes.goUp')"
+          :aria-label="$t('panes.goUp')"
+          :disabled="disabled"
+          @click="emit('up')"
+        />
+        <v-btn
+          icon="$refresh"
+          :title="$t('common.refresh')"
+          :aria-label="$t('common.refresh')"
+          :disabled="disabled"
+          @click="emit('refresh')"
+        />
       </v-defaults-provider>
     </v-toolbar>
 
-    <div class="px-3 text-caption text-medium-emphasis path-bar" :title="cwd">
-      {{ cwd || '—' }}
-    </div>
+    <!-- Bulunulan dizin: tıklanabilir breadcrumbs — her adım o dizine götürür. -->
+    <v-breadcrumbs
+      density="compact"
+      bg-color="surface-variant"
+      class="path-bar text-caption"
+      :title="cwd"
+    >
+      <template v-for="(c, i) in crumbs" :key="c.path">
+        <v-breadcrumbs-item
+          :disabled="disabled"
+          :class="{ 'crumb-link': !disabled && i < crumbs.length - 1 }"
+          :active="i === crumbs.length - 1"
+          @click="goCrumb(i)"
+        >
+          <v-icon v-if="i === 0" icon="mdi-folder-home-outline" size="small" />
+          <template v-else>{{ c.title }}</template>
+        </v-breadcrumbs-item>
+        <v-breadcrumbs-divider v-if="i < crumbs.length - 1" />
+      </template>
+    </v-breadcrumbs>
 
     <v-divider />
 
@@ -276,101 +449,148 @@ const dialogTitle = computed(() => {
       @dragleave="dragOver = false"
       @drop="onDrop"
     >
-      <v-table fixed-header hover>
-        <thead>
-          <tr>
-            <th class="col-sort" @click="toggleSort('name')">
-              {{ $t('panes.colName') }}
-              <v-icon
-                v-if="sortKey === 'name'"
-                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
-                size="x-small"
-              />
-            </th>
-            <th class="col-sort text-right" style="width: 90px" @click="toggleSort('size')">
-              {{ $t('panes.colSize') }}
-              <v-icon
-                v-if="sortKey === 'size'"
-                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
-                size="x-small"
-              />
-            </th>
-            <th class="col-sort" style="width: 130px" @click="toggleSort('type')">
-              {{ $t('panes.colType') }}
-              <v-icon
-                v-if="sortKey === 'type'"
-                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
-                size="x-small"
-              />
-            </th>
-            <th class="col-sort" style="width: 140px" @click="toggleSort('modified')">
-              {{ $t('panes.colModified') }}
-              <v-icon
-                v-if="sortKey === 'modified'"
-                :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
-                size="x-small"
-              />
-            </th>
-            <th v-if="showRemoteCols" style="width: 100px">{{ $t('common.permissions') }}</th>
-            <th v-if="showRemoteCols" style="width: 120px">{{ $t('panes.colOwner') }}</th>
-            <th style="width: 48px"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Yükleme: iskelet (skeleton) satırları. Sütun sayısına göre hücre üretilir. -->
-          <template v-if="loading">
-            <tr v-for="n in 9" :key="'skeleton-' + n" class="skeleton-row">
-              <td v-for="c in colCount" :key="c">
-                <v-skeleton-loader type="text" class="skeleton-cell" />
-              </td>
-            </tr>
-          </template>
-
-          <template v-else>
-          <tr
-            v-for="entry in sortedEntries"
-            :key="entry.name"
-            class="row-entry"
-            :draggable="true"
-            @dblclick="emit('open', entry)"
-            @contextmenu="openMenu($event, entry)"
-            @dragstart="onDragStart($event, entry)"
+      <div class="hscroll">
+        <!-- Başlık satırı: sıralanabilir sütunlar gerçek buton (klavye erişilebilir). -->
+        <div class="grid-head" :class="gridColsClass" role="row">
+          <button
+            class="head-cell col-sort"
+            :aria-sort="ariaSort('name')"
+            :aria-label="$t('panes.sortColumn', { column: $t('panes.colName') })"
+            @click="toggleSort('name')"
           >
-            <td>
-              <v-icon :icon="entryIcon(entry.type)" size="small" class="mr-2" />
-              {{ entry.name }}
-            </td>
-            <td class="text-right">
-              {{ entry.type === 'directory' ? '' : formatSize(entry.size) }}
-            </td>
-            <td class="text-caption">{{ fileType(entry) }}</td>
-            <td class="text-caption">{{ formatDate(entry.modifiedAt) }}</td>
-            <td v-if="showRemoteCols" class="text-caption font-monospace">
-              {{ formatPermissions(entry.permissions ?? null) }}
-            </td>
-            <td v-if="showRemoteCols" class="text-caption">
-              {{ entry.owner ? entry.owner + '/' + (entry.group ?? '') : '' }}
-            </td>
-            <td>
-              <v-btn
-                :icon="transferIcon"
-                size="x-small"
-                variant="text"
-                :title="
-                  entry.type === 'directory' ? transferTooltip + ' (klasör)' : transferTooltip
-                "
-                @click.stop="emit('transfer', entry)"
-              />
-            </td>
-          </tr>
-          <tr v-if="!entries.length">
-            <td :colspan="colCount" class="text-center text-medium-emphasis py-4">
-              {{ disabled ? $t('panes.noConnection') : $t('common.empty') }}
-            </td>
-          </tr>
+            {{ $t('panes.colName') }}
+            <v-icon
+              v-if="sortKey === 'name'"
+              :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+              size="x-small"
+            />
+          </button>
+          <button
+            class="head-cell col-sort text-right justify-end"
+            :aria-sort="ariaSort('size')"
+            :aria-label="$t('panes.sortColumn', { column: $t('panes.colSize') })"
+            @click="toggleSort('size')"
+          >
+            {{ $t('panes.colSize') }}
+            <v-icon
+              v-if="sortKey === 'size'"
+              :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+              size="x-small"
+            />
+          </button>
+          <button
+            class="head-cell col-sort"
+            :aria-sort="ariaSort('type')"
+            :aria-label="$t('panes.sortColumn', { column: $t('panes.colType') })"
+            @click="toggleSort('type')"
+          >
+            {{ $t('panes.colType') }}
+            <v-icon
+              v-if="sortKey === 'type'"
+              :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+              size="x-small"
+            />
+          </button>
+          <button
+            class="head-cell col-sort"
+            :aria-sort="ariaSort('modified')"
+            :aria-label="$t('panes.sortColumn', { column: $t('panes.colModified') })"
+            @click="toggleSort('modified')"
+          >
+            {{ $t('panes.colModified') }}
+            <v-icon
+              v-if="sortKey === 'modified'"
+              :icon="sortAsc ? 'mdi-menu-up' : 'mdi-menu-down'"
+              size="x-small"
+            />
+          </button>
+          <div v-if="showRemoteCols" class="head-cell">{{ $t('common.permissions') }}</div>
+          <div v-if="showRemoteCols" class="head-cell">{{ $t('panes.colOwner') }}</div>
+          <div class="head-cell"></div>
+        </div>
+
+        <!-- Yükleme: iskelet (skeleton) satırları. -->
+        <template v-if="loading">
+          <div v-for="n in 9" :key="'skeleton-' + n" class="grid-row" :class="gridColsClass">
+            <div v-for="c in colCount" :key="c" class="cell">
+              <v-skeleton-loader type="text" class="skeleton-cell" />
+            </div>
+          </div>
+        </template>
+
+        <div v-else-if="!entries.length" class="empty-row text-center text-medium-emphasis py-4">
+          {{ disabled ? $t('panes.noConnection') : $t('common.empty') }}
+        </div>
+
+        <!-- Sanal liste: binlerce girdide yalnızca görünen satırlar DOM'da. -->
+        <v-virtual-scroll
+          v-else
+          ref="scroller"
+          :items="sortedEntries"
+          :item-height="ROW_HEIGHT"
+          class="rows-scroll"
+          role="listbox"
+          :aria-label="$t('panes.fileList')"
+          tabindex="0"
+          :aria-activedescendant="focusedIndex >= 0 ? rowId(focusedIndex) : undefined"
+          @keydown="onKeydown"
+        >
+          <template #default="{ item: entry, index }">
+            <div
+              :id="rowId(index)"
+              class="grid-row row-entry"
+              :class="[gridColsClass, { 'row-focused': index === focusedIndex }]"
+              role="option"
+              :aria-selected="index === focusedIndex"
+              :draggable="true"
+              @click="focusRow(index)"
+              @dblclick="activate(entry)"
+              @contextmenu="openMenu($event, entry, index)"
+              @dragstart="onDragStart($event, entry)"
+            >
+              <div class="cell">
+                <v-icon :icon="entryIcon(entry.type)" size="small" class="mr-2" />
+                {{ entry.name }}
+              </div>
+              <div class="cell text-right justify-end">
+                {{ entry.type === 'directory' ? '' : formatSize(entry.size, ui.prefs.fileSize) }}
+              </div>
+              <div class="cell text-caption">{{ fileType(entry) }}</div>
+              <div class="cell text-caption">
+                {{ formatDate(entry.modifiedAt, ui.prefs.dateTime) }}
+              </div>
+              <div v-if="showRemoteCols" class="cell text-caption font-monospace">
+                {{ formatPermissions(entry.permissions ?? null) }}
+              </div>
+              <div v-if="showRemoteCols" class="cell text-caption">
+                {{ entry.owner ? entry.owner + '/' + (entry.group ?? '') : '' }}
+              </div>
+              <div class="cell cell-actions">
+                <!-- tabindex=-1: listbox option içinde odaklanabilir öğe ARIA'ya
+                     aykırıdır; aktarım klavyeden Enter (tercihe göre) veya
+                     bağlam menüsüyle yapılır. -->
+                <v-btn
+                  :icon="transferIcon"
+                  size="x-small"
+                  variant="text"
+                  tabindex="-1"
+                  :title="
+                    entry.type === 'directory'
+                      ? transferTooltip + $t('panes.folderSuffix')
+                      : transferTooltip
+                  "
+                  :aria-label="
+                    entry.type === 'directory'
+                      ? transferTooltip + $t('panes.folderSuffix')
+                      : transferTooltip
+                  "
+                  @click.stop="emit('transfer', entry)"
+                />
+              </div>
+            </div>
           </template>
-        </tbody>
-      </v-table>
+        </v-virtual-scroll>
+      </div>
     </div>
 
     <!-- Alt durum çubuğu: yerelde özet (dosya/klasör/boyut), uzakta bağlantı durumu. -->
@@ -456,51 +676,155 @@ const dialogTitle = computed(() => {
   flex-direction: column;
   min-height: 0;
 }
-/* v-table parent'ı doldursun; kaydırma kendi __wrapper'ında olsun ki
-   fixed-header (sticky thead) çalışsın. */
-.table-scroll > :deep(.v-table) {
+/* Yatay taşma tek sarmalayıcıda: başlık ve satırlar birlikte kayar. */
+.hscroll {
   flex: 1 1 auto;
   min-height: 0;
-  background: transparent; /* M3 kap rengi karttan gelir */
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
 }
-/* Sticky başlık hücreleri kartın kap rengini almalı (varsayılanı surface —
-   kaydırınca altındaki satırlar farklı zeminle sırıtırdı). */
-.table-scroll :deep(th) {
-  background: rgb(var(--v-theme-surface-container-low)) !important;
+/* Sanal liste dikey kaydırmayı kendi içinde yapar. */
+.rows-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
 }
-/* Dar panelde sütunlar alt satıra düşmesin; yatay (ve dikey) kaydırma
-   __wrapper'da olsun. Tabloya alt sınır genişliği ver ki sığmadığında
-   sarmalayan alan sağa/sola kaysın, hücreler ezilmesin. */
-.table-scroll :deep(.v-table__wrapper) {
-  overflow: auto;
+.rows-scroll:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: -2px;
 }
-.table-scroll :deep(.v-table__wrapper > table) {
+
+/* Izgara sütunları — .grid-head ve .grid-row aynı şablonu paylaşır. */
+.grid-head,
+.grid-row {
+  display: grid;
+  align-items: center;
   min-width: 640px;
 }
-.table-scroll :deep(th),
-.table-scroll :deep(td) {
-  white-space: nowrap;
+.cols-local {
+  grid-template-columns: minmax(200px, 1fr) 90px 130px 140px 48px;
 }
-/* Ad sütunu esnek ama tümden ezilmesin; taşan uzun adı üç nokta ile kes. */
-.table-scroll :deep(td:first-child) {
-  max-width: 0;
+.cols-remote {
+  grid-template-columns: minmax(200px, 1fr) 90px 130px 140px 100px 120px 48px;
+}
+
+.grid-head {
+  flex: 0 0 auto;
+  height: 32px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: rgb(var(--v-theme-surface-container-low));
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+/* Sıralama başlıkları gerçek buton: tarayıcı varsayılanları sıfırlanır. */
+.head-cell {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 100%;
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
 }
-.drop-active {
-  outline: 2px dashed rgb(var(--v-theme-primary));
+button.head-cell.col-sort {
+  cursor: pointer;
+  user-select: none;
+}
+button.head-cell.col-sort:hover {
+  color: rgb(var(--v-theme-primary));
+}
+button.head-cell.col-sort:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
   outline-offset: -2px;
+}
+
+.grid-row {
+  height: 32px;
+  border-bottom: 1px solid rgba(var(--v-border-color), calc(var(--v-border-opacity) * 0.6));
+  cursor: default;
+  user-select: none;
+}
+.grid-row.row-entry:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+.grid-row.row-focused {
+  background: rgba(var(--v-theme-primary), 0.1);
 }
 .row-entry[draggable='true'] {
   cursor: grab;
 }
+.cell {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* Ad hücresinde uzun adlar üç nokta ile kesilir (flex çocukları için gerekli). */
+.cell > * {
+  min-width: 0;
+}
+.cell-actions {
+  padding: 0 4px;
+  justify-content: center;
+}
+.empty-row {
+  min-width: 640px;
+}
+
+.drop-active {
+  outline: 2px dashed rgb(var(--v-theme-primary));
+  outline-offset: -2px;
+}
+/* Breadcrumbs çubuğu: tek satır, SIKI sabit yükseklik (Vuetify'ın ul
+   padding'i ezilir); uzun yol yatay kayar. */
 .path-bar {
   flex: 0 0 auto;
   height: 28px;
-  line-height: 28px;
+  min-height: 28px;
+  font-size: 0.6875rem; /* text-caption'dan bir tık küçük */
+  margin-top: 2px;
+  margin-bottom: 0px;
+  padding: 0px 10px !important;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* ince çubuk bile yüksekliği bozuyor */
+}
+/* Chromium: yatay kaydırma çubuğu yer kaplamasın (Electron = Chromium). */
+.path-bar::-webkit-scrollbar {
+  display: none;
+}
+/* Kırıntı satır yüksekliğini metne indir — ul/li varsayılan boşlukları sıfır. */
+.path-bar :deep(li) {
+  line-height: 22px;
+  margin: 0;
+}
+/* Adımlar ve slaş ayraçları arası boşluğu daralt. */
+.path-bar :deep(.v-breadcrumbs-item) {
+  padding: 0;
+}
+.path-bar :deep(.v-breadcrumbs-divider) {
+  padding-inline: 2px;
+}
+/* Ara adımlar tıklanabilir: imleç + hover'da primary vurgu. */
+.crumb-link {
+  cursor: pointer;
+}
+.crumb-link:hover {
+  color: rgb(var(--v-theme-primary));
 }
 /* Hata çubuğu: ince, tek satır — paneli şişirmeyen zarif bir uyarı. */
 .pane-error {
@@ -512,29 +836,19 @@ const dialogTitle = computed(() => {
 .font-monospace {
   font-family: monospace;
 }
-.row-entry {
-  cursor: default;
-  user-select: none;
-}
-.col-sort {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
 .status-bar {
   flex: 0 0 auto;
-  height: 24px;
-  line-height: 24px;
+  height: 22px;
+  line-height: 22px;
+  font-size: 0.6875rem; /* text-caption'dan bir tık küçük */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 /* İskelet satırları: hücre içinde tek satırlık "kemik", saydam zemin. */
-.skeleton-row td {
-  cursor: default;
-}
 .skeleton-cell {
   background: transparent;
+  width: 100%;
 }
 .skeleton-cell :deep(.v-skeleton-loader__text) {
   margin: 0;

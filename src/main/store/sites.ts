@@ -1,7 +1,8 @@
 import { app } from 'electron'
 import { randomUUID } from 'crypto'
 import { join } from 'path'
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
+import { readJsonVersioned, writeJsonVersioned } from './jsonStore'
 import { encryptSecret, decryptSecret } from './vault'
 import { defaultPort } from '@shared/transfer'
 import type {
@@ -9,6 +10,7 @@ import type {
   Protocol,
   SavedSite,
   SiteAdvanced,
+  SiteExportEntry,
   SiteInput
 } from '@shared/transfer'
 import { createLogger } from '../core/logger'
@@ -79,6 +81,9 @@ interface StoredSite extends SiteAdvanced {
   secret?: string
 }
 
+/** sites.json şema sürümü ({version, data} zarfı). */
+const STORE_VERSION = 1
+
 class SiteStore {
   private cache: StoredSite[] | null = null
 
@@ -88,19 +93,31 @@ class SiteStore {
 
   private load(): StoredSite[] {
     if (this.cache) return this.cache
-    try {
-      this.cache = JSON.parse(readFileSync(this.file(), 'utf8')) as StoredSite[]
-    } catch {
-      // sites.json yok/bozuk → ilk açılışta sites.seed.json'dan tohumla.
-      this.cache = this.seed()
-    }
+    this.cache = readJsonVersioned<StoredSite[]>(
+      this.file(),
+      STORE_VERSION,
+      // Dosya yok → ilk açılış: sites.seed.json'dan tohumla.
+      () => this.seed(),
+      {
+        // Zarf öncesi eski format: çıplak dizi.
+        legacy: (parsed) => (Array.isArray(parsed) ? (parsed as StoredSite[]) : null),
+        // Bozulma: dosya .corrupt olarak karantinaya alındı; kullanıcı verisinin
+        // üzerine demo seed'i YAZMA — boş başla, kayıt kurtarılabilir kalsın.
+        onCorrupt: () => []
+      }
+    )
     return this.cache
   }
 
-  /** sites.seed.json'u arar (dev + paketlenmiş build). seed/ alt klasörü önceliklidir. */
+  /**
+   * sites.seed.json'u arar (dev + paketlenmiş build). seed/ alt klasörü önceliklidir.
+   * Bilinçli olarak yalnızca uygulamaya ait kökler taranır (resourcesPath + appPath);
+   * process.cwd() taranmaz — paketli uygulama, başlatıldığı dizindeki rastgele bir
+   * seed dosyasını içe aktarmamalıdır.
+   */
   private seedFile(): string | null {
     const rel = ['seed/sites.seed.json', 'sites.seed.json']
-    const roots = [process.resourcesPath ?? '', app.getAppPath(), join(app.getAppPath(), '..'), process.cwd()]
+    const roots = [process.resourcesPath ?? '', app.getAppPath(), join(app.getAppPath(), '..')]
     const candidates = roots.flatMap((r) => rel.map((f) => (r ? join(r, f) : '')))
     return candidates.find((p) => p && existsSync(p)) ?? null
   }
@@ -127,7 +144,7 @@ class SiteStore {
         anonymous: s.anonymous,
         encoding: s.encoding,
         rejectUnauthorized: s.rejectUnauthorized,
-        secret: s.secret ?? (s.password ? encryptSecret(s.password) : undefined)
+        secret: s.secret ?? (s.password ? (encryptSecret(s.password) ?? undefined) : undefined)
       }))
       this.cache = records
       this.save()
@@ -141,9 +158,7 @@ class SiteStore {
 
   private save(): void {
     try {
-      const path = this.file()
-      mkdirSync(join(path, '..'), { recursive: true })
-      writeFileSync(path, JSON.stringify(this.cache ?? [], null, 2), 'utf8')
+      writeJsonVersioned(this.file(), STORE_VERSION, this.cache ?? [])
     } catch (err) {
       log.error('sites.json yazılamadı', String(err))
     }
@@ -170,7 +185,9 @@ class SiteStore {
   list(): SavedSite[] {
     return this.load()
       .map((s) => this.toPublic(s))
-      .sort((a, b) => (a.folder ?? '').localeCompare(b.folder ?? '') || a.name.localeCompare(b.name))
+      .sort(
+        (a, b) => (a.folder ?? '').localeCompare(b.folder ?? '') || a.name.localeCompare(b.name)
+      )
   }
 
   upsert(input: SiteInput): string {
@@ -179,9 +196,11 @@ class SiteStore {
     const id = existing?.id ?? randomUUID()
 
     // Parola: yeni verildiyse şifrele; verilmediyse mevcut korunur.
+    // encryptSecret null dönerse (safeStorage yok) parola KALICI KAYDEDİLMEZ —
+    // düz metin/base64 diske asla yazılmaz; kullanıcı bağlanırken parola girer.
     let secret = existing?.secret
     if (input.password !== undefined && input.password !== '') {
-      secret = encryptSecret(input.password)
+      secret = encryptSecret(input.password) ?? undefined
     } else if (input.password === '' && existing) {
       secret = undefined // boş parola → temizle
     }
@@ -215,6 +234,98 @@ class SiteStore {
     this.save()
   }
 
+  /** Tüm site parolalarını düz metin olarak çözer (vault mod geçişi için).
+   *  Yalnızca vault kilitli değilken anlamlı çalışır. */
+  exportSecrets(): { id: string; plain: string }[] {
+    return this.load()
+      .filter((s) => s.secret)
+      .map((s) => ({ id: s.id, plain: decryptSecret(s.secret as string) }))
+      .filter((x) => x.plain !== '')
+  }
+
+  /** Verilen düz metin parolaları güncel vault şemasıyla yeniden şifreleyip yazar. */
+  importSecrets(items: { id: string; plain: string }[]): void {
+    const store = this.load()
+    for (const { id, plain } of items) {
+      const s = store.find((x) => x.id === id)
+      if (!s) continue
+      const enc = encryptSecret(plain)
+      if (enc) s.secret = enc
+    }
+    this.save()
+  }
+
+  /**
+   * Tüm siteleri dışa aktarma formatına dönüştürür (id'siz — hedefte yeni id üretilir).
+   * includePasswords true ise parolalar DÜZ METİN çözülür; vault kilitliyse ya da
+   * çözüm başarısızsa ilgili site parolasız aktarılır (hata fırlatılmaz).
+   */
+  exportSites(includePasswords: boolean): SiteExportEntry[] {
+    return this.load().map((s) => {
+      const entry: SiteExportEntry = {
+        name: s.name,
+        folder: s.folder,
+        protocol: s.protocol,
+        host: s.host,
+        port: s.port,
+        user: s.user,
+        anonymous: s.anonymous,
+        askPassword: s.askPassword,
+        encoding: s.encoding,
+        rejectUnauthorized: s.rejectUnauthorized,
+        ...pickAdvanced(s)
+      }
+      if (includePasswords && s.secret) {
+        const plain = decryptSecret(s.secret)
+        if (plain) entry.password = plain
+      }
+      return entry
+    })
+  }
+
+  /**
+   * Dışa aktarma kayıtlarını içe aktarır. Yinelenenler atlanır: mevcut bir
+   * siteyle protokol+host+port+kullanıcı+ad beşlisi aynıysa kayıt eklenmez
+   * (host büyük/küçük harf duyarsız). Her yeni kayda taze id üretilir; düz
+   * metin parolalar vault ile şifrelenir ("parola sorulsun" işaretliyse
+   * parola yok sayılır — mevcut upsert kuralıyla tutarlı).
+   */
+  importSites(entries: SiteExportEntry[]): { imported: number; skipped: number } {
+    const store = this.load()
+    const key = (s: Pick<StoredSite, 'protocol' | 'host' | 'port' | 'user' | 'name'>): string =>
+      [s.protocol, s.host.toLowerCase(), s.port, s.user, s.name].join(' ')
+    const seen = new Set(store.map(key))
+    let imported = 0
+    let skipped = 0
+    for (const e of entries) {
+      const k = key(e)
+      if (seen.has(k)) {
+        skipped++
+        continue
+      }
+      seen.add(k)
+      store.push({
+        id: randomUUID(),
+        name: e.name,
+        folder: e.folder || undefined,
+        protocol: e.protocol,
+        host: e.host,
+        port: e.port,
+        user: e.user,
+        anonymous: e.anonymous,
+        askPassword: e.askPassword,
+        encoding: e.encoding,
+        rejectUnauthorized: e.rejectUnauthorized,
+        secret: !e.askPassword && e.password ? (encryptSecret(e.password) ?? undefined) : undefined,
+        ...pickAdvanced(e)
+      })
+      imported++
+    }
+    if (imported) this.save()
+    log.info(`site içe aktarımı: ${imported} eklendi, ${skipped} yinelenen atlandı`)
+    return { imported, skipped }
+  }
+
   /** Bir grubu (klasörü) yeniden adlandırır: o klasördeki tüm sitelerin folder
    *  alanını günceller. Boş hedef → siteler grupsuz olur. Diğer alanlar (parola,
    *  gelişmiş ayarlar) korunur. Etkilenen site sayısını döndürür. */
@@ -246,7 +357,9 @@ class SiteStore {
       password: passwordOverride ?? (s.secret ? decryptSecret(s.secret) : undefined),
       anonymous: s.anonymous,
       encoding: s.encoding,
-      rejectUnauthorized: s.rejectUnauthorized
+      rejectUnauthorized: s.rejectUnauthorized,
+      // Site ayarı: "bağlantı sayısını sınırla" işaretliyse havuz boyutuna yansır.
+      maxConnections: s.limitConnections ? s.maxConnections : undefined
     }
   }
 }

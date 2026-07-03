@@ -6,6 +6,9 @@ import { useUiStore } from '@renderer/stores/ui'
 import { useToastStore, type ToastColor, type ToastMessage } from '@renderer/stores/toast'
 import { applyThemes, applyFonts } from '@renderer/lib/theme'
 import SettingsDialog from '@renderer/components/SettingsDialog.vue'
+import AboutDialog from '@renderer/components/AboutDialog.vue'
+import MasterUnlockDialog from '@renderer/components/MasterUnlockDialog.vue'
+import MainView from '@renderer/views/MainView.vue'
 
 // Tema state'i uygulama kökünde uygulanır (v-app burada).
 const ui = useUiStore()
@@ -45,9 +48,14 @@ function toastText(item: unknown): string {
 
 <template>
   <v-app>
-    <router-view />
+    <!-- Tek görünümlü uygulama: router gereksizdi, MainView doğrudan çizilir. -->
+    <MainView />
     <!-- Sağdan açılan, her şeyin üzerine gelen genel panel(ler) -->
     <SettingsDialog />
+    <!-- Uygulama menüsü "Hakkında" ile açılır (app:showAbout). -->
+    <AboutDialog />
+    <!-- Kimlik deposu master modda kilitliyse açılışta parola sorar. -->
+    <MasterUnlockDialog />
 
     <!-- Global bildirim kuyruğu: tüm CRUD/bağlantı işlemleri buraya düşer.
          İkon, mesajın color'ından #text slot'unda türetilir (extra prop yok). -->

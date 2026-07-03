@@ -1,5 +1,22 @@
 import type { Writable, Readable } from 'stream'
-import type { RemoteEntry, TransferProgress } from '@shared/transfer'
+import type {
+  RemoteEntry,
+  TransferProgress,
+  ProxyConfig,
+  TransferTypeConfig
+} from '@shared/transfer'
+
+/** Adaptör kurulum seçenekleri (uygulama geneli çalışma zamanı ayarlarından). */
+export interface AdapterOptions {
+  /** Bağlantı zaman aşımı (ms); 0 = kapalı. */
+  connectTimeoutMs?: number
+  /** FTP keep-alive (NOOP) gönderilsin mi. */
+  keepAlive?: boolean
+  /** Vekil sunucu (SFTP). */
+  proxy?: ProxyConfig
+  /** FTP ASCII/binary kuralları. */
+  transferType?: TransferTypeConfig
+}
 
 export interface TransferOptions {
   /** İlerleme geri çağrısı. */

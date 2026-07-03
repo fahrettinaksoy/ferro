@@ -11,7 +11,12 @@ export function registerFsHandlers(): void {
     sessionManager.emitLog(ctx.sender, sessionId, 'info', `Dizin listeleniyor: ${target}`)
     try {
       const entries = await client.list(path)
-      sessionManager.emitLog(ctx.sender, sessionId, 'info', `Dizin listelendi: ${entries.length} öğe`)
+      sessionManager.emitLog(
+        ctx.sender,
+        sessionId,
+        'info',
+        `Dizin listelendi: ${entries.length} öğe`
+      )
       return entries
     } catch (err) {
       sessionManager.emitLog(
@@ -88,6 +93,11 @@ export function registerFsHandlers(): void {
   registerHandler('transfer:cancel', async ({ jobId }) => {
     sessionManager.cancelTransfer(jobId)
     return { ok: true as const }
+  })
+
+  registerHandler('transfer:setPaused', async ({ paused }) => {
+    sessionManager.setTransfersPaused(paused)
+    return { paused }
   })
 
   registerHandler('sync:compare', async ({ sessionId, localPath, remotePath }) => {

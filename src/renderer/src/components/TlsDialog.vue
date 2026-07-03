@@ -37,18 +37,31 @@ async function decide(accept: boolean): Promise<void> {
   <v-dialog v-model="open" max-width="540" persistent>
     <v-card v-if="current">
       <v-card-title class="d-flex align-center ga-2">
-        <v-icon icon="mdi-certificate" color="warning" />
-        {{ $t('tls.title') }}
+        <v-icon icon="mdi-certificate" :color="current.changed ? 'error' : 'warning'" />
+        {{ current.changed ? $t('tls.changedTitle') : $t('tls.title') }}
       </v-card-title>
       <v-card-text>
+        <v-alert v-if="current.changed" type="error" variant="tonal" density="compact" class="mb-3">
+          {{ $t('tls.changedWarning') }}
+        </v-alert>
         <p class="mb-2">{{ $t('tls.intro', { host: `${current.host}:${current.port}` }) }}</p>
         <v-sheet color="surface" border rounded class="pa-2 detail">{{ current.detail }}</v-sheet>
-        <p class="text-caption text-medium-emphasis mt-2">{{ $t('tls.note') }}</p>
+        <div v-if="current.fingerprint" class="mt-2">
+          <div class="text-caption text-medium-emphasis">{{ $t('tls.fingerprint') }}</div>
+          <v-sheet color="surface" border rounded class="pa-2 detail">{{
+            current.fingerprint
+          }}</v-sheet>
+        </div>
+        <p class="text-caption text-medium-emphasis mt-2">
+          {{ current.fingerprint ? $t('tls.note') : $t('tls.noteSessionOnly') }}
+        </p>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
         <v-btn variant="text" @click="decide(false)">{{ $t('tls.reject') }}</v-btn>
-        <v-btn color="warning" @click="decide(true)">{{ $t('tls.trust') }}</v-btn>
+        <v-btn :color="current.changed ? 'error' : 'warning'" @click="decide(true)">
+          {{ $t('tls.trust') }}
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

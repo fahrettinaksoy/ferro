@@ -26,6 +26,13 @@ export default {
     verifyCert: 'Verify certificate',
     connecting: 'Connecting'
   },
+  about: {
+    version: 'Version {v}',
+    description: 'Fast and modern FTP / FTPS / SFTP client',
+    platform: 'Platform',
+    copyright: '© 2026 Fahrettin Aksoy',
+    license: 'MIT License'
+  },
   pwPrompt: {
     title: 'Enter password',
     intro: 'Please enter the password for this server:',
@@ -57,12 +64,18 @@ export default {
     noConnection: 'Not connected to any server',
     connecting: 'Connecting…',
     defaultTab: 'New Connection',
-    defaultTabHint: 'Not connected — click to choose a server'
+    defaultTabHint: 'Not connected — click to choose a server',
+    folderSuffix: ' (folder)',
+    goUp: 'Go to parent directory',
+    fileList: 'File list',
+    sortColumn: 'Sort by {column}'
   },
   transfer: {
     title: 'Transfers',
     activeCount: '{count} active',
     clearCompleted: 'Clear completed',
+    pauseAll: 'Pause transfers',
+    resumeAll: 'Start transfers',
     queued: 'Queued',
     completed: 'Transferred',
     failed: 'Not transferred',
@@ -84,6 +97,9 @@ export default {
     siteSaved: 'Site saved',
     siteDeleting: 'Deleting…',
     siteDeleted: 'Site deleted',
+    sitesExported: '{count} sites exported',
+    sitesImported: '{imported} sites imported ({skipped} duplicates skipped)',
+    sitesImportNone: 'No new sites added — {skipped} entries already exist',
     folderCreated: 'Folder created',
     renamed: 'Renamed',
     deleted: 'Deleted',
@@ -131,6 +147,10 @@ export default {
       explicit: 'Use explicit FTP over TLS if available',
       implicit: 'Require implicit FTP over TLS'
     },
+    proto: {
+      ftp: 'FTP — File Transfer Protocol',
+      sftp: 'SFTP — SSH File Transfer Protocol'
+    },
     logonType: 'Logon Type',
     logon: { anonymous: 'Anonymous', normal: 'Normal', ask: 'Ask for password' },
     bgColor: 'Background color',
@@ -164,7 +184,15 @@ export default {
     charsetUtf8: 'UTF-8',
     charsetCustom: 'Use custom charset',
     encodingLabel: 'Encoding',
-    charsetNote: 'Using the wrong charset can result in filenames not displaying correctly.'
+    charsetNote: 'Using the wrong charset can result in filenames not displaying correctly.',
+    import: 'Import',
+    export: 'Export',
+    exportTitle: 'Export sites',
+    exportDesc:
+      '{count} sites will be saved to a JSON file. You can import this file into another Ferro installation.',
+    exportWithPasswords: 'Include saved passwords',
+    exportPasswordWarning:
+      'Passwords are written to the file in PLAIN TEXT. Keep the file safe and delete it before sharing.'
   },
   hostkey: {
     unknownTitle: 'Unknown Host Key',
@@ -178,10 +206,54 @@ export default {
   },
   tls: {
     title: 'Untrusted Certificate',
+    changedTitle: 'Certificate Has CHANGED',
+    changedWarning:
+      'The server is presenting a DIFFERENT certificate than the one you previously trusted. This may indicate a man-in-the-middle (MITM) attack. Reject unless you know the certificate was legitimately replaced.',
     intro: 'The TLS certificate of {host} could not be verified:',
-    note: 'This is normal for self-signed certificates. If you trust the server you may connect; your choice is saved.',
+    fingerprint: 'SHA-256 fingerprint',
+    note: 'This is normal for self-signed certificates. If you trust the server you may connect; the certificate fingerprint is pinned and you will be warned if it ever changes.',
+    noteSessionOnly:
+      'The certificate fingerprint could not be read, so this approval will only last for the current session.',
     trust: 'Trust and Connect',
     reject: 'Reject'
+  },
+  errors: {
+    UNKNOWN: 'An unexpected error occurred',
+    IPC_HANDLER_MISSING: 'Internal error: unknown operation',
+    VALIDATION: 'Invalid input',
+    CONNECTION_FAILED: 'Could not connect to the server',
+    AUTH_FAILED: 'Authentication failed',
+    NOT_CONNECTED: 'Not connected',
+    TLS_UNTRUSTED: 'Certificate was rejected',
+    HOST_KEY_UNTRUSTED: 'Host key was rejected',
+    TRANSFER_FAILED: 'Transfer failed',
+    FS_ERROR: 'File operation failed',
+    NOT_FOUND: 'File or directory not found',
+    PERMISSION_DENIED: 'Permission denied',
+    TIMEOUT: 'Operation timed out',
+    CANCELLED: 'Cancelled'
+  },
+  vaultUnlock: {
+    title: 'Unlock credentials',
+    intro: 'Enter your master password to unlock saved passwords for this session.',
+    password: 'Master password',
+    unlock: 'Unlock',
+    later: 'Later',
+    failed: 'Incorrect master password.'
+  },
+  themeOptions: {
+    fontSystem: 'System',
+    scheme: {
+      tonalSpot: 'Material (Tonal Spot)',
+      content: 'Content',
+      expressive: 'Expressive',
+      fidelity: 'Fidelity',
+      vibrant: 'Vibrant',
+      neutral: 'Neutral',
+      monochrome: 'Monochrome',
+      fruitSalad: 'Fruit Salad',
+      rainbow: 'Rainbow'
+    }
   },
   settings: {
     title: 'Settings',
@@ -214,9 +286,45 @@ export default {
       lang: 'Language',
       editing: 'File editing',
       fileAssoc: 'Filetype associations',
+      sync: 'Synchronization',
       updates: 'Updates',
       logging: 'Logging',
       debug: 'Debug'
+    },
+    sync: {
+      title: 'Synchronization',
+      intro:
+        'Your data is backed up to a remote store in encrypted form and carried across devices. It is encrypted with your sync password before it leaves your device — the remote store only ever sees an encrypted blob.',
+      passwordTitle: 'Sync password',
+      password: 'Sync password',
+      passwordHint:
+        'The end-to-end encryption key is derived from this password. Use the same password on all your devices; if you lose it, the remote backup CANNOT be decrypted.',
+      includeTitle: 'What to sync?',
+      includeSites: 'Site Manager (servers, groups and passwords)',
+      includeSettings: 'Application settings (theme, language, preferences)',
+      providerTitle: 'Remote store',
+      gist: 'GitHub Gist',
+      webdav: 'WebDAV',
+      gistToken: 'GitHub personal access token',
+      gistId: 'Gist ID (opt.)',
+      gistIdHint: 'If left empty, a secret gist is created on first push and its ID is saved.',
+      gistHint:
+        'Grant the token only the "gist" scope. On the other device, enter the same token and gist ID.',
+      webdavUrl: 'WebDAV folder URL',
+      actionsTitle: 'Sync',
+      saveConfig: 'Save settings',
+      push: 'Push',
+      pull: 'Pull',
+      pushed: 'Sync uploaded ({sites} sites, encrypted)',
+      pulledSites: 'Sites synced: {imported} added, {skipped} duplicates skipped',
+      settingsApplied: 'Settings applied — reloading the interface…',
+      remoteEmpty: 'No sync data on the remote store yet — use "Push" first',
+      neverSynced: 'No sync performed yet.',
+      lastSync: 'Last sync: {when} ({dir})',
+      saved: 'Synchronization settings saved',
+      pullConfirmTitle: 'Pull remote data?',
+      pullConfirmText:
+        'Sites are merged into your current list (duplicates skipped). Application settings are REPLACED by the remote copy and the interface reloads.'
     },
     connection: {
       timeoutTitle: 'Timeout',
@@ -338,7 +446,16 @@ export default {
       master: 'Save passwords protected by a master password',
       masterPw: 'Master password:',
       masterPwConfirm: 'Confirm password:',
-      masterWarning: 'If the master password is lost it cannot be recovered! Keep it safe.'
+      masterWarning: 'If the master password is lost it cannot be recovered! Keep it safe.',
+      currentMasterPw: 'Current master password:',
+      setMaster: 'Set master password',
+      changeMaster: 'Change master password',
+      useOsKeychain: 'Switch back to OS keychain',
+      masterActive: 'A master password is currently set.',
+      mismatch: 'The passwords do not match.',
+      masterSet: 'Master password saved.',
+      switchedOs: 'Switched to OS keychain.',
+      wrongCurrent: 'The current master password is incorrect.'
     },
     langPage: {
       selectLabel: 'Select language:',
@@ -500,7 +617,8 @@ export default {
       custom: 'Custom',
       specifiers: 'Format specifiers:',
       spec1: '%h - Host    %u - Username    %p - Password',
-      spec2: '%a - Account (lines containing this will be ignored if account login type is not used)',
+      spec2:
+        '%a - Account (lines containing this will be ignored if account login type is not used)',
       spec3: '%s - Proxy username    %w - Proxy password',
       host: 'Proxy host:',
       user: 'Proxy username:',

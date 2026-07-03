@@ -21,7 +21,11 @@ const repoRoot = join(__dirname, '..')
 
 const DEFAULT_PORT = { ftp: 21, ftps: 21, 'ftps-implicit': 990, sftp: 22 }
 
-/** Düz metni vault'un taşınabilir (güvensiz) fallback formatında şifreler. */
+/**
+ * Düz metni vault'un taşınabilir (güvensiz) fallback formatında şifreler.
+ * @param {string} plain
+ * @returns {string}
+ */
 const enc = (plain) => 'p0:' + Buffer.from(plain, 'utf8').toString('base64')
 
 // 48 bağlantı: 4 protokol arası karışık, çeşitli klasörler/portlar/seçeneklerle.
@@ -33,13 +37,27 @@ const specs = [
   ['API Gateway', 'sftp', 'api.ferro.example.com', 'Production', 'svc-api', { port: 2222 }],
   ['Yük Dengeleyici', 'sftp', 'lb.ferro.example.com', 'Production', 'root'],
   ['Statik İçerik (FTPS)', 'ftps', 'static.ferro.example.com', 'Production', 'static-ftp'],
-  ['Medya Deposu', 'ftps-implicit', 'media.ferro.example.com', 'Production', 'media', { rejectUnauthorized: false }],
+  [
+    'Medya Deposu',
+    'ftps-implicit',
+    'media.ferro.example.com',
+    'Production',
+    'media',
+    { rejectUnauthorized: false }
+  ],
   ['Ödeme Servisi', 'sftp', 'pay.ferro.example.com', 'Production', 'pay-svc', { port: 50022 }],
   ['Kuyruk İşleyici', 'sftp', 'worker.ferro.example.com', 'Production', 'worker'],
 
   // — Staging —
   ['Staging Web', 'sftp', 'staging.ferro.example.com', 'Staging', 'deploy'],
-  ['Staging API', 'ftps', 'api.staging.ferro.example.com', 'Staging', 'qa-ftp', { rejectUnauthorized: false }],
+  [
+    'Staging API',
+    'ftps',
+    'api.staging.ferro.example.com',
+    'Staging',
+    'qa-ftp',
+    { rejectUnauthorized: false }
+  ],
   ['Staging DB Dosyaları', 'sftp', 'db.staging.ferro.example.com', 'Staging', 'dbadmin'],
   ['QA Test Sunucu', 'ftp', 'qa.ferro.example.com', 'Staging', 'qa', { encoding: 'latin1' }],
   ['UAT Ortamı', 'ftps', 'uat.ferro.example.com', 'Staging', 'uatuser'],
@@ -54,22 +72,50 @@ const specs = [
 
   // — Backups —
   ['Yedek Sunucu (Gece)', 'sftp', 'backup01.ferro.example.com', 'Backups', 'backup'],
-  ['Yedek Sunucu (Haftalık)', 'sftp', 'backup02.ferro.example.com', 'Backups', 'backup', { port: 2222 }],
-  ['Off-site Yedek', 'ftps-implicit', 'offsite.ferro.example.com', 'Backups', 'archive', { rejectUnauthorized: false }],
+  [
+    'Yedek Sunucu (Haftalık)',
+    'sftp',
+    'backup02.ferro.example.com',
+    'Backups',
+    'backup',
+    { port: 2222 }
+  ],
+  [
+    'Off-site Yedek',
+    'ftps-implicit',
+    'offsite.ferro.example.com',
+    'Backups',
+    'archive',
+    { rejectUnauthorized: false }
+  ],
   ['Veritabanı Dump Arşivi', 'sftp', 'dumps.ferro.example.com', 'Backups', 'pgdump'],
   ['Log Arşivi', 'ftps', 'logs.ferro.example.com', '', 'logship'],
 
   // — CDN / Edge —
   ['CDN Origin (EU)', 'ftps-implicit', 'origin-eu.cdn.example.com', 'CDN', 'cdn-eu'],
   ['CDN Origin (US)', 'ftps-implicit', 'origin-us.cdn.example.com', 'CDN', 'cdn-us'],
-  ['CDN Origin (APAC)', 'ftps', 'origin-ap.cdn.example.com', 'CDN', 'cdn-ap', { rejectUnauthorized: false }],
+  [
+    'CDN Origin (APAC)',
+    'ftps',
+    'origin-ap.cdn.example.com',
+    'CDN',
+    'cdn-ap',
+    { rejectUnauthorized: false }
+  ],
   ['Edge Cache Node 1', 'sftp', 'edge1.cdn.example.com', 'CDN', 'edge'],
 
   // — Müşteriler (Clients) —
   ['Acme Corp', 'ftps', 'ftp.acme-corp.example', 'Müşteriler', 'ferro-acme'],
   ['Globex', 'sftp', 'sftp.globex.example', 'Müşteriler', 'globex', { port: 2022 }],
   ['Initech', 'ftp', 'ftp.initech.example', 'Müşteriler', 'initech', { encoding: 'latin1' }],
-  ['Umbrella Health', 'ftps-implicit', 'secure.umbrella.example', 'Müşteriler', 'umbrella', { rejectUnauthorized: false }],
+  [
+    'Umbrella Health',
+    'ftps-implicit',
+    'secure.umbrella.example',
+    'Müşteriler',
+    'umbrella',
+    { rejectUnauthorized: false }
+  ],
   ['Wonka Industries', 'sftp', 'transfer.wonka.example', 'Müşteriler', 'wonka'],
   ['Stark Endüstri', 'ftps', 'edi.stark.example', 'Müşteriler', 'stark-edi'],
   ['Wayne Holding', 'sftp', 'files.wayne.example', 'Müşteriler', 'wayne', { port: 4422 }],
@@ -85,9 +131,23 @@ const specs = [
   ['AWS EC2 (Bastion)', 'sftp', 'bastion.eu-central-1.example', 'Bulut', 'ec2-user', { port: 22 }],
   ['DigitalOcean Droplet', 'sftp', 'do-fra1.example', 'Bulut', 'root'],
   ['Hetzner Storage Box', 'ftps-implicit', 'u123456.your-storagebox.de', 'Bulut', 'u123456'],
-  ['Hetzner Storage (SFTP)', 'sftp', 'u123456.your-storagebox.de', 'Bulut', 'u123456', { port: 23 }],
+  [
+    'Hetzner Storage (SFTP)',
+    'sftp',
+    'u123456.your-storagebox.de',
+    'Bulut',
+    'u123456',
+    { port: 23 }
+  ],
   ['OVH VPS', 'sftp', 'vps.ovh.example', '', 'ubuntu'],
-  ['Azure Web App', 'ftps', 'waws-ferro.ftp.azurewebsites.windows.net', 'Bulut', '$ferro', { rejectUnauthorized: false }],
+  [
+    'Azure Web App',
+    'ftps',
+    'waws-ferro.ftp.azurewebsites.windows.net',
+    'Bulut',
+    '$ferro',
+    { rejectUnauthorized: false }
+  ],
   ['Google Cloud VM', 'sftp', 'gcp-vm.example', 'Bulut', 'gcpuser', { port: 22 }],
   ['Cloudflare R2 Gateway', 'ftps', 'r2-gw.example', 'Bulut', 'r2-access']
 ]

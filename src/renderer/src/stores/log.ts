@@ -18,7 +18,8 @@ export const useLogStore = defineStore('log', {
   },
   actions: {
     append(e: EventMap['session:log']): void {
-      const time = new Date().toLocaleTimeString('tr-TR')
+      // Sistem locale'i: günlük zaman damgası OS biçimini izler (sabit tr-TR değil).
+      const time = new Date().toLocaleTimeString()
       // `??=` ham nesne döndürür (bkz. remoteFs.slot) — proxy'den yeniden oku,
       // yoksa ilk satır ancak ikincisi gelince görünür.
       if (!this.bySession[e.sessionId]) this.bySession[e.sessionId] = []

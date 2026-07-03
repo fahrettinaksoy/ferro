@@ -1,0 +1,59 @@
+name: Release
+
+# v* etiketi push'landığında üç platformda paketler ve GitHub Release'e yükler.
+# electron-updater güncelleme akışı da (publish: github) aynı release'i kullanır.
+#
+# Kod imzalama secrets (opsiyonel — yoksa paketler imzasız üretilir):
+#   macOS   : CSC_LINK (base64 .p12), CSC_KEY_PASSWORD,
+#             APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (notarization)
+#   Windows : WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: --mac
+          - os: windows-latest
+            args: --win
+          - os: ubuntu-latest
+            args: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Package & publish to GitHub Release
+        run: npx electron-builder ${{ matrix.args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # İmzalama sertifikaları tanımlı değilse otomatik keşfi kapat
+          # (macOS'ta "sertifika bulunamadı" hatasını önler).
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

@@ -1,80 +1,85 @@
 # Ferro
 
-FTP / FTPS / SFTP masaüstü istemcisi — Electron + Vue 3 + Vuetify 3 + TypeScript.
+**A modern, security-focused FTP / FTPS / SFTP desktop client** built with Electron, Vue 3, Vuetify and TypeScript.
 
-> Yol haritası: [gelistirme-plani.md](gelistirme-plani.md) · Analiz: [ftp-client-analiz-raporu.md](ftp-client-analiz-raporu.md)
+[![CI](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml/badge.svg)](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Geliştirme
+_Türkçe belgeler için: [README.tr.md](README.tr.md)_
+
+<!-- TODO: add screenshots (docs/screenshots/main.png) before the first public release -->
+
+## Features
+
+- **Protocols:** FTP, FTPS (explicit & implicit), SFTP
+- **Dual-pane browsing** — local and remote panes with drag & drop transfers (files and folders)
+- **Transfer queue** with connection pooling, parallel transfers, progress, cancel, and resume (FTP REST)
+- **Directory synchronization** — compare local/remote and transfer the differences, direction-aware
+- **Edit-in-place** — open a remote file in your local editor; saves upload automatically
+- **Site Manager** — saved connections with folders, color labels and per-site advanced options
+- **Security by default**
+  - Credentials encrypted with the OS keychain (Electron `safeStorage`)
+  - SSH host key trust-on-first-use with SHA-256 fingerprint pinning and change warnings
+  - FTPS: strict certificate verification first (credentials never reach an unverified server); self-signed certificates require explicit approval and are **pinned by fingerprint**
+  - Sandboxed renderer, context isolation, strict CSP, schema-validated IPC
+- **Bandwidth throttling**, keep-alive, protocol log panel (command/reply stream)
+- **Localization:** English and Turkish, Material 3 dynamic theming, auto-update
+
+## Installation
+
+Download the latest package for your platform from [Releases](https://github.com/fahrettinaksoy/ferro/releases):
+
+- **macOS:** `Ferro-<version>-<arch>.dmg` (Apple Silicon + Intel)
+- **Windows:** `Ferro-<version>-x64.exe` (NSIS installer)
+- **Linux:** `Ferro-<version>-x64.AppImage` or `.deb`
+
+## Development
+
+Requires **Node.js 22** (`.nvmrc`) — and Docker if you want to run the integration tests.
 
 ```bash
 npm install
-npm run dev        # electron-vite dev (HMR)
-npm run typecheck  # node + web tip kontrolü
-npm run build      # typecheck + production paket
+npm run dev        # electron-vite dev server (HMR)
+npm run typecheck  # tsc (main/preload) + vue-tsc (renderer)
+npm run lint       # ESLint
+npm run build      # typecheck + production bundle
+npm run build:mac  # package for macOS (or build:win / build:linux)
 ```
 
-> **Not:** Bu ortamda `ELECTRON_RUN_AS_NODE=1` set ise Electron saf Node gibi başlar ve pencere açılmaz. Gerekirse `unset ELECTRON_RUN_AS_NODE && npm run dev`.
+> **Note:** if `ELECTRON_RUN_AS_NODE=1` is set, Electron starts as plain Node and no window opens. Run `unset ELECTRON_RUN_AS_NODE && npm run dev`.
 
-## Mimari
-
-- **Main** (`src/main`) — Node.js süreci. FTP/SFTP motoru burada çalışır.
-- **Preload** (`src/preload`) — sertleştirilmiş `contextBridge` köprüsü (CommonJS, sandbox uyumlu).
-- **Renderer** (`src/renderer`) — Vue 3 + Vuetify 3 arayüzü.
-- **Shared** (`src/shared`) — IPC sözleşmesi (`ipc.ts`) ve hata modeli (`errors.ts`).
-
-IPC tip güvenlidir: kanallar `src/shared/ipc.ts` içindeki `InvokeMap`/`EventMap`'te tanımlanır.
-Renderer, `@renderer/lib/ipc`'teki `invoke()` ile çağırır; hatalar `FerroError` (`code` korunur) olarak gelir.
-
-Güvenlik: `contextIsolation`, `sandbox`, `nodeIntegration:false`, sıkı CSP.
-
-## Test
+### Try it against local test servers
 
 ```bash
-docker compose -f test/docker-compose.yml up -d   # vsftpd + atmoz/sftp
-npm test                                          # adaptör entegrasyon testleri
-docker compose -f test/docker-compose.yml down    # kapat
+docker compose -f test/docker-compose.yml up -d
+npm run dev
+# FTP  : localhost:21   user: ferro  pass: ferropass
+# SFTP : localhost:2222 user: ferro  pass: ferropass
 ```
 
-## Durum
+## Architecture
 
-- [x] **Sprint 0** — iskelet, Vuetify/Pinia/Router, tip güvenli IPC köprüsü, logger + hata modeli
-- [~] **Sprint 1** — SFTP dahil MVP
-  - [x] G1.1 `IFileTransferClient` ortak arayüzü
-  - [x] G1.2 FTP/FTPS adaptörü (`basic-ftp`) — gerçek vsftpd'ye karşı test geçti
-  - [x] G1.9 SFTP adaptörü (`ssh2-sftp-client`) — gerçek atmoz/sftp'ye karşı test geçti
-  - [x] G1.8 Docker test sunucuları + Vitest entegrasyon testleri (10/10 geçiyor)
-  - [x] G1.3 Oturum yöneticisi + IPC uçları (connect/list/cwd/download/upload/local) — test edildi
-  - [x] G1.4 Bağlantı formu (Quick Connect: FTP/FTPS/SFTP, anonim)
-  - [x] G1.5/G1.6 Çift panel (yerel + uzak), gezinme, transfer butonları
-  - [x] G1.7 Log paneli (komut/yanıt akışı) + transfer ilerleme çubuğu
-  - [x] G1.10 Host key TOFU — parmak izi onay diyaloğu + known_hosts kaydı + değişiklik uyarısı
-- [x] **Sprint 2** — profesyonel çekirdek
-  - [x] G2.5 Dosya işlemleri: yeni klasör, yeniden adlandır, sil (uzak+yerel), chmod (uzak) — sağ tık menüsü
-  - [x] G2.4 Sürükle-bırak transfer (panel ↔ panel, dosya + klasör)
-  - [x] G2.2/G2.3 Transfer kuyruğu motoru + bağlantı havuzu — paralel transfer, ilerleme/iptal
-  - [x] G2.7 Resume (FTP REST/offset; SFTP overwrite) — yarım transferi sürdürme
-  - [x] G2.6 Recursive klasör transferi (alt ağaç) — indir + yükle
-  - [x] G2.8 Keep-alive (FTP NOOP timer + SFTP ssh2 keepalive)
-  - **16/16 entegrasyon testi geçiyor**
-- [x] **Sprint 3** — ileri düzey
-  - [x] G3.4 Site Yöneticisi (kayıtlı bağlantılar, çift tıkla bağlan)
-  - [x] G3.5 Şifreli kimlik deposu (Electron `safeStorage` / OS keychain)
-  - [x] G3.6 TLS sertifika onayı (FTPS self-signed TOFU diyaloğu)
-  - [x] G3.7 Dizin senkronizasyonu (karşılaştır + seçili aktar, yön seçimli)
-  - [x] G3.8 Edit-in-place (uzak dosyayı yerelde aç → kaydet → otomatik yükle)
-  - [x] G3.9 Bant genişliği sınırı (transfer hız throttle, ayarlardan)
-  - [x] G3.10 i18n (TR/EN) — dil + tema + hız limiti, localStorage'da kalıcı
-  - **26/26 test geçiyor**
-- [x] **Sprint 4** — yayın hazırlığı
-  - [x] G4.1 electron-builder paketleme (mac/win/linux config, `--dir` doğrulandı: app açılıyor)
-  - [x] G4.2 auto-update (`electron-updater` — production'da çalışır, feed yoksa zarif geçer)
-  - [x] G4.4 Güvenlik denetimi — [SECURITY.md](SECURITY.md) (npm audit + sertleştirme doğrulaması)
-  - [x] G4.3 Sunucu uyumluluk matrisi — [test/COMPATIBILITY.md](test/COMPATIBILITY.md)
-  - **Not:** kod imzalama (sertifika gerekir) ve gerçek update feed yayın aşamasında doldurulur
+- **Main** (`src/main`) — Node.js process; the entire FTP/SFTP engine, session manager, transfer queue and persistent stores live here.
+- **Preload** (`src/preload`) — hardened `contextBridge`; the renderer sees only the typed `window.ferro` API (`invoke` + `on`).
+- **Renderer** (`src/renderer`) — Vue 3 + Vuetify UI with Pinia stores and vue-i18n.
+- **Shared** (`src/shared`) — the single source of truth for the IPC contract (`ipc.ts`), error model (`errors.ts`) and domain types.
 
-> Güvenlik özeti: [SECURITY.md](SECURITY.md). Bilinen takip: Electron'u en güncel sürüme yükselt (CVE'ler büyük ölçüde sertleştirmeyle azaltıldı).
+IPC is fully typed end-to-end: channels are declared in `InvokeMap`/`EventMap`, validated at runtime with zod in the main process, and errors cross the bridge as structured `FerroError`s.
 
-> **Denemek için:** `npm run dev` → üstteki çubuktan bir sunucuya bağlan (test için
-> `docker compose -f test/docker-compose.yml up -d` sonra FTP `localhost:21 ferro/ferropass`
-> veya SFTP `localhost:2222 ferro/ferropass`). Çift tıkla gez · satır sonundaki ok veya
-> sürükle-bırak ile transfer et · sağ tık ile dosya işlemleri.
+## Testing
+
+```bash
+npm run test:unit                                  # fast, no external dependencies
+docker compose -f test/docker-compose.yml up -d    # vsftpd + OpenSSH sftp
+npm run test:integration                           # adapters/queue/session against real servers
+```
+
+The integration suite runs against real FTP/SFTP servers; see [test/COMPATIBILITY.md](test/COMPATIBILITY.md) for the server compatibility matrix.
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, commit conventions, and PR checklist. Security issues should be reported privately — see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © Fahrettin Aksoy

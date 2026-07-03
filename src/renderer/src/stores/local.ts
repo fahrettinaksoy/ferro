@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { invoke, FerroError } from '@renderer/lib/ipc'
+import { joinLocalPath } from '@renderer/lib/paths'
 import type { LocalEntry } from '@shared/transfer'
 
 interface LocalState {
@@ -28,7 +29,8 @@ export const useLocalStore = defineStore('local', {
       try {
         const res = await invoke('local:list', { path })
         this.cwd = res.path
-        this.entries = sortEntries(res.entries)
+        // Sıralama panelde (FilePane) tercihlere göre yapılır — burada ham liste tutulur.
+        this.entries = res.entries
       } catch (err) {
         this.error = err instanceof FerroError ? err.message : String(err)
       } finally {
@@ -51,8 +53,7 @@ export const useLocalStore = defineStore('local', {
     },
 
     join(name: string): string {
-      const sep = this.cwd.includes('\\') ? '\\' : '/'
-      return this.cwd.endsWith(sep) ? this.cwd + name : this.cwd + sep + name
+      return joinLocalPath(this.cwd, name)
     },
 
     async makeDir(name: string): Promise<void> {
@@ -71,12 +72,3 @@ export const useLocalStore = defineStore('local', {
     }
   }
 })
-
-function sortEntries(entries: LocalEntry[]): LocalEntry[] {
-  return [...entries].sort((a, b) => {
-    const ad = a.type === 'directory' ? 0 : 1
-    const bd = b.type === 'directory' ? 0 : 1
-    if (ad !== bd) return ad - bd
-    return a.name.localeCompare(b.name)
-  })
-}

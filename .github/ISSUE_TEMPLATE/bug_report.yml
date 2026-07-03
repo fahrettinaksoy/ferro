@@ -1,0 +1,71 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in as much of the form below as you can.
+
+        **Do not report security vulnerabilities here** — see [SECURITY.md](../blob/main/SECURITY.md) for private reporting.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: When I try to upload a folder over SFTP…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to an SFTP server
+        2. Drag a folder from the local pane to the remote pane
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol
+      multiple: true
+      options:
+        - FTP
+        - FTPS (explicit)
+        - FTPS (implicit)
+        - SFTP
+        - Not protocol-related
+  - type: input
+    id: version
+    attributes:
+      label: Ferro version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: e.g. macOS 15.5, Windows 11, Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: Server software (if known)
+      placeholder: e.g. vsftpd 3.0.5, OpenSSH 9.6, ProFTPD
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Relevant lines from the in-app log panel. **Remove usernames/hostnames you don't want public.**
+      render: text

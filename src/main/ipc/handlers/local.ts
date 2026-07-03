@@ -2,6 +2,7 @@ import { homedir } from 'os'
 import { readdir, stat, mkdir, rename, rm } from 'fs/promises'
 import { join } from 'path'
 import { registerHandler } from '../router'
+import { safeLocalPath, safeDestructiveLocalPath } from './localPaths'
 import { FerroError } from '@shared/errors'
 import type { LocalEntry, EntryType } from '@shared/transfer'
 
@@ -9,16 +10,17 @@ export function registerLocalHandlers(): void {
   registerHandler('local:home', () => ({ path: homedir() }))
 
   registerHandler('local:list', async ({ path }) => {
+    const dir = safeLocalPath(path)
     let dirents
     try {
-      dirents = await readdir(path, { withFileTypes: true })
+      dirents = await readdir(dir, { withFileTypes: true })
     } catch (err) {
-      throw new FerroError('FS_ERROR', `Yerel dizin okunamadı: ${path}`, String(err))
+      throw new FerroError('FS_ERROR', `Yerel dizin okunamadı: ${dir}`, String(err))
     }
 
     const entries: LocalEntry[] = []
     for (const d of dirents) {
-      const full = join(path, d.name)
+      const full = join(dir, d.name)
       let type: EntryType = d.isDirectory()
         ? 'directory'
         : d.isSymbolicLink()
@@ -38,21 +40,21 @@ export function registerLocalHandlers(): void {
       }
       entries.push({ name: d.name, type, size, modifiedAt, path: full })
     }
-    return { path, entries }
+    return { path: dir, entries }
   })
 
   registerHandler('local:mkdir', async ({ path }) => {
-    await mkdir(path, { recursive: false })
+    await mkdir(safeLocalPath(path), { recursive: false })
     return { ok: true as const }
   })
 
   registerHandler('local:delete', async ({ path }) => {
-    await rm(path, { recursive: true, force: false })
+    await rm(safeDestructiveLocalPath(path), { recursive: true, force: false })
     return { ok: true as const }
   })
 
   registerHandler('local:rename', async ({ from, to }) => {
-    await rename(from, to)
+    await rename(safeDestructiveLocalPath(from), safeLocalPath(to))
     return { ok: true as const }
   })
 }

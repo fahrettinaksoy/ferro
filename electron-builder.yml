@@ -1,6 +1,6 @@
 appId: com.ferro.app
 productName: Ferro
-copyright: Copyright © 2026 Ferro
+copyright: Copyright © 2026 Fahrettin Aksoy
 directories:
   buildResources: build
   output: dist
@@ -10,10 +10,11 @@ files:
   - '!test/*'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!vitest.config.{js,ts}'
-  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{eslint.config.mjs,commitlint.config.mjs,.prettierrc.yaml,dev-app-update.yml}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml,package-lock.json}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
-  - '!{*.md,gelistirme-plani.md,ftp-client-analiz-raporu.md,stackvo.json}'
+  - '!{.nvmrc,.husky,.github,docs,scripts,seed}'
+  - '!{*.md,stackvo.json,Dockerfile,.dockerignore}'
 asar: true
 asarUnpack:
   - resources/**
@@ -53,11 +54,12 @@ linux:
     - AppImage
     - deb
   category: Network
-  maintainer: Ferro
+  maintainer: Fahrettin Aksoy <backend@cyh.com.tr>
 
-# Auto-update yayın hedefi. Gerçek yayında provider/url doldurulmalı.
+# Auto-update + release hedefi: GitHub Releases (release.yml workflow'u yayınlar).
 publish:
-  provider: generic
-  url: https://example.com/ferro/updates/
+  provider: github
+  owner: fahrettinaksoy
+  repo: ferro
 
 npmRebuild: false

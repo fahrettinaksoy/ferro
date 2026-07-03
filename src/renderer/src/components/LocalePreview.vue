@@ -12,7 +12,9 @@ const sampleNumber = computed(() => new Intl.NumberFormat(current.value).format(
 
 <template>
   <div class="text-caption text-medium-emphasis">
-    <div><strong>{{ current }}</strong> · {{ t('$vuetify.open') }} / {{ t('$vuetify.close') }}</div>
+    <div>
+      <strong>{{ current }}</strong> · {{ t('$vuetify.open') }} / {{ t('$vuetify.close') }}
+    </div>
     <div>{{ sampleNumber }}</div>
   </div>
 </template>

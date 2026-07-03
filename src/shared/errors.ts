@@ -12,6 +12,9 @@ export type FerroErrorCode =
   | 'HOST_KEY_UNTRUSTED'
   | 'TRANSFER_FAILED'
   | 'FS_ERROR'
+  | 'NOT_FOUND'
+  | 'PERMISSION_DENIED'
+  | 'TIMEOUT'
   | 'CANCELLED'
 
 export interface SerializedError {

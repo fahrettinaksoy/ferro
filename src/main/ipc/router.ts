@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, WebContents, IpcMainInvokeEvent } from 'electron'
+import { app, ipcMain, BrowserWindow, WebContents, IpcMainInvokeEvent } from 'electron'
 import {
   BRIDGE,
   type InvokeChannel,
@@ -9,6 +9,7 @@ import {
   type IpcResult
 } from '@shared/ipc'
 import { serializeError, FerroError } from '@shared/errors'
+import { validatePayload, isKnownChannel } from './validation'
 import { createLogger } from '../core/logger'
 
 const log = createLogger('ipc')
@@ -35,6 +36,19 @@ export function registerHandler<C extends InvokeChannel>(channel: C, handler: Ha
   handlers.set(channel, handler as AnyHandler)
 }
 
+/**
+ * Çağrının uygulamanın kendi ana çerçevesinden geldiğini doğrular.
+ * Alt çerçeveler ve beklenmeyen origin'ler (defense-in-depth) reddedilir.
+ */
+function isTrustedSender(event: IpcMainInvokeEvent): boolean {
+  const frame = event.senderFrame
+  if (!frame || frame !== event.sender.mainFrame) return false
+  const url = frame.url
+  if (url.startsWith('file://')) return true
+  const devUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
+  return devUrl !== undefined && devUrl !== '' && url.startsWith(devUrl)
+}
+
 /** Tek köprü kanalını (ferro:invoke) ipcMain'e bağlar; tüm çağrıları dispatch eder. */
 export function installIpcRouter(): void {
   ipcMain.handle(
@@ -44,7 +58,21 @@ export function installIpcRouter(): void {
       channel: string,
       payload: unknown
     ): Promise<IpcResult<unknown>> => {
-      const handler = handlers.get(channel as InvokeChannel)
+      if (!isTrustedSender(event)) {
+        log.warn(`güvenilmeyen göndericiden IPC çağrısı reddedildi: ${channel}`)
+        return {
+          ok: false,
+          error: serializeError(new FerroError('VALIDATION', 'IPC göndericisi doğrulanamadı'))
+        }
+      }
+      if (!isKnownChannel(channel)) {
+        const error = serializeError(
+          new FerroError('IPC_HANDLER_MISSING', `Bilinmeyen IPC kanalı: ${channel}`)
+        )
+        log.warn(`handler bulunamadı: ${channel}`)
+        return { ok: false, error }
+      }
+      const handler = handlers.get(channel)
       if (!handler) {
         const error = serializeError(
           new FerroError('IPC_HANDLER_MISSING', `Bilinmeyen IPC kanalı: ${channel}`)
@@ -53,7 +81,10 @@ export function installIpcRouter(): void {
         return { ok: false, error }
       }
       try {
-        const data = await handler(payload as never, { sender: event.sender })
+        // Şema doğrulama: geçersiz yük handler'a hiç ulaşmaz; bilinmeyen
+        // alanlar süzülmüş (strip) kopya handler'a verilir.
+        const validated = validatePayload(channel, payload)
+        const data = await handler(validated as never, { sender: event.sender })
         return { ok: true, data }
       } catch (err) {
         const error = serializeError(err)

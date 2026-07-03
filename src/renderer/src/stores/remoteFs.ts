@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { invoke, FerroError } from '@renderer/lib/ipc'
+import { joinPosix as joinPath } from '@renderer/lib/paths'
 import type { RemoteEntry } from '@shared/transfer'
 import { useConnectionStore } from './connection'
 
@@ -18,16 +19,6 @@ interface RemoteFsState {
 
 /** Bağlı oturum yokken okunan boş varsayılan (salt-okunur). */
 const EMPTY: RemoteFsSession = { cwd: '/', entries: [], loading: false, error: null }
-
-/** POSIX yol birleştirme (uzak sunucu yolları '/' kullanır). */
-function joinPath(base: string, name: string): string {
-  if (name === '..') {
-    const parts = base.split('/').filter(Boolean)
-    parts.pop()
-    return '/' + parts.join('/')
-  }
-  return (base.endsWith('/') ? base : base + '/') + name
-}
 
 export const useRemoteFsStore = defineStore('remoteFs', {
   state: (): RemoteFsState => ({ bySession: {} }),
@@ -75,7 +66,8 @@ export const useRemoteFsStore = defineStore('remoteFs', {
         } else {
           s.cwd = (await invoke('fs:pwd', { sessionId: id })).cwd
         }
-        s.entries = sortEntries(await invoke('fs:list', { sessionId: id }))
+        // Sıralama panelde (FilePane) tercihlere göre yapılır — burada ham liste tutulur.
+        s.entries = await invoke('fs:list', { sessionId: id })
       } catch (err) {
         s.error = err instanceof FerroError ? err.message : String(err)
       } finally {
@@ -131,12 +123,3 @@ export const useRemoteFsStore = defineStore('remoteFs', {
     }
   }
 })
-
-function sortEntries(entries: RemoteEntry[]): RemoteEntry[] {
-  return [...entries].sort((a, b) => {
-    const ad = a.type === 'directory' ? 0 : 1
-    const bd = b.type === 'directory' ? 0 : 1
-    if (ad !== bd) return ad - bd
-    return a.name.localeCompare(b.name)
-  })
-}

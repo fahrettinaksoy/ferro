@@ -25,7 +25,8 @@ function loadDefaultThemeName(): string {
       : (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true)
         ? 'dark'
         : 'light'
-  const suffix = contrast === 'medium' ? '-medium-contrast' : contrast === 'high' ? '-high-contrast' : ''
+  const suffix =
+    contrast === 'medium' ? '-medium-contrast' : contrast === 'high' ? '-high-contrast' : ''
   return resolvedMode + suffix
 }
 
@@ -106,6 +107,8 @@ export const vuetify = createVuetify({
     // — Seçim kontrolleri: kompakt + detay gizli —
     VCheckbox: { density: 'compact', hideDetails: true },
     VRadioGroup: { density: 'compact', hideDetails: true },
+    // M3 ayar ekranı deseni: anahtarlar inset + primary.
+    VSwitch: { density: 'compact', hideDetails: true, color: 'primary', inset: true },
 
     // — Veri / ağaç: kompakt —
     VTable: { density: 'compact' },

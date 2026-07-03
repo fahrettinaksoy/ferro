@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { setLocale, type Locale } from '@renderer/plugins/i18n'
 import { invoke } from '@renderer/lib/ipc'
+import type { RuntimeSettings, FileExistsAction } from '@shared/transfer'
+export type { FileExistsAction }
 import {
   themeName,
   type SchemeKey,
@@ -130,15 +132,6 @@ export interface TransferTypesPrefs {
   /** Noktalı (dotfile) dosyaları ASCII say. */
   dotfilesAsAscii: boolean
 }
-
-export type FileExistsAction =
-  | 'ask'
-  | 'overwrite'
-  | 'overwrite-newer'
-  | 'overwrite-size'
-  | 'resume'
-  | 'rename'
-  | 'skip'
 
 /** Dosya var işlemi tercihleri (Ayarlar → Aktarım → Dosya var işlemi). */
 export interface FileExistsPrefs {
@@ -306,11 +299,51 @@ const DEFAULT_PREFS: AppPrefs = {
   transferTypes: {
     defaultType: 'auto',
     asciiExtensions: [
-      'ac', 'am', 'asp', 'bat', 'c', 'cfm', 'cgi', 'conf', 'cpp', 'css', 'dhtml',
-      'diz', 'h', 'hpp', 'htm', 'html', 'in', 'inc', 'js', 'jsp', 'lua', 'm4',
-      'mak', 'md5', 'nfo', 'nsi', 'pas', 'patch', 'php', 'phtml', 'pl', 'po',
-      'py', 'qmail', 'sh', 'shtml', 'sql', 'svg', 'tcl', 'tpl', 'txt', 'vbs',
-      'xhtml', 'xml', 'xrc'
+      'ac',
+      'am',
+      'asp',
+      'bat',
+      'c',
+      'cfm',
+      'cgi',
+      'conf',
+      'cpp',
+      'css',
+      'dhtml',
+      'diz',
+      'h',
+      'hpp',
+      'htm',
+      'html',
+      'in',
+      'inc',
+      'js',
+      'jsp',
+      'lua',
+      'm4',
+      'mak',
+      'md5',
+      'nfo',
+      'nsi',
+      'pas',
+      'patch',
+      'php',
+      'phtml',
+      'pl',
+      'po',
+      'py',
+      'qmail',
+      'sh',
+      'shtml',
+      'sql',
+      'svg',
+      'tcl',
+      'tpl',
+      'txt',
+      'vbs',
+      'xhtml',
+      'xml',
+      'xrc'
     ],
     noExtAsAscii: true,
     dotfilesAsAscii: true
@@ -553,21 +586,59 @@ export const useUiStore = defineStore('ui', {
       localStorage.setItem('ferro.langChoice', choice)
       this.setLanguage(resolveLocale(choice))
     },
+    /** Çalışma zamanı ayarlarını (Ayarlar) tek nesnede toplar (main'e gönderilir). */
+    buildRuntimeSettings(): RuntimeSettings {
+      const p = this.prefs
+      return {
+        bandwidthBytesPerSec: this.bandwidthKBs * 1024,
+        maxConnections: Math.min(10, Math.max(1, p.transfer.concurrentTransfers)),
+        connectTimeoutMs: Math.max(0, p.connection.timeoutSec) * 1000,
+        keepAlive: p.ftp.keepAlive,
+        // maxRetries = "yeniden deneme sayısı" → toplam deneme = +1.
+        retryMaxAttempts: Math.min(10, Math.max(0, p.connection.maxRetries) + 1),
+        retryDelayMs: Math.max(0, p.connection.retryDelaySec) * 1000,
+        fileExistsDownload: p.fileExists.download,
+        fileExistsUpload: p.fileExists.upload,
+        transferType: {
+          mode: p.transferTypes.defaultType,
+          asciiExtensions: p.transferTypes.asciiExtensions.map((e) => e.toLowerCase()),
+          noExtAsAscii: p.transferTypes.noExtAsAscii,
+          dotfilesAsAscii: p.transferTypes.dotfilesAsAscii
+        },
+        editor: {
+          mode: p.editing.defaultEditor,
+          customPath: p.editing.customEditorPath
+        },
+        proxy: {
+          type: p.genericProxy.type,
+          host: p.genericProxy.host,
+          port: p.genericProxy.port,
+          user: p.genericProxy.user,
+          password: p.genericProxy.password
+        },
+        logging: { toFile: p.logging.logToFile, maxSizeMiB: p.logging.maxSizeMiB },
+        updates: { frequency: p.updates.checkFrequency, channel: p.updates.channel }
+      }
+    },
+
+    /** Çalışma zamanı ayarlarını main sürece uygular (açılışta + her kaydetmede). */
+    async applyRuntimeSettings(): Promise<void> {
+      await invoke('settings:apply', this.buildRuntimeSettings())
+    },
+
     /** Bant genişliği sınırını uygular (KB/s; 0 = sınırsız) ve kalıcılaştırır. */
     async setBandwidth(kbs: number): Promise<void> {
       const v = Math.max(0, Math.floor(kbs || 0))
       this.bandwidthKBs = v
       localStorage.setItem('ferro.bandwidth', String(v))
-      await invoke('settings:setBandwidth', { bytesPerSec: v * 1024 })
+      await this.applyRuntimeSettings()
     },
-    /** Uygulama açılışında saklı sınırı main'e bildir. */
-    async applyBandwidth(): Promise<void> {
-      await invoke('settings:setBandwidth', { bytesPerSec: this.bandwidthKBs * 1024 })
-    },
-    /** Ayarlar penceresinden gelen tercihleri kaydeder (Tamam). */
+
+    /** Ayarlar penceresinden gelen tercihleri kaydeder (Tamam) ve motora uygular. */
     savePrefs(next: AppPrefs): void {
       this.prefs = next
       localStorage.setItem('ferro.prefs', JSON.stringify(next))
+      void this.applyRuntimeSettings().catch(() => undefined)
     }
   }
 })
