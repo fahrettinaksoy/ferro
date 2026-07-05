@@ -73,7 +73,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.10.1",
     "@types/ssh2-sftp-client": "^9.0.4",
-    "@vitejs/plugin-vue": "^5.2.1",
+    "@vitejs/plugin-vue": "^6.0.7",
     "@vitest/coverage-v8": "^4.1.9",
     "@vue/test-utils": "^2.4.11",
     "electron": "^43.0.0",
