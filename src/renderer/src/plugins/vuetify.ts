@@ -35,7 +35,7 @@ function loadDefaultThemeName(): string {
 // eklenir (üzerine değil) — adlar onlarla çakışmaz. Avantaj: ikon seçimi tek
 // yerden yönetilir; şablonlarda `$server`, `$upload` gibi anlamsal adlar kullanılır.
 // Yeni bir ikonu değiştirmek için yalnızca bu tabloyu düzenlemek yeterli.
-const appAliases = {
+export const appAliases = {
   ferroLogo: 'mdi-folder-network',
   settings: 'mdi-cog',
   keyboard: 'mdi-keyboard-outline',

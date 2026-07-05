@@ -92,7 +92,7 @@ async function switchToOs(): Promise<void> {
         </v-btn>
       </div>
 
-      <p class="text-caption text-warning mt-2 mb-0">
+      <p class="text-body-small text-warning mt-2 mb-0">
         {{ $t('settings.passwords.masterWarning') }}
       </p>
     </div>

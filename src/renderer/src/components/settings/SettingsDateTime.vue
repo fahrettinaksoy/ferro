@@ -19,7 +19,7 @@ defineProps<{ draft: Draft }>()
           :disabled="draft.dateTime.dateMode !== 'custom'"
           style="max-width: 160px"
         />
-        <span class="text-caption text-medium-emphasis">{{
+        <span class="text-body-small text-medium-emphasis">{{
           $t('settings.dateTime.dateExample')
         }}</span>
       </div>
@@ -37,11 +37,11 @@ defineProps<{ draft: Draft }>()
           :disabled="draft.dateTime.timeMode !== 'custom'"
           style="max-width: 160px"
         />
-        <span class="text-caption text-medium-emphasis">{{
+        <span class="text-body-small text-medium-emphasis">{{
           $t('settings.dateTime.timeExample')
         }}</span>
       </div>
     </v-radio-group>
   </fieldset>
-  <p class="text-caption text-primary mb-0">{{ $t('settings.dateTime.moreInfo') }}</p>
+  <p class="text-body-small text-primary mb-0">{{ $t('settings.dateTime.moreInfo') }}</p>
 </template>

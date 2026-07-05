@@ -52,13 +52,13 @@ const newConnOptions = computed(() => [
   <fieldset class="section">
     <legend>{{ $t('settings.iface.behaviourTitle') }}</legend>
     <v-switch v-model="draft.iface.preventSleep" :label="$t('settings.iface.preventSleep')" />
-    <div class="text-body-2 mt-2 mb-1">{{ $t('settings.iface.startupLabel') }}</div>
+    <div class="text-body-medium mt-2 mb-1">{{ $t('settings.iface.startupLabel') }}</div>
     <v-radio-group v-model="draft.iface.onStartup">
       <v-radio :label="$t('settings.iface.startupNormal')" value="normal" />
       <v-radio :label="$t('settings.iface.startupSiteManager')" value="site-manager" />
       <v-radio :label="$t('settings.iface.startupRestore')" value="restore-tabs" />
     </v-radio-group>
-    <div class="text-body-2 mt-2 mb-1">{{ $t('settings.iface.newConnLabel') }}</div>
+    <div class="text-body-medium mt-2 mb-1">{{ $t('settings.iface.newConnLabel') }}</div>
     <v-select
       v-model="draft.iface.newConnWhileConnected"
       :items="newConnOptions"

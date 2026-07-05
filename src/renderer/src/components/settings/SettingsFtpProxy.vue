@@ -9,7 +9,7 @@ defineProps<{ draft: Draft }>()
   <!-- Bağlantı → FTP → FTP vekil sunucusu -->
   <fieldset class="section">
     <legend>{{ $t('settings.ftpProxy.title') }}</legend>
-    <div class="text-body-2 mb-1">{{ $t('settings.ftpProxy.typeLabel') }}</div>
+    <div class="text-body-medium mb-1">{{ $t('settings.ftpProxy.typeLabel') }}</div>
     <v-radio-group v-model="draft.ftpProxy.type">
       <v-radio :label="$t('settings.ftpProxy.none')" value="none" />
       <v-radio label="USER@HOST" value="user-host" />
@@ -23,7 +23,7 @@ defineProps<{ draft: Draft }>()
       rows="4"
       class="mt-2"
     />
-    <div class="text-caption text-medium-emphasis mt-2">
+    <div class="text-body-small text-medium-emphasis mt-2">
       <div class="font-weight-medium">{{ $t('settings.ftpProxy.specifiers') }}</div>
       <div class="font-monospace">{{ $t('settings.ftpProxy.spec1') }}</div>
       <div class="font-monospace">{{ $t('settings.ftpProxy.spec2') }}</div>
@@ -54,7 +54,7 @@ defineProps<{ draft: Draft }>()
         style="max-width: 220px"
       />
     </div>
-    <p class="text-caption text-medium-emphasis mt-3 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-3 mb-0">
       {{ $t('settings.ftpProxy.note') }}
     </p>
   </fieldset>

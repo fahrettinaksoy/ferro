@@ -21,8 +21,15 @@ export interface SyncConfigPublic {
   gist: { gistId: string; hasToken: boolean }
   webdav: { url: string; user: string; hasPassword: boolean }
   hasSyncPassword: boolean
+  /** Açılışta otomatik çek (siteler). */
+  autoSync: boolean
+  /** Site değişikliklerinden sonra otomatik it (debounce'lu). */
+  autoPush: boolean
   lastSyncAt: string | null
   lastDirection: 'push' | 'pull' | null
+  /** En son görülen uzak yük zaman damgası — çakışma/bayatlık tespiti için
+   *  (uzak updatedAt bununla farklıysa "uzakta yeni değişiklik var" demektir). */
+  lastRemoteUpdatedAt: string | null
 }
 
 /**
@@ -36,6 +43,16 @@ export interface SyncConfigInput {
   gist: { gistId: string; token?: string }
   webdav: { url: string; user: string; password?: string }
   syncPassword?: string
+  /** Açılışta otomatik çek. */
+  autoSync?: boolean
+  /** Değişiklikte otomatik it. */
+  autoPush?: boolean
+}
+
+/** sync:peek yanıtı: uzak yükün yalnızca zaman damgası (içe aktarma yapılmaz). */
+export interface SyncPeekResult {
+  found: boolean
+  updatedAt: string | null
 }
 
 /** Ayarlar anlık görüntüsü: renderer localStorage anahtarı → değer. */

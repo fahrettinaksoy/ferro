@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from 'vue'
+import { reactive, ref, computed, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 // VTreeview/VHotkey vb. şablonda <v-treeview> olarak kullanılır; vite-plugin-vuetify
 // autoImport bunları otomatik (tree-shake ederek) içe aktarır — elle import gerekmez.
@@ -26,7 +26,6 @@ import SettingsFileSize from '@renderer/components/settings/SettingsFileSize.vue
 import SettingsFileLists from '@renderer/components/settings/SettingsFileLists.vue'
 import SettingsEditing from '@renderer/components/settings/SettingsEditing.vue'
 import SettingsFileAssoc from '@renderer/components/settings/SettingsFileAssoc.vue'
-import SettingsSync from '@renderer/components/settings/SettingsSync.vue'
 import SettingsUpdates from '@renderer/components/settings/SettingsUpdates.vue'
 import SettingsLogging from '@renderer/components/settings/SettingsLogging.vue'
 import SettingsDebug from '@renderer/components/settings/SettingsDebug.vue'
@@ -64,11 +63,37 @@ const tree: PageNode[] = [
     ]
   },
   { key: 'editing', children: [{ key: 'fileAssoc' }] },
-  { key: 'sync' },
   { key: 'updates' },
   { key: 'logging' },
   { key: 'debug' }
 ]
+
+// Sayfa key → bileşen. 'transferTypes' ve 'passwords' burada YOK: `:draft`
+// dışında ekstra v-model'leri var (aşağıda ayrı, açık bloklar olarak render
+// edilir) — geri kalan tüm sayfalar yalnızca `:draft` alır ve şablonda tek bir
+// <component :is> ile çözülür (bkz. tree'deki hiyerarşi yorumları).
+const PAGE_COMPONENTS: Record<string, Component> = {
+  connection: SettingsConnection,
+  ftp: SettingsFtp,
+  ftpActive: SettingsFtpActive,
+  ftpPassive: SettingsFtpPassive,
+  ftpProxy: SettingsFtpProxy,
+  sftp: SettingsSftp,
+  genericProxy: SettingsGenericProxy,
+  transfer: SettingsTransfer,
+  transferExists: SettingsFileExists,
+  interface: SettingsInterface,
+  themes: SettingsThemes,
+  lang: SettingsLanguage,
+  dateTime: SettingsDateTime,
+  fileSize: SettingsFileSize,
+  fileLists: SettingsFileLists,
+  editing: SettingsEditing,
+  fileAssoc: SettingsFileAssoc,
+  updates: SettingsUpdates,
+  logging: SettingsLogging,
+  debug: SettingsDebug
+}
 
 // VTreeview öğeleri (çevrili başlıklarla). item-value=key, item-title=title.
 interface TreeItem {
@@ -208,7 +233,7 @@ async function apply(): Promise<void> {
     <div class="settings-body d-flex flex-grow-1">
       <!-- Sol: sayfa ağacı — çizgi yerine tonal M3 alt-kabı -->
       <div class="page-tree">
-        <div class="px-3 pt-3 pb-1 text-caption text-medium-emphasis">
+        <div class="px-3 pt-3 pb-1 text-body-small text-medium-emphasis">
           {{ $t('settings.selectPage') }}
         </div>
         <v-treeview
@@ -226,37 +251,17 @@ async function apply(): Promise<void> {
         />
       </div>
 
-      <!-- Sağ: seçili sayfa içeriği — her sayfa settings/ altında ayrı bileşen -->
+      <!-- Sağ: seçili sayfa içeriği — her sayfa settings/ altında ayrı bileşen.
+           Yalnızca `:draft` alan sayfalar PAGE_COMPONENTS map'inden <component :is>
+           ile çözülür; ekstra v-model'i olan iki sayfa (aşağıda) açık kalır. -->
       <div class="pa-4 page-content">
-        <!-- Bağlantı -->
-        <SettingsConnection v-if="selected === 'connection'" :draft="draft" />
-        <!-- Bağlantı → FTP -->
-        <SettingsFtp v-else-if="selected === 'ftp'" :draft="draft" />
         <!-- Aktarım → FTP: Dosya türleri -->
         <SettingsTransferTypes
-          v-else-if="selected === 'transferTypes'"
+          v-if="selected === 'transferTypes'"
           v-model:new-ext="newExt"
           v-model:selected-ext="selectedExt"
           :draft="draft"
         />
-        <!-- Aktarım → Dosya var işlemi -->
-        <SettingsFileExists v-else-if="selected === 'transferExists'" :draft="draft" />
-        <!-- Bağlantı → FTP → Aktif kip -->
-        <SettingsFtpActive v-else-if="selected === 'ftpActive'" :draft="draft" />
-        <!-- Bağlantı → FTP → Pasif kip -->
-        <SettingsFtpPassive v-else-if="selected === 'ftpPassive'" :draft="draft" />
-        <!-- Bağlantı → FTP → FTP vekil sunucusu -->
-        <SettingsFtpProxy v-else-if="selected === 'ftpProxy'" :draft="draft" />
-        <!-- Bağlantı → SFTP -->
-        <SettingsSftp v-else-if="selected === 'sftp'" :draft="draft" />
-        <!-- Bağlantı → Genel vekil sunucu -->
-        <SettingsGenericProxy v-else-if="selected === 'genericProxy'" :draft="draft" />
-        <!-- Arayüz → Temalar (Material Design 3 Theme Studio — canlı) -->
-        <SettingsThemes v-else-if="selected === 'themes'" :draft="draft" />
-        <!-- Arayüz → Dil -->
-        <SettingsLanguage v-else-if="selected === 'lang'" :draft="draft" />
-        <!-- Arayüz (üst sayfa) -->
-        <SettingsInterface v-else-if="selected === 'interface'" :draft="draft" />
         <!-- Arayüz → Parolalar -->
         <SettingsPasswords
           v-else-if="selected === 'passwords'"
@@ -265,26 +270,11 @@ async function apply(): Promise<void> {
           v-model:current-master-pw="currentMasterPw"
           :draft="draft"
         />
-        <!-- Arayüz → Tarih/saat biçimi -->
-        <SettingsDateTime v-else-if="selected === 'dateTime'" :draft="draft" />
-        <!-- Arayüz → Dosya boyutu biçimi -->
-        <SettingsFileSize v-else-if="selected === 'fileSize'" :draft="draft" />
-        <!-- Arayüz → Dosya listeleri -->
-        <SettingsFileLists v-else-if="selected === 'fileLists'" :draft="draft" />
-        <!-- Aktarım -->
-        <SettingsTransfer v-else-if="selected === 'transfer'" :draft="draft" />
-        <!-- Dosya düzenleme -->
-        <SettingsEditing v-else-if="selected === 'editing'" :draft="draft" />
-        <!-- Dosya düzenleme → Dosya türü ilişkileri -->
-        <SettingsFileAssoc v-else-if="selected === 'fileAssoc'" :draft="draft" />
-        <!-- Senkronizasyon (uçtan uca şifreli — Gist / WebDAV) -->
-        <SettingsSync v-else-if="selected === 'sync'" />
-        <!-- Güncelleme -->
-        <SettingsUpdates v-else-if="selected === 'updates'" :draft="draft" />
-        <!-- Günlük -->
-        <SettingsLogging v-else-if="selected === 'logging'" :draft="draft" />
-        <!-- Hata ayıklama -->
-        <SettingsDebug v-else-if="selected === 'debug'" :draft="draft" />
+        <component
+          :is="PAGE_COMPONENTS[selected]"
+          v-else-if="PAGE_COMPONENTS[selected]"
+          :draft="draft"
+        />
 
         <!-- İçeriği bir sonraki adımda gelecek sayfalar -->
         <template v-else>
@@ -293,8 +283,8 @@ async function apply(): Promise<void> {
             style="height: 100%"
           >
             <v-icon icon="mdi-tools" size="32" class="mb-2" />
-            <div class="text-body-2">{{ $t('settings.pages.' + selected) }}</div>
-            <div class="text-caption">{{ $t('settings.placeholder') }}</div>
+            <div class="text-body-medium">{{ $t('settings.pages.' + selected) }}</div>
+            <div class="text-body-small">{{ $t('settings.placeholder') }}</div>
           </div>
         </template>
       </div>

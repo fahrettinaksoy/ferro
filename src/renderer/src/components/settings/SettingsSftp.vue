@@ -8,10 +8,10 @@ defineProps<{ draft: Draft }>()
   <!-- Bağlantı → SFTP -->
   <fieldset class="section">
     <legend>{{ $t('settings.sftp.title') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-2">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-2">
       {{ $t('settings.sftp.hint') }}
     </p>
-    <div class="text-body-2 mb-1">{{ $t('settings.sftp.keysLabel') }}</div>
+    <div class="text-body-medium mb-1">{{ $t('settings.sftp.keysLabel') }}</div>
     <v-table class="key-table">
       <thead>
         <tr>
@@ -26,11 +26,11 @@ defineProps<{ draft: Draft }>()
           <td>{{ k.path }}</td>
           <td>{{ k.comment }}</td>
           <td>{{ k.type }}</td>
-          <td class="font-monospace text-caption">{{ k.fingerprint }}</td>
+          <td class="font-monospace text-body-small">{{ k.fingerprint }}</td>
         </tr>
         <tr v-if="!draft.sftp.keys.length">
-          <td colspan="4" class="text-center text-medium-emphasis py-4">
-            {{ $t('settings.sftp.empty') }}
+          <td colspan="4" class="pa-0">
+            <v-empty-state icon="mdi-key-outline" :text="$t('settings.sftp.empty')" size="32" />
           </td>
         </tr>
       </tbody>
@@ -43,7 +43,7 @@ defineProps<{ draft: Draft }>()
         {{ $t('settings.sftp.removeKey') }}
       </v-btn>
     </div>
-    <p class="text-caption text-medium-emphasis mt-3 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-3 mb-0">
       {{ $t('settings.sftp.sshAgentHint') }}
     </p>
   </fieldset>

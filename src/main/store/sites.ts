@@ -284,6 +284,38 @@ class SiteStore {
   }
 
   /**
+   * Verilen id'lere karşılık gelen siteleri dışa aktarma formatına çevirir
+   * (ekiple paylaşım için). Parolalar DÜZ METİN çözülür (vault kilitliyse ilgili
+   * site parolasız gider). folderOverride verilirse tüm kayıtların folder alanı
+   * onunla değiştirilir — ekip siteleri hedefte ekip adıyla gruplanır.
+   */
+  exportSitesByIds(ids: string[], folderOverride?: string): SiteExportEntry[] {
+    const wanted = new Set(ids)
+    return this.load()
+      .filter((s) => wanted.has(s.id))
+      .map((s) => {
+        const entry: SiteExportEntry = {
+          name: s.name,
+          folder: folderOverride !== undefined ? folderOverride || undefined : s.folder,
+          protocol: s.protocol,
+          host: s.host,
+          port: s.port,
+          user: s.user,
+          anonymous: s.anonymous,
+          askPassword: s.askPassword,
+          encoding: s.encoding,
+          rejectUnauthorized: s.rejectUnauthorized,
+          ...pickAdvanced(s)
+        }
+        if (s.secret) {
+          const plain = decryptSecret(s.secret)
+          if (plain) entry.password = plain
+        }
+        return entry
+      })
+  }
+
+  /**
    * Dışa aktarma kayıtlarını içe aktarır. Yinelenenler atlanır: mevcut bir
    * siteyle protokol+host+port+kullanıcı+ad beşlisi aynıysa kayıt eklenmez
    * (host büyük/küçük harf duyarsız). Her yeni kayda taze id üretilir; düz

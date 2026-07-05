@@ -19,8 +19,14 @@ interface StoredSyncConfig {
   webdav: { url: string; user: string; passwordSecret?: string }
   /** Sync (uçtan uca şifreleme) parolası — vault ile şifreli. */
   syncPasswordSecret?: string
+  /** Açılışta otomatik çek. */
+  autoSync?: boolean
+  /** Değişiklikte otomatik it (debounce renderer'da). */
+  autoPush?: boolean
   lastSyncAt?: string
   lastDirection?: 'push' | 'pull'
+  /** En son görülen uzak yük zaman damgası (çakışma tespiti). */
+  lastRemoteUpdatedAt?: string
 }
 
 const STORE_VERSION = 1
@@ -64,8 +70,11 @@ class SyncConfigStore {
       gist: { gistId: c.gist.gistId, hasToken: !!c.gist.tokenSecret },
       webdav: { url: c.webdav.url, user: c.webdav.user, hasPassword: !!c.webdav.passwordSecret },
       hasSyncPassword: !!c.syncPasswordSecret,
+      autoSync: !!c.autoSync,
+      autoPush: !!c.autoPush,
       lastSyncAt: c.lastSyncAt ?? null,
-      lastDirection: c.lastDirection ?? null
+      lastDirection: c.lastDirection ?? null,
+      lastRemoteUpdatedAt: c.lastRemoteUpdatedAt ?? null
     }
   }
 
@@ -88,14 +97,18 @@ class SyncConfigStore {
     if (input.syncPassword) {
       c.syncPasswordSecret = encryptSecret(input.syncPassword) ?? undefined
     }
+    if (input.autoSync !== undefined) c.autoSync = input.autoSync
+    if (input.autoPush !== undefined) c.autoPush = input.autoPush
     this.save()
   }
 
-  /** Push/pull sonrası son eşitleme bilgisini işler. */
-  markSynced(direction: 'push' | 'pull'): void {
+  /** Push/pull sonrası son eşitleme bilgisini işler.
+   *  remoteUpdatedAt: o an uzağa yazılan / uzaktan görülen yük zaman damgası. */
+  markSynced(direction: 'push' | 'pull', remoteUpdatedAt?: string): void {
     const c = this.load()
     c.lastSyncAt = new Date().toISOString()
     c.lastDirection = direction
+    if (remoteUpdatedAt) c.lastRemoteUpdatedAt = remoteUpdatedAt
     this.save()
   }
 

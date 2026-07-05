@@ -11,6 +11,9 @@ import { FerroError } from '@shared/errors'
 const sessionId = z.string().min(1).max(64)
 const requestId = z.string().min(1).max(64)
 const jobId = z.string().min(1).max(64)
+const teamId = z.string().min(1).max(64)
+const teamRole = z.enum(['admin', 'member', 'readonly'])
+const teamProvider = z.enum(['gist', 'webdav'])
 
 /** Uzak yol: null bayt içeremez. */
 const remotePath = z
@@ -259,10 +262,46 @@ const schemas: Record<InvokeChannel, z.ZodType> = {
       user: z.string().max(255),
       password: z.string().max(1024).optional()
     }),
-    syncPassword: z.string().max(1024).optional()
+    syncPassword: z.string().max(1024).optional(),
+    autoSync: z.boolean().optional(),
+    autoPush: z.boolean().optional()
   }),
   'sync:push': z.object({ settings: settingsSnapshot.optional() }),
-  'sync:pull': z.void()
+  'sync:pull': z.void(),
+  'sync:peek': z.void(),
+
+  // ── Ekip paylaşımı ──
+  'team:list': z.void(),
+  'team:create': z.object({
+    name: z.string().min(1).max(200),
+    memberName: z.string().min(1).max(200),
+    provider: teamProvider,
+    gist: z.object({ gistId: z.string().max(64), token: z.string().max(255) }),
+    webdav: z.object({
+      url: z
+        .string()
+        .max(2048)
+        .refine((u) => u === '' || /^https?:\/\//.test(u), 'http(s) adresi olmalı'),
+      user: z.string().max(255),
+      password: z.string().max(1024)
+    })
+  }),
+  'team:join': z.object({
+    code: z.string().min(1).max(200_000),
+    pin: z.string().min(1).max(1024),
+    memberName: z.string().min(1).max(200)
+  }),
+  'team:leave': z.object({ teamId }),
+  'team:pull': z.object({ teamId }),
+  'team:push': z.object({
+    teamId,
+    siteIds: z.array(z.string().min(1).max(64)).max(5000)
+  }),
+  'team:invite': z.object({ teamId, role: teamRole, pin: z.string().min(4).max(1024) }),
+  'team:members': z.object({ teamId }),
+  'team:setRole': z.object({ teamId, memberId: z.string().min(1).max(64), role: teamRole }),
+  'team:removeMember': z.object({ teamId, memberId: z.string().min(1).max(64) }),
+  'team:importSites': z.object({ teamId })
 }
 
 /**

@@ -1,5 +1,18 @@
 import type { SerializedError } from './errors'
-import type { SyncConfigInput, SyncConfigPublic, SyncSettingsSnapshot } from './sync'
+import type {
+  SyncConfigInput,
+  SyncConfigPublic,
+  SyncPeekResult,
+  SyncSettingsSnapshot
+} from './sync'
+import type {
+  TeamCreateInput,
+  TeamInviteInput,
+  TeamJoinInput,
+  TeamMember,
+  TeamPublic,
+  TeamRole
+} from './team'
 import type {
   ConnectionConfig,
   RemoteEntry,
@@ -176,6 +189,54 @@ export interface InvokeMap {
       settings?: SyncSettingsSnapshot
     }
   }
+  /** Uzak yükü indirip yalnızca zaman damgasını döndürür (içe aktarma yok).
+      Çakışma/bayatlık tespiti + durum rozeti için. */
+  'sync:peek': { req: void; res: SyncPeekResult }
+
+  // ── Ekip paylaşımı (sunucusuz, uçtan uca şifreli — paylaşılan kasa) ──
+  /** Kayıtlı ekipleri listeler (sırlar yalnızca var/yok). */
+  'team:list': { req: void; res: { teams: TeamPublic[]; encryptionAvailable: boolean } }
+  /** Yeni ekip oluşturur (yaratıcı admin); kasa ilk kez uzağa yazılır. */
+  'team:create': { req: TeamCreateInput; res: { team: TeamPublic } }
+  /** Davet kodu + PIN ile ekibe katılır; kendini roster'a ekler. */
+  'team:join': { req: TeamJoinInput; res: { team: TeamPublic } }
+  /** Ekipten ayrıl — yalnızca yerel kaydı siler (uzak kasa değişmez). */
+  'team:leave': { req: { teamId: string }; res: { ok: true } }
+  /** Kasayı çeker; yerel önbelleği (roster+siteler) günceller. */
+  'team:pull': {
+    req: { teamId: string }
+    res: {
+      found: boolean
+      revision?: number
+      memberCount?: number
+      siteCount?: number
+      role?: TeamRole
+    }
+  }
+  /** Seçilen yerel siteleri kasaya ekler (readonly hariç). */
+  'team:push': {
+    req: { teamId: string; siteIds: string[] }
+    res: { revision: number; siteCount: number; added: number }
+  }
+  /** (Admin) TK + depo erişimini PIN ile sarıp taşınabilir davet kodu döner. */
+  'team:invite': { req: TeamInviteInput; res: { code: string } }
+  /** Son çekilen roster (yerel önbellek). */
+  'team:members': { req: { teamId: string }; res: { members: TeamMember[] } }
+  /** (Admin) Bir üyenin rolünü değiştirir; güncel roster döner. */
+  'team:setRole': {
+    req: { teamId: string; memberId: string; role: TeamRole }
+    res: { members: TeamMember[] }
+  }
+  /** (Admin) Bir üyeyi roster'dan çıkarır (kriptografik iptal DEĞİL). */
+  'team:removeMember': {
+    req: { teamId: string; memberId: string }
+    res: { members: TeamMember[] }
+  }
+  /** Son çekilen ekip sitelerini yerel Site Yöneticisine aktarır (folder = ekip adı). */
+  'team:importSites': {
+    req: { teamId: string }
+    res: { imported: number; skipped: number; total: number }
+  }
 }
 
 /** event: main → renderer tek yönlü olay yükleri. */
@@ -194,6 +255,8 @@ export interface EventMap {
       | 'disconnect'
       | 'reconnect'
       | 'sync'
+      | 'teams'
+      | 'cloudSync'
       | 'toggleTransfers'
   }
   /** Bağlantı denemesi başladı — renderer bekleyen sekmeyi bu kimliğe bağlar

@@ -47,12 +47,12 @@ async function decide(accept: boolean): Promise<void> {
         <p class="mb-2">{{ $t('tls.intro', { host: `${current.host}:${current.port}` }) }}</p>
         <v-sheet color="surface" border rounded class="pa-2 detail">{{ current.detail }}</v-sheet>
         <div v-if="current.fingerprint" class="mt-2">
-          <div class="text-caption text-medium-emphasis">{{ $t('tls.fingerprint') }}</div>
+          <div class="text-body-small text-medium-emphasis">{{ $t('tls.fingerprint') }}</div>
           <v-sheet color="surface" border rounded class="pa-2 detail">{{
             current.fingerprint
           }}</v-sheet>
         </div>
-        <p class="text-caption text-medium-emphasis mt-2">
+        <p class="text-body-small text-medium-emphasis mt-2">
           {{ current.fingerprint ? $t('tls.note') : $t('tls.noteSessionOnly') }}
         </p>
       </v-card-text>

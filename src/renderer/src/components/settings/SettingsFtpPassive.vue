@@ -9,7 +9,7 @@ defineProps<{ draft: Draft }>()
   <!-- Bağlantı → FTP → Pasif kip -->
   <fieldset class="section">
     <legend>{{ $t('settings.ftpPassive.title') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-1">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-1">
       {{ $t('settings.ftpPassive.hint') }}
     </p>
     <v-radio-group v-model="draft.ftpPassive.malformedReply">

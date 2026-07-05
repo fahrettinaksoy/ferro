@@ -4,6 +4,7 @@ import { registerFsHandlers } from './fs'
 import { registerLocalHandlers } from './local'
 import { registerSiteHandlers } from './sites'
 import { registerSyncHandlers } from './sync'
+import { registerTeamHandlers } from './team'
 
 /** Tüm IPC handler modüllerini kaydeder. Yeni handler eklendikçe buraya çağrı eklenir. */
 export function registerAllHandlers(): void {
@@ -13,4 +14,5 @@ export function registerAllHandlers(): void {
   registerLocalHandlers()
   registerSiteHandlers()
   registerSyncHandlers()
+  registerTeamHandlers()
 }

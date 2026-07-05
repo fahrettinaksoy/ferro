@@ -21,7 +21,7 @@ const fileExistsActions = computed(() => [
 <template>
   <!-- eslint-disable vue/no-mutating-props -- draft, parent'a ait reaktif taslak nesnesidir; alanları burada doğrudan düzenlenir -->
   <!-- Aktarım → Dosya var işlemi -->
-  <p class="text-body-2 mt-0 mb-3">{{ $t('settings.fileExists.intro') }}</p>
+  <p class="text-body-medium mt-0 mb-3">{{ $t('settings.fileExists.intro') }}</p>
   <fieldset class="section">
     <legend>{{ $t('settings.fileExists.defaultTitle') }}</legend>
     <div class="d-flex align-center ga-2">
@@ -41,9 +41,9 @@ const fileExistsActions = computed(() => [
       />
     </div>
   </fieldset>
-  <p class="text-caption text-medium-emphasis">{{ $t('settings.fileExists.timeHint') }}</p>
+  <p class="text-body-small text-medium-emphasis">{{ $t('settings.fileExists.timeHint') }}</p>
   <v-switch v-model="draft.fileExists.asciiResume" :label="$t('settings.fileExists.asciiResume')" />
-  <p class="text-caption text-medium-emphasis mt-1 mb-0">
+  <p class="text-body-small text-medium-emphasis mt-1 mb-0">
     {{ $t('settings.fileExists.asciiResumeHint') }}
   </p>
 </template>

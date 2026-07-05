@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, watch } from 'vue'
+import { onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue'
 import { useHotkey } from 'vuetify'
 import { useI18n } from 'vue-i18n'
 // <v-hotkey> şablonda kullanılır; autoImport otomatik içe aktarır (elle import yok).
@@ -8,6 +8,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import { useConnectionStore } from '@renderer/stores/connection'
 import { useToastStore, errText } from '@renderer/stores/toast'
 import { useSitesStore } from '@renderer/stores/sites'
+import { useSyncStore } from '@renderer/stores/sync'
 import { useRemoteFsStore } from '@renderer/stores/remoteFs'
 import { useLocalStore } from '@renderer/stores/local'
 import { useLogStore } from '@renderer/stores/log'
@@ -16,12 +17,20 @@ import type { LocalEntry, RemoteEntry } from '@shared/transfer'
 import FilePane from '@renderer/components/FilePane.vue'
 import LogPanel from '@renderer/components/LogPanel.vue'
 import TransferTabs from '@renderer/components/TransferTabs.vue'
-import HostKeyDialog from '@renderer/components/HostKeyDialog.vue'
-import PasswordDialog from '@renderer/components/PasswordDialog.vue'
-import TlsDialog from '@renderer/components/TlsDialog.vue'
-import SiteManager from '@renderer/components/SiteManager.vue'
-import SyncDialog from '@renderer/components/SyncDialog.vue'
 import { ref, computed } from 'vue'
+
+// Nadiren açılan diyalog/panel bileşenleri: her oturumda çoğu zaman hiç
+// render edilmez (host key/TLS uyarısı, parola sorma gibi istisnai akışlar
+// veya kullanıcının nadiren açtığı Site Yöneticisi/Ekip/Senkron panelleri).
+// defineAsyncComponent ile ayrı chunk'a alınır — başlangıç paketi bu kodu
+// yalnızca ilk açılışta indirir/derler, her uygulama açılışında değil.
+const HostKeyDialog = defineAsyncComponent(() => import('@renderer/components/HostKeyDialog.vue'))
+const PasswordDialog = defineAsyncComponent(() => import('@renderer/components/PasswordDialog.vue'))
+const TlsDialog = defineAsyncComponent(() => import('@renderer/components/TlsDialog.vue'))
+const SiteManager = defineAsyncComponent(() => import('@renderer/components/SiteManager.vue'))
+const SyncDialog = defineAsyncComponent(() => import('@renderer/components/SyncDialog.vue'))
+const TeamDialog = defineAsyncComponent(() => import('@renderer/components/TeamDialog.vue'))
+const SyncDrawer = defineAsyncComponent(() => import('@renderer/components/SyncDrawer.vue'))
 
 const ui = useUiStore()
 const { t } = useI18n()
@@ -37,12 +46,16 @@ const leftTab = ref<'local' | 'sites'>('sites')
 const logOpen = ref(true)
 const queueOpen = ref(true)
 const syncOpen = ref(false)
+const teamsOpen = ref(false)
+// Bulut senkron paneli (kendi drawer'ı) — 'syncOpen' dizin karşılaştırma diyaloğudur.
+const cloudSyncOpen = ref(false)
 const conn = useConnectionStore()
 const remote = useRemoteFsStore()
 const local = useLocalStore()
 const log = useLogStore()
 const transfer = useTransferStore()
 const sites = useSitesStore()
+const sync = useSyncStore()
 
 // Sol kenar çubuğundan site yönetimini aç: "Sunucu Ekle" (yeni) veya düzenle.
 function openSiteManager(siteId: string | null = null): void {
@@ -221,6 +234,12 @@ onMounted(async () => {
       case 'sync':
         if (conn.isConnected) syncOpen.value = true
         break
+      case 'teams':
+        teamsOpen.value = true
+        break
+      case 'cloudSync':
+        cloudSyncOpen.value = true
+        break
       case 'toggleTransfers':
         // Toolbar butonuyla aynı hata yakalama: IPC hatası toast'a düşer.
         if (anyConnected.value) run(transfer.setPaused(!transfer.paused))
@@ -240,6 +259,23 @@ onMounted(async () => {
     await sites.load()
   } catch (err) {
     toast.error(t('toast.error', { msg: errText(err) }))
+  }
+
+  // Açılışta otomatik senkron (yalnızca autoSync açık + yapılandırılmışsa).
+  // Ayarlar değiştiyse tek seferlik yeniden yükleme (döngü korumalı: yeniden
+  // açılışta uzak ayarlar yerelle aynı olduğundan applySettings değişiklik
+  // görmez, tekrar reload olmaz). Site içe aktarımı main'de yapıldığından
+  // renderer listesi tazelenir.
+  try {
+    await sync.load()
+    const settingsChanged = await sync.autoPullOnStartup()
+    if (settingsChanged) {
+      window.location.reload()
+    } else if (sync.autoSync && sync.isConfigured) {
+      await sites.load()
+    }
+  } catch {
+    /* açılış senkronu sessiz — kullanıcıyı ağ hatasıyla rahatsız etme */
   }
 })
 
@@ -303,6 +339,8 @@ const hotkeys: HotkeyDef[] = [
       if (conn.isConnected) syncOpen.value = true
     }
   },
+  { keys: 'cmd+shift+t', labelKey: 'team.title', run: () => (teamsOpen.value = true) },
+  { keys: 'cmd+shift+y', labelKey: 'cloudSync.title', run: () => (cloudSyncOpen.value = true) },
   { keys: 'cmd+b', labelKey: 'sites.servers', run: () => (drawerOpen.value = !drawerOpen.value) },
   { keys: 'cmd+l', labelKey: 'log.title', run: () => (logOpen.value = !logOpen.value) },
   { keys: 'cmd+j', labelKey: 'transfer.title', run: () => (queueOpen.value = !queueOpen.value) },
@@ -399,6 +437,14 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
         <v-btn icon @click="openSiteManager(null)">
           <v-icon icon="$serverNetwork" />
           <v-tooltip activator="parent">{{ $t('settings.siteManager') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon @click="teamsOpen = true">
+          <v-icon icon="mdi-account-group" />
+          <v-tooltip activator="parent">{{ $t('team.title') }}</v-tooltip>
+        </v-btn>
+        <v-btn icon @click="cloudSyncOpen = true">
+          <v-icon icon="mdi-cloud-sync" />
+          <v-tooltip activator="parent">{{ $t('cloudSync.title') }}</v-tooltip>
         </v-btn>
         <v-btn icon @click="ui.openDrawer('settings')">
           <v-icon icon="$settings" />
@@ -605,9 +651,12 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
                     </v-list-item>
                   </v-list-group>
 
-                  <v-list-item v-if="!sites.sites.length" class="text-disabled text-caption">
-                    {{ $t('sites.noSites') }}
-                  </v-list-item>
+                  <v-empty-state
+                    v-if="!sites.sites.length"
+                    icon="mdi-server-off"
+                    :text="$t('sites.noSites')"
+                    size="40"
+                  />
                 </v-list>
 
                 <v-divider />
@@ -787,7 +836,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
         <v-card>
           <v-toolbar density="compact" color="surface">
             <v-icon icon="$keyboard" class="ml-3" />
-            <v-toolbar-title class="text-body-1">{{ $t('hotkeys.title') }}</v-toolbar-title>
+            <v-toolbar-title class="text-body-large">{{ $t('hotkeys.title') }}</v-toolbar-title>
             <v-spacer />
             <v-btn icon="mdi-close" size="small" @click="hotkeysHelpOpen = false" />
           </v-toolbar>
@@ -800,7 +849,7 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
             </v-list-item>
           </v-list>
           <v-divider />
-          <div class="pa-3 text-caption text-medium-emphasis">{{ $t('hotkeys.hint') }}</div>
+          <div class="pa-3 text-body-small text-medium-emphasis">{{ $t('hotkeys.hint') }}</div>
         </v-card>
       </v-dialog>
     </v-main>
@@ -809,6 +858,10 @@ hotkeys.forEach((h) => useHotkey(h.keys, () => h.run()))
          için v-main DIŞINDA durur (ferro-root display:contents olduğundan
          layout açısından v-app'in doğrudan çocuğudur). -->
     <SiteManager v-model="siteManagerOpen" :focus-site-id="siteManagerFocusId" />
+    <!-- Ekip paylaşımı + bulut senkron panelleri — SiteManager gibi v-main
+         DIŞINDA (AppDrawer v-app layout'una kaydolur). -->
+    <TeamDialog v-model="teamsOpen" />
+    <SyncDrawer v-model="cloudSyncOpen" />
   </div>
 </template>
 

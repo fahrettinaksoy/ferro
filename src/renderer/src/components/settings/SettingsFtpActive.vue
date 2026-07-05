@@ -10,7 +10,7 @@ defineProps<{ draft: Draft }>()
   <fieldset class="section">
     <legend>{{ $t('settings.ftpActive.portTitle') }}</legend>
     <v-switch v-model="draft.ftpActive.limitPorts" :label="$t('settings.ftpActive.limitPorts')" />
-    <p class="text-caption text-medium-emphasis mt-1 mb-2">
+    <p class="text-body-small text-medium-emphasis mt-1 mb-2">
       {{ $t('settings.ftpActive.limitHint') }}
     </p>
     <div class="d-flex align-center ga-2">
@@ -35,7 +35,7 @@ defineProps<{ draft: Draft }>()
 
   <fieldset class="section">
     <legend>{{ $t('settings.ftpActive.ipTitle') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-1">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-1">
       {{ $t('settings.ftpActive.ipHint') }}
     </p>
     <v-radio-group v-model="draft.ftpActive.externalIpMode">
@@ -47,7 +47,7 @@ defineProps<{ draft: Draft }>()
         class="ms-8"
         style="max-width: 220px"
       />
-      <p class="text-caption text-medium-emphasis ms-8 mt-1 mb-1">
+      <p class="text-body-small text-medium-emphasis ms-8 mt-1 mb-1">
         {{ $t('settings.ftpActive.ipFixedHint') }}
       </p>
       <v-radio :label="$t('settings.ftpActive.ipUrl')" value="url" />
@@ -58,7 +58,7 @@ defineProps<{ draft: Draft }>()
         class="ms-8"
         style="max-width: 320px"
       />
-      <p class="text-caption text-medium-emphasis ms-8 mt-1 mb-0">
+      <p class="text-body-small text-medium-emphasis ms-8 mt-1 mb-0">
         {{ $t('settings.ftpActive.ipUrlDefault') }}
       </p>
     </v-radio-group>

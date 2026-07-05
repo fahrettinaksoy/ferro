@@ -3,6 +3,7 @@ import { invoke } from '@renderer/lib/ipc'
 import type { SavedSite, SiteInput } from '@shared/transfer'
 import { useConnectionStore } from './connection'
 import { useRemoteFsStore } from './remoteFs'
+import { useSyncStore } from './sync'
 
 interface SitesState {
   sites: SavedSite[]
@@ -73,17 +74,23 @@ export const useSitesStore = defineStore('sites', {
     async save(input: SiteInput): Promise<void> {
       await invoke('sites:save', input)
       await this.load()
+      // Kullanıcı kaynaklı site değişikliği → kişisel senkron açıksa otomatik it
+      // (debounce'lu). Otomatik ÇEKMENİN ürettiği import bu yola girmez
+      // (main'de yapılır, buradan geçmez) — geri besleme döngüsü olmaz.
+      useSyncStore().scheduleAutoPush()
     },
 
     async remove(id: string): Promise<void> {
       await invoke('sites:delete', { id })
       await this.load()
+      useSyncStore().scheduleAutoPush()
     },
 
     /** Bir grubu (klasörü) yeniden adlandır: gruptaki tüm siteler taşınır. */
     async renameGroup(from: string, to: string): Promise<number> {
       const res = await invoke('sites:renameGroup', { from, to })
       await this.load()
+      useSyncStore().scheduleAutoPush()
       return res.count
     },
 

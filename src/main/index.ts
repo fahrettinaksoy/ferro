@@ -52,6 +52,8 @@ type MenuAction =
   | 'disconnect'
   | 'reconnect'
   | 'sync'
+  | 'teams'
+  | 'cloudSync'
   | 'toggleTransfers'
 function menuAction(action: MenuAction): void {
   const win = BrowserWindow.getAllWindows()[0]
@@ -94,6 +96,16 @@ function buildAppMenu(): void {
           label: 'Site Yöneticisi',
           accelerator: 'CmdOrCtrl+S',
           click: () => menuAction('siteManager')
+        },
+        {
+          label: 'Ekipler…',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: () => menuAction('teams')
+        },
+        {
+          label: 'Senkronizasyon…',
+          accelerator: 'CmdOrCtrl+Shift+Y',
+          click: () => menuAction('cloudSync')
         },
         {
           label: 'Ayarlar…',

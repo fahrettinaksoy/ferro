@@ -37,7 +37,11 @@ const GIST_API = 'https://api.github.com/gists'
 export class GistProvider implements SyncProvider {
   constructor(
     private readonly token: string,
-    private readonly gistId: string
+    private readonly gistId: string,
+    /** Gist içindeki dosya adı. Sync varsayılanı SYNC_FILE_NAME; ekip kasası
+     *  kendi adını (TEAM_FILE_NAME) geçirir — böylece aynı sağlayıcı kodu
+     *  farklı yükleri taşır. */
+    private readonly fileName: string = SYNC_FILE_NAME
   ) {
     if (!token) throw new FerroError('VALIDATION', 'GitHub token ayarlanmamış')
   }
@@ -55,7 +59,7 @@ export class GistProvider implements SyncProvider {
     const body = JSON.stringify({
       description: 'Ferro sync (encrypted)',
       public: false,
-      files: { [SYNC_FILE_NAME]: { content } }
+      files: { [this.fileName]: { content } }
     })
     // Gist id yoksa ilk push: gizli gist oluştur, dönen id kalıcılaştırılır.
     const res = this.gistId
@@ -95,7 +99,7 @@ export class GistProvider implements SyncProvider {
     const gist = (await res.json()) as {
       files?: Record<string, { content?: string; truncated?: boolean; raw_url?: string }>
     }
-    const file = gist.files?.[SYNC_FILE_NAME]
+    const file = gist.files?.[this.fileName]
     if (!file) return null
     // 1 MiB üstü içerikte API content'i kırpar — ham URL'den çekilir.
     if (file.truncated && file.raw_url) {
@@ -115,14 +119,17 @@ export class WebdavProvider implements SyncProvider {
   constructor(
     private readonly url: string,
     private readonly user: string,
-    private readonly password: string
+    private readonly password: string,
+    /** WebDAV klasöründeki dosya adı. Sync varsayılanı SYNC_FILE_NAME; ekip
+     *  kasası TEAM_FILE_NAME geçirir. */
+    private readonly fileName: string = SYNC_FILE_NAME
   ) {
     if (!url) throw new FerroError('VALIDATION', 'WebDAV adresi ayarlanmamış')
   }
 
-  /** Yapılandırılan klasör adresi + sabit dosya adı. */
+  /** Yapılandırılan klasör adresi + dosya adı. */
   private fileUrl(): string {
-    return `${this.url.replace(/\/+$/, '')}/${SYNC_FILE_NAME}`
+    return `${this.url.replace(/\/+$/, '')}/${this.fileName}`
   }
 
   private headers(): Record<string, string> {

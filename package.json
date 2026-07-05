@@ -40,6 +40,7 @@
     "test": "vitest run",
     "test:unit": "vitest run .unit.test.",
     "test:integration": "vitest run .integration.test.",
+    "test:component": "vitest run -c vitest.config.component.ts",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint . --cache",
@@ -74,13 +75,16 @@
     "@types/ssh2-sftp-client": "^9.0.4",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vitest/coverage-v8": "^4.1.9",
+    "@vue/test-utils": "^2.4.11",
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.9.2",
+    "eslint-plugin-vuetify": "^2.7.2",
     "globals": "^17.7.0",
+    "happy-dom": "^20.10.6",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.4.2",
@@ -92,5 +96,13 @@
     "vitest": "^4.1.9",
     "vue": "^3.5.13",
     "vue-tsc": "^2.1.10"
+  },
+  "allowScripts": {
+    "cpu-features@0.0.10": true,
+    "electron@43.0.0": true,
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.25.12": true,
+    "ssh2@1.17.0": true,
+    "@parcel/watcher@2.5.6": true
   }
 }

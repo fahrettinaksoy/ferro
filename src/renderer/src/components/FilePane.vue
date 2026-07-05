@@ -282,6 +282,16 @@ watch(sortedEntries, (list) => {
   if (focusedIndex.value >= list.length) focusedIndex.value = list.length - 1
 })
 
+// ── Boş durum (v-empty-state, M3): bağlı değilken ile boş klasörken ayrı
+// ikon/başlık — kullanıcı nedenini tek bakışta ayırt eder. ──
+const emptyIcon = computed(() =>
+  props.disabled ? 'mdi-lan-disconnect' : 'mdi-folder-open-outline'
+)
+const emptyTitle = computed(() =>
+  props.disabled ? t('panes.noConnectionTitle') : t('panes.emptyTitle')
+)
+const emptyText = computed(() => (props.disabled ? t('panes.noConnection') : t('common.empty')))
+
 /** Alt durum çubuğu metni: uzak bağlı değilse "bağlantı yok", aksi halde özet. */
 const statusText = computed(() => {
   if (props.connecting) return t('panes.connecting')
@@ -385,7 +395,7 @@ const dialogTitle = computed(() => {
   <v-card class="d-flex flex-column fill-height m3-surface" variant="flat">
     <v-toolbar density="compact" color="transparent">
       <v-icon :icon="icon" class="ml-3" />
-      <v-toolbar-title class="text-body-1">{{ title }}</v-toolbar-title>
+      <v-toolbar-title class="text-body-large">{{ title }}</v-toolbar-title>
       <v-spacer />
       <!-- Bağlamsal defaults: bu toolbar'ın butonları küçük. Global VBtn'i ezmeden
            yalnızca bu alt-ağaç için size='small' verilir (defaults-provider). -->
@@ -418,7 +428,7 @@ const dialogTitle = computed(() => {
     <v-breadcrumbs
       density="compact"
       bg-color="surface-variant"
-      class="path-bar text-caption"
+      class="path-bar text-body-small"
       :title="cwd"
     >
       <template v-for="(c, i) in crumbs" :key="c.path">
@@ -437,7 +447,7 @@ const dialogTitle = computed(() => {
 
     <v-divider />
 
-    <div v-if="error" class="pane-error px-3 d-flex align-center text-error text-caption">
+    <div v-if="error" class="pane-error px-3 d-flex align-center text-error text-body-small">
       <v-icon icon="mdi-alert-circle" size="small" class="mr-2 flex-shrink-0" />
       <span class="text-truncate" :title="error">{{ error }}</span>
     </div>
@@ -518,9 +528,14 @@ const dialogTitle = computed(() => {
           </div>
         </template>
 
-        <div v-else-if="!entries.length" class="empty-row text-center text-medium-emphasis py-4">
-          {{ disabled ? $t('panes.noConnection') : $t('common.empty') }}
-        </div>
+        <v-empty-state
+          v-else-if="!entries.length"
+          class="empty-row"
+          :icon="emptyIcon"
+          :title="emptyTitle"
+          :text="emptyText"
+          size="48"
+        />
 
         <!-- Sanal liste: binlerce girdide yalnızca görünen satırlar DOM'da. -->
         <v-virtual-scroll
@@ -555,14 +570,14 @@ const dialogTitle = computed(() => {
               <div class="cell text-right justify-end">
                 {{ entry.type === 'directory' ? '' : formatSize(entry.size, ui.prefs.fileSize) }}
               </div>
-              <div class="cell text-caption">{{ fileType(entry) }}</div>
-              <div class="cell text-caption">
+              <div class="cell text-body-small">{{ fileType(entry) }}</div>
+              <div class="cell text-body-small">
                 {{ formatDate(entry.modifiedAt, ui.prefs.dateTime) }}
               </div>
-              <div v-if="showRemoteCols" class="cell text-caption font-monospace">
+              <div v-if="showRemoteCols" class="cell text-body-small font-monospace">
                 {{ formatPermissions(entry.permissions ?? null) }}
               </div>
-              <div v-if="showRemoteCols" class="cell text-caption">
+              <div v-if="showRemoteCols" class="cell text-body-small">
                 {{ entry.owner ? entry.owner + '/' + (entry.group ?? '') : '' }}
               </div>
               <div class="cell cell-actions">
@@ -595,7 +610,7 @@ const dialogTitle = computed(() => {
 
     <!-- Alt durum çubuğu: yerelde özet (dosya/klasör/boyut), uzakta bağlantı durumu. -->
     <v-divider />
-    <div class="status-bar px-3 text-caption text-medium-emphasis">
+    <div class="status-bar px-3 text-body-small text-medium-emphasis">
       {{ statusText }}
     </div>
 
@@ -791,7 +806,7 @@ button.head-cell.col-sort:focus-visible {
   flex: 0 0 auto;
   height: 28px;
   min-height: 28px;
-  font-size: 0.6875rem; /* text-caption'dan bir tık küçük */
+  font-size: 0.6875rem; /* text-body-small'dan bir tık küçük */
   margin-top: 2px;
   margin-bottom: 0px;
   padding: 0px 10px !important;
@@ -840,7 +855,7 @@ button.head-cell.col-sort:focus-visible {
   flex: 0 0 auto;
   height: 22px;
   line-height: 22px;
-  font-size: 0.6875rem; /* text-caption'dan bir tık küçük */
+  font-size: 0.6875rem; /* text-body-small'dan bir tık küçük */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

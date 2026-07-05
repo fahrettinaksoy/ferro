@@ -6,9 +6,11 @@ import { defaultPort } from '@shared/transfer'
 import { useSitesStore } from '@renderer/stores/sites'
 import { useToastStore, errText } from '@renderer/stores/toast'
 import { invoke } from '@renderer/lib/ipc'
+import { useRules } from '@renderer/lib/rules'
 import AppDrawer from '@renderer/components/AppDrawer.vue'
 
 const { t } = useI18n()
+const { required, port: portRule } = useRules()
 
 const props = defineProps<{ modelValue: boolean; focusSiteId?: string | null }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
@@ -335,9 +337,12 @@ function connect(): void {
               </v-list-item>
             </v-list-group>
 
-            <v-list-item v-if="!sites.sites.length" class="text-disabled text-caption">
-              {{ $t('sites.noSites') }}
-            </v-list-item>
+            <v-empty-state
+              v-if="!sites.sites.length"
+              icon="mdi-server-off"
+              :text="$t('sites.noSites')"
+              size="40"
+            />
           </v-list>
 
           <!-- İçe/dışa aktarma: liste kabının dibinde, bir ton koyu şerit. -->
@@ -376,7 +381,7 @@ function connect(): void {
             extension-height="48"
             class="site-toolbar"
           >
-            <v-toolbar-title class="text-body-1">
+            <v-toolbar-title class="text-body-large">
               <v-icon :icon="isEditing ? 'mdi-pencil' : 'mdi-plus'" size="small" class="mr-2" />
               {{
                 isEditing
@@ -400,18 +405,30 @@ function connect(): void {
           <div class="form-window flex-grow-1 pa-4">
             <!-- ── Genel ── -->
             <div v-if="tab === 'general'" class="d-flex flex-column ga-3">
-              <v-text-field v-model="form.name" :label="$t('sites.siteName')" />
+              <v-text-field
+                v-model="form.name"
+                :label="$t('sites.siteName')"
+                :rules="[required]"
+                hide-details="auto"
+              />
               <v-select
                 v-model="baseProtocol"
                 :items="baseProtocols"
                 :label="$t('sites.protocolLabel')"
               />
               <div class="d-flex ga-2">
-                <v-text-field v-model="form.host" :label="$t('connect.server')" />
+                <v-text-field
+                  v-model="form.host"
+                  :label="$t('connect.server')"
+                  :rules="[required]"
+                  hide-details="auto"
+                />
                 <v-text-field
                   v-model.number="form.port"
                   :label="$t('connect.port')"
                   type="number"
+                  :rules="[required, portRule]"
+                  hide-details="auto"
                   style="max-width: 120px"
                 />
               </div>
@@ -423,7 +440,12 @@ function connect(): void {
               />
               <v-select v-model="logonType" :items="logonTypes" :label="$t('sites.logonType')" />
               <div v-if="!form.anonymous" class="d-flex ga-2">
-                <v-text-field v-model="form.user" :label="$t('connect.user')" />
+                <v-text-field
+                  v-model="form.user"
+                  :label="$t('connect.user')"
+                  :rules="[required]"
+                  hide-details="auto"
+                />
                 <!-- "Parola sorulsun": parola alanı yok — bağlanırken sorulur. -->
                 <v-text-field
                   v-if="!form.askPassword"
@@ -478,26 +500,26 @@ function connect(): void {
               <v-checkbox v-model="form.dirComparison" :label="$t('sites.dirComparison')" />
 
               <v-divider class="my-1" />
-              <div class="text-body-2">{{ $t('sites.timezone') }}</div>
+              <div class="text-body-medium">{{ $t('sites.timezone') }}</div>
               <div class="d-flex ga-2 align-center">
                 <v-text-field
                   v-model.number="form.timezoneHours"
                   type="number"
                   style="max-width: 110px"
                 />
-                <span class="text-body-2">{{ $t('sites.hours') }}</span>
+                <span class="text-body-medium">{{ $t('sites.hours') }}</span>
                 <v-text-field
                   v-model.number="form.timezoneMinutes"
                   type="number"
                   style="max-width: 110px"
                 />
-                <span class="text-body-2">{{ $t('sites.minutes') }}</span>
+                <span class="text-body-medium">{{ $t('sites.minutes') }}</span>
               </div>
             </div>
 
             <!-- ── Aktarım ayarları ── -->
             <div v-if="tab === 'transfer'" class="d-flex flex-column ga-2">
-              <div class="text-body-2">{{ $t('sites.transferMode') }}</div>
+              <div class="text-body-medium">{{ $t('sites.transferMode') }}</div>
               <v-radio-group v-model="form.transferMode" inline>
                 <v-radio :label="$t('sites.mode.default')" value="default" />
                 <v-radio :label="$t('sites.mode.active')" value="active" />
@@ -506,7 +528,7 @@ function connect(): void {
 
               <v-checkbox v-model="form.limitConnections" :label="$t('sites.limitConnections')" />
               <div class="d-flex ga-2 align-center ml-8">
-                <span class="text-body-2">{{ $t('sites.maxConnections') }}</span>
+                <span class="text-body-medium">{{ $t('sites.maxConnections') }}</span>
                 <v-text-field
                   v-model.number="form.maxConnections"
                   type="number"
@@ -519,7 +541,7 @@ function connect(): void {
 
             <!-- ── Karakter kümesi ── -->
             <div v-if="tab === 'charset'" class="d-flex flex-column ga-2">
-              <div class="text-body-2">{{ $t('sites.charsetIntro') }}</div>
+              <div class="text-body-medium">{{ $t('sites.charsetIntro') }}</div>
               <v-radio-group v-model="charsetMode">
                 <v-radio :label="$t('sites.charsetUtf8')" value="utf8" />
                 <v-radio :label="$t('sites.charsetCustom')" value="custom" />
@@ -571,7 +593,7 @@ function connect(): void {
     <v-dialog v-model="exportDialog" max-width="460">
       <v-card :title="$t('sites.exportTitle')">
         <v-card-text class="pt-2">
-          <p class="text-body-2 mb-3">
+          <p class="text-body-medium mb-3">
             {{ $t('sites.exportDesc', { count: sites.sites.length }) }}
           </p>
           <v-checkbox

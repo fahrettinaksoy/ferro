@@ -51,7 +51,7 @@ async function decide(accept: boolean): Promise<void> {
         <v-sheet color="surface" border rounded class="pa-2 fingerprint">
           {{ current.fingerprint }}
         </v-sheet>
-        <p class="text-caption text-medium-emphasis mt-2">{{ $t('hostkey.note') }}</p>
+        <p class="text-body-small text-medium-emphasis mt-2">{{ $t('hostkey.note') }}</p>
       </v-card-text>
       <v-card-actions>
         <v-spacer />

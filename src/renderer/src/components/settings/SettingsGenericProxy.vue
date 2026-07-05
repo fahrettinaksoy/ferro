@@ -9,7 +9,7 @@ defineProps<{ draft: Draft }>()
   <!-- Bağlantı → Genel vekil sunucu -->
   <fieldset class="section">
     <legend>{{ $t('settings.genericProxy.title') }}</legend>
-    <div class="text-body-2 mb-1">{{ $t('settings.genericProxy.typeLabel') }}</div>
+    <div class="text-body-medium mb-1">{{ $t('settings.genericProxy.typeLabel') }}</div>
     <v-radio-group v-model="draft.genericProxy.type">
       <v-radio :label="$t('settings.genericProxy.none')" value="none" />
       <v-radio :label="$t('settings.genericProxy.http')" value="http" />
@@ -50,7 +50,7 @@ defineProps<{ draft: Draft }>()
         style="max-width: 260px"
       />
     </div>
-    <p class="text-caption text-medium-emphasis mt-3 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-3 mb-0">
       {{ $t('settings.genericProxy.note') }}
     </p>
   </fieldset>

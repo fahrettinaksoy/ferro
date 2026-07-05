@@ -26,6 +26,17 @@ function percent(bytes: number, total: number | null): number {
   return Math.min(100, Math.round((bytes / total) * 100))
 }
 
+// Sekme başına farklı ikon/metin: kullanıcı boş sekmenin NEDENİNİ ayırt eder
+// ("failed" sekmesinin boş olması iyi haber — check-circle ile olumlu çerçevelenir).
+const EMPTY_STATE: Record<'queued' | 'completed' | 'failed', { icon: string; key: string }> = {
+  // $queuePanel (mdi-tray-full): düz 'mdi-tray' sığ/açık bir U çizdiğinden 44px'te
+  // yarım kesilmiş gibi görünüyordu — panelin zaten kullandığı dolu tepsi ikonuyla değiştirildi.
+  queued: { icon: '$queuePanel', key: 'transfer.emptyQueued' },
+  completed: { icon: 'mdi-history', key: 'transfer.emptyCompleted' },
+  failed: { icon: 'mdi-shield-check-outline', key: 'transfer.emptyFailed' }
+}
+const emptyState = computed(() => EMPTY_STATE[tab.value])
+
 const statusIcon: Record<string, string> = {
   queued: '$queuePanel',
   active: 'mdi-progress-upload',
@@ -84,11 +95,14 @@ const statusColor: Record<string, string> = {
     <v-divider />
 
     <div class="tab-scroll flex-grow-1">
-      <div v-if="!rows.length" class="text-disabled text-caption pa-4 text-center">
-        {{ $t('transfer.empty') }}
-      </div>
+      <v-empty-state
+        v-if="!rows.length"
+        :icon="emptyState.icon"
+        :text="$t(emptyState.key)"
+        size="44"
+      />
       <div v-for="t in rows" :key="t.id" class="px-3 py-1 row-line">
-        <div class="d-flex align-center text-caption ga-2">
+        <div class="d-flex align-center text-body-small ga-2">
           <v-icon
             :icon="t.direction === 'download' ? 'mdi-arrow-down-bold' : 'mdi-arrow-up-bold'"
             size="x-small"
@@ -123,7 +137,7 @@ const statusColor: Record<string, string> = {
           height="3"
           class="mt-1"
         />
-        <div v-if="t.status === 'failed' && t.error" class="text-error text-caption">
+        <div v-if="t.status === 'failed' && t.error" class="text-error text-body-small">
           {{ t.error }}
         </div>
       </div>

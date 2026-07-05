@@ -52,7 +52,7 @@ const dblDirOptions = computed(() => [
   </fieldset>
   <fieldset class="section">
     <legend>{{ $t('settings.fileLists.compareTitle') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-2">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-2">
       {{ $t('settings.fileLists.compareHint') }}
     </p>
     <div class="d-flex align-center ga-2">

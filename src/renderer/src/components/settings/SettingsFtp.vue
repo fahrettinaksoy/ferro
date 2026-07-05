@@ -9,7 +9,7 @@ defineProps<{ draft: Draft }>()
   <!-- Bağlantı → FTP -->
   <fieldset class="section">
     <legend>{{ $t('settings.ftp.generalTitle') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-2">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-2">
       {{ $t('settings.ftp.generalHint') }}
     </p>
     <v-btn variant="outlined" size="small" disabled prepend-icon="mdi-cog-sync">
@@ -28,7 +28,7 @@ defineProps<{ draft: Draft }>()
       :label="$t('settings.ftp.fallback')"
       class="mt-1"
     />
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.ftp.modeHint') }}
     </p>
   </fieldset>
@@ -36,7 +36,7 @@ defineProps<{ draft: Draft }>()
   <fieldset class="section">
     <legend>{{ $t('settings.ftp.keepAliveTitle') }}</legend>
     <v-switch v-model="draft.ftp.keepAlive" :label="$t('settings.ftp.keepAlive')" />
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.ftp.keepAliveHint') }}
     </p>
   </fieldset>

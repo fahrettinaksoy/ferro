@@ -35,9 +35,9 @@ defineProps<{ draft: Draft }>()
         :disabled="!draft.logging.logToFile || !draft.logging.limitSize"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">{{ $t('settings.logging.mib') }}</span>
+      <span class="text-body-small text-medium-emphasis">{{ $t('settings.logging.mib') }}</span>
     </div>
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.logging.rotateHint') }}
     </p>
   </fieldset>

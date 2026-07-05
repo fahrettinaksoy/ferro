@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import pluginVue from 'eslint-plugin-vue'
+import pluginVuetify from 'eslint-plugin-vuetify'
 import prettier from 'eslint-config-prettier'
 import globals from 'globals'
 
@@ -32,6 +33,12 @@ export default tseslint.config(
     files: ['src/renderer/**/*.{ts,vue}'],
     languageOptions: { globals: { ...globals.browser } }
   },
+
+  // Vuetify 4: deprecated prop/component/slot kullanımını yakalar (yalnızca renderer .vue).
+  ...pluginVuetify.configs['flat/recommended-v4'].map((c) => ({
+    ...c,
+    files: ['src/renderer/**/*.vue']
+  })),
 
   {
     rules: {

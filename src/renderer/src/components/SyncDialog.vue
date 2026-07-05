@@ -102,7 +102,7 @@ const statusColor: Record<string, string> = {
     <v-card>
       <v-toolbar density="compact" color="surface">
         <v-icon icon="$sync" class="ml-3" />
-        <v-toolbar-title class="text-body-1">{{ $t('sync.title') }}</v-toolbar-title>
+        <v-toolbar-title class="text-body-large">{{ $t('sync.title') }}</v-toolbar-title>
         <v-spacer />
         <!-- Bağlamsal defaults: toolbar butonları küçük (sadece bu alt-ağaç). -->
         <v-defaults-provider :defaults="{ VBtn: { size: 'small' } }">
@@ -154,10 +154,10 @@ const statusColor: Record<string, string> = {
                   />
                   {{ e.name }}
                 </td>
-                <td class="text-right text-caption">
+                <td class="text-right text-body-small">
                   {{ e.inLocal ? (e.isDirectory ? '—' : formatSize(e.localSize ?? 0)) : '' }}
                 </td>
-                <td class="text-right text-caption">
+                <td class="text-right text-body-small">
                   {{ e.inRemote ? (e.isDirectory ? '—' : formatSize(e.remoteSize ?? 0)) : '' }}
                 </td>
                 <td>
@@ -186,7 +186,7 @@ const statusColor: Record<string, string> = {
 
         <v-divider />
         <v-card-actions>
-          <span class="text-caption text-medium-emphasis ml-2">
+          <span class="text-body-small text-medium-emphasis ml-2">
             {{ $t('sync.transferCount', { count: selected.size }) }}
           </span>
           <v-spacer />

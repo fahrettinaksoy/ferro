@@ -26,7 +26,7 @@ watch(
   <v-card variant="flat" class="d-flex flex-column fill-height m3-surface">
     <v-toolbar density="compact" color="transparent">
       <v-icon icon="$logPanel" class="ml-3" />
-      <v-toolbar-title class="text-body-2">{{ $t('log.title') }}</v-toolbar-title>
+      <v-toolbar-title class="text-body-medium">{{ $t('log.title') }}</v-toolbar-title>
       <v-spacer />
       <v-btn icon size="small" @click="logStore.clear()">
         <v-icon icon="$remove" />
@@ -39,9 +39,12 @@ watch(
         <span class="text-disabled mr-2">{{ e.time }}</span
         >{{ e.text }}
       </div>
-      <div v-if="!logStore.entries.length" class="text-disabled text-caption">
-        {{ $t('log.empty') }}
-      </div>
+      <v-empty-state
+        v-if="!logStore.entries.length"
+        icon="$logPanel"
+        :text="$t('log.empty')"
+        size="44"
+      />
     </div>
   </v-card>
 </template>

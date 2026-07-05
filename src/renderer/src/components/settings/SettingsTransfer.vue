@@ -28,7 +28,7 @@ const tolerances = computed(() => [
         max="10"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.transferOpts.concurrentRange') }}
       </span>
     </div>
@@ -40,7 +40,7 @@ const tolerances = computed(() => [
         min="0"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.transferOpts.unlimitedZero') }}
       </span>
     </div>
@@ -52,7 +52,7 @@ const tolerances = computed(() => [
         min="0"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.transferOpts.unlimitedZero') }}
       </span>
     </div>
@@ -73,7 +73,9 @@ const tolerances = computed(() => [
         :disabled="!draft.transfer.enableSpeedLimit"
         style="max-width: 110px"
       />
-      <span class="text-caption text-medium-emphasis">{{ $t('settings.transferOpts.kibs') }}</span>
+      <span class="text-body-small text-medium-emphasis">{{
+        $t('settings.transferOpts.kibs')
+      }}</span>
     </div>
     <div class="d-flex align-center ga-2 mt-2">
       <span class="field-label">{{ $t('settings.transferOpts.uploadLimit') }}</span>
@@ -84,7 +86,9 @@ const tolerances = computed(() => [
         :disabled="!draft.transfer.enableSpeedLimit"
         style="max-width: 110px"
       />
-      <span class="text-caption text-medium-emphasis">{{ $t('settings.transferOpts.kibs') }}</span>
+      <span class="text-body-small text-medium-emphasis">{{
+        $t('settings.transferOpts.kibs')
+      }}</span>
     </div>
     <div class="d-flex align-center ga-2 mt-2">
       <span class="field-label">{{ $t('settings.transferOpts.tolerance') }}</span>
@@ -99,7 +103,7 @@ const tolerances = computed(() => [
 
   <fieldset class="section">
     <legend>{{ $t('settings.transferOpts.invalidTitle') }}</legend>
-    <p class="text-caption text-medium-emphasis mt-0 mb-2">
+    <p class="text-body-small text-medium-emphasis mt-0 mb-2">
       {{ $t('settings.transferOpts.invalidHint') }}
     </p>
     <div class="d-flex align-center ga-2">
@@ -114,7 +118,7 @@ const tolerances = computed(() => [
         style="max-width: 60px"
       />
     </div>
-    <div class="text-caption text-medium-emphasis mt-1">
+    <div class="text-body-small text-medium-emphasis mt-1">
       {{ $t('settings.transferOpts.charToReplace') }}
     </div>
   </fieldset>

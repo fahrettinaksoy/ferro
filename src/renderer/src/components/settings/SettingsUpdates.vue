@@ -36,7 +36,7 @@ const updateChannelOptions = computed(() => [
       :items="updateChannelOptions"
       style="max-width: 320px"
     />
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.updates.recommendation') }}
     </p>
   </fieldset>
@@ -45,8 +45,8 @@ const updateChannelOptions = computed(() => [
       {{ $t('settings.updates.checkNow') }}
     </v-btn>
   </div>
-  <p class="text-caption text-medium-emphasis mb-1">
+  <p class="text-body-small text-medium-emphasis mb-1">
     {{ $t('settings.updates.privacyHint') }}
   </p>
-  <p class="text-caption text-primary mb-0">{{ $t('settings.updates.privacyPolicy') }}</p>
+  <p class="text-body-small text-primary mb-0">{{ $t('settings.updates.privacyPolicy') }}</p>
 </template>

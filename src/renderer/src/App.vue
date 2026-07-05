@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { useTheme } from 'vuetify'
 import { storeToRefs } from 'pinia'
-import { watch } from 'vue'
+import { watch, defineAsyncComponent } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useToastStore, type ToastColor, type ToastMessage } from '@renderer/stores/toast'
 import { applyThemes, applyFonts } from '@renderer/lib/theme'
-import SettingsDialog from '@renderer/components/SettingsDialog.vue'
-import AboutDialog from '@renderer/components/AboutDialog.vue'
-import MasterUnlockDialog from '@renderer/components/MasterUnlockDialog.vue'
 import MainView from '@renderer/views/MainView.vue'
+
+// Ayarlar paneli tek başına 20 alt sayfa bileşeni içe aktarır (SettingsDialog.vue);
+// "Hakkında" ve ana parola kilidi de çoğu oturumda hiç açılmaz. Üçü de ayrı
+// chunk'a alınır — başlangıç paketi bu kodu yalnızca ilk açılışta indirir/derler.
+const SettingsDialog = defineAsyncComponent(() => import('@renderer/components/SettingsDialog.vue'))
+const AboutDialog = defineAsyncComponent(() => import('@renderer/components/AboutDialog.vue'))
+const MasterUnlockDialog = defineAsyncComponent(
+  () => import('@renderer/components/MasterUnlockDialog.vue')
+)
 
 // Tema state'i uygulama kökünde uygulanır (v-app burada).
 const ui = useUiStore()
@@ -86,9 +92,21 @@ function toastText(item: unknown): string {
     sans-serif
   );
 }
+/* .text-label-large = eski text-subtitle-2'nin yeni adı. text-subtitle-1
+   kullanılmıyor; text-body-1 de (v-toolbar-title) v4'te aynı .text-body-large
+   adına taşındığından bilinçli olarak dışarıda bırakıldı (araç çubuğu
+   başlıkları önceden de gövde fontundaydı — davranış korunuyor). */
 .v-application :is(h1, h2, h3, h4, h5, h6),
-.v-application :is(.text-h1, .text-h2, .text-h3, .text-h4, .text-h5, .text-h6),
-.v-application :is(.text-subtitle-1, .text-subtitle-2) {
+.v-application
+  :is(
+    .text-display-large,
+    .text-display-medium,
+    .text-display-small,
+    .text-headline-large,
+    .text-headline-medium,
+    .text-headline-small
+  ),
+.v-application :is(.text-label-large) {
   font-family: var(--ferro-font-heading, var(--ferro-font-body, inherit));
 }
 /* M3 tonal yüzey kabı: paneller sınır çizgisiyle değil, zeminden bir ton açık
@@ -105,5 +123,37 @@ function toastText(item: unknown): string {
   color: rgb(var(--v-theme-inverse-on-surface)) !important;
   font-size: 0.75rem;
   font-weight: 500;
+}
+/* ── Anahtarlar (v-switch): kare + net kontrast ──
+   Varsayılan inset anahtar, tonal kap zeminlerinde (surface-container*) soluk
+   kalıp durumu belirsizleşiyordu. Kare köşe + KAPALIYKEN görünür outline'lı
+   dolu track + AÇIKKEN belirgin primary dolgu ile her temada okunur ve
+   açık/kapalı durumu net ayrışır. Kurallar @layer dışında olduğundan
+   Vuetify'ın katmanlı stillerini ezer (App.vue font kuralıyla aynı gerekçe). */
+.v-switch .v-switch__track {
+  border-radius: 5px !important;
+  opacity: 1 !important;
+  background-color: rgb(var(--v-theme-surface-container-highest)) !important;
+  border: 1.5px solid rgb(var(--v-theme-outline));
+  box-sizing: border-box;
+}
+.v-switch .v-switch__thumb {
+  border-radius: 3px !important;
+  background-color: rgb(var(--v-theme-on-surface-variant)) !important;
+  color: rgb(var(--v-theme-on-surface-variant)) !important;
+  box-shadow: none;
+}
+/* Açık (seçili) durum: primary dolgu + üstünde belirgin açık thumb. */
+.v-switch .v-selection-control--dirty .v-switch__track {
+  background-color: rgb(var(--v-theme-primary)) !important;
+  border-color: rgb(var(--v-theme-primary)) !important;
+}
+.v-switch .v-selection-control--dirty .v-switch__thumb {
+  background-color: rgb(var(--v-theme-on-primary)) !important;
+  color: rgb(var(--v-theme-on-primary)) !important;
+}
+/* Devre dışı anahtar yine de okunur bir soluklukta kalsın (görünmez olmasın). */
+.v-switch.v-input--disabled {
+  opacity: 0.55;
 }
 </style>

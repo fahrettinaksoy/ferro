@@ -26,10 +26,10 @@ const debugLevels = computed(() => [
       <span class="field-label">{{ $t('settings.debug.level') }}</span>
       <v-select v-model="draft.debug.debugLevel" :items="debugLevels" style="max-width: 200px" />
     </div>
-    <p class="text-caption text-medium-emphasis mt-2 mb-1">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-1">
       {{ $t('settings.debug.levelHint') }}
     </p>
-    <p class="text-caption text-medium-emphasis mb-2">
+    <p class="text-body-small text-medium-emphasis mb-2">
       {{ $t('settings.debug.reportHint') }}
     </p>
     <v-switch v-model="draft.debug.showRawListing" :label="$t('settings.debug.rawListing')" />

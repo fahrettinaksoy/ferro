@@ -48,7 +48,7 @@ useHotkey(
         <v-icon v-if="icon" :icon="icon" size="40" class="mr-4 flex-shrink-0" />
         <div class="flex-grow-1" style="min-width: 0">
           <div class="header-title">{{ title }}</div>
-          <div v-if="subtitle" class="text-body-2 header-subtitle text-truncate">
+          <div v-if="subtitle" class="text-body-medium header-subtitle text-truncate">
             {{ subtitle }}
           </div>
         </div>

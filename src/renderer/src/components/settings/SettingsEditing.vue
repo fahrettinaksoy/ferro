@@ -36,7 +36,7 @@ async function browseEditor(): Promise<void> {
         {{ $t('settings.editing.browse') }}
       </v-btn>
     </div>
-    <p class="text-caption text-medium-emphasis ms-8 mt-1 mb-0">
+    <p class="text-body-small text-medium-emphasis ms-8 mt-1 mb-0">
       {{ $t('settings.editing.quoteHint') }}
       <span class="text-primary">{{ $t('settings.editing.quoteRules') }}</span>
     </p>

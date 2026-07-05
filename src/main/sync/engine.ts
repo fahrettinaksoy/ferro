@@ -1,5 +1,5 @@
 import { FerroError } from '@shared/errors'
-import type { SyncBlobFile, SyncPayload, SyncSettingsSnapshot } from '@shared/sync'
+import type { SyncBlobFile, SyncPayload, SyncPeekResult, SyncSettingsSnapshot } from '@shared/sync'
 import { syncConfigStore } from '../store/syncConfig'
 import { siteStore } from '../store/sites'
 import { sitesImportFile } from '../ipc/validation'
@@ -81,7 +81,7 @@ export async function syncPush(settings?: SyncSettingsSnapshot): Promise<PushRes
   const provider = buildProvider()
   const result = await provider.upload(content)
   if (result?.gistId) syncConfigStore.setGistId(result.gistId)
-  syncConfigStore.markSynced('push')
+  syncConfigStore.markSynced('push', payload.updatedAt)
   log.info(
     `push tamam: ${payload.sites?.length ?? 0} site, ayarlar=${!!payload.settings}, ${content.length} bayt`
   )
@@ -131,9 +131,29 @@ export async function syncPull(): Promise<PullResult> {
     result.sites = { imported, skipped, total: entries.length }
   }
   if (include.settings) result.settings = sanitizeSettings(payload.settings)
-  syncConfigStore.markSynced('pull')
+  syncConfigStore.markSynced('pull', payload.updatedAt)
   log.info(
     `pull tamam: site=${result.sites ? `${result.sites.imported}/${result.sites.total}` : '—'}, ayarlar=${!!result.settings}`
   )
   return result
+}
+
+/**
+ * Uzak yükü indirir/çözer ama İÇE AKTARMAZ — yalnızca zaman damgasını döndürür.
+ * Çakışma/bayatlık tespiti için: renderer bunu lastRemoteUpdatedAt ile
+ * karşılaştırır. found=false → uzak kopya henüz yok.
+ */
+export async function syncPeek(): Promise<SyncPeekResult> {
+  const password = requireSyncPassword()
+  const provider = buildProvider()
+  const content = await provider.download()
+  if (content === null) return { found: false, updatedAt: null }
+  let blob: SyncBlobFile
+  try {
+    blob = JSON.parse(content) as SyncBlobFile
+  } catch (err) {
+    throw new FerroError('VALIDATION', 'Uzak sync dosyası geçerli JSON değil', String(err))
+  }
+  const payload = decryptSyncPayload(blob, password)
+  return { found: true, updatedAt: payload.updatedAt }
 }

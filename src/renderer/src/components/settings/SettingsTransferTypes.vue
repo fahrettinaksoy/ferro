@@ -40,7 +40,7 @@ function removeExt(): void {
 
   <fieldset class="section">
     <legend>{{ $t('settings.transferTypes.autoTitle') }}</legend>
-    <div class="text-body-2 mb-1">{{ $t('settings.transferTypes.asciiListLabel') }}</div>
+    <div class="text-body-medium mb-1">{{ $t('settings.transferTypes.asciiListLabel') }}</div>
     <div class="d-flex ga-3">
       <div class="ext-list">
         <v-list density="compact" nav>
@@ -63,7 +63,7 @@ function removeExt(): void {
             {{ $t('settings.transferTypes.remove') }}
           </v-btn>
         </div>
-        <p class="text-caption text-medium-emphasis mb-0">
+        <p class="text-body-small text-medium-emphasis mb-0">
           {{ $t('settings.transferTypes.malformedHint') }}
         </p>
       </div>
@@ -77,7 +77,7 @@ function removeExt(): void {
       v-model="draft.transferTypes.dotfilesAsAscii"
       :label="$t('settings.transferTypes.dotfiles')"
     />
-    <p class="text-caption text-medium-emphasis mt-1 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-1 mb-0">
       {{ $t('settings.transferTypes.dotfilesNote') }}
     </p>
   </fieldset>

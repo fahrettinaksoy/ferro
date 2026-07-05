@@ -1,6 +1,6 @@
 import { registerHandler } from '../router'
 import { syncConfigStore } from '../../store/syncConfig'
-import { syncPush, syncPull } from '../../sync/engine'
+import { syncPush, syncPull, syncPeek } from '../../sync/engine'
 
 export function registerSyncHandlers(): void {
   registerHandler('sync:getConfig', () => ({ config: syncConfigStore.toPublic() }))
@@ -13,4 +13,6 @@ export function registerSyncHandlers(): void {
   registerHandler('sync:push', ({ settings }) => syncPush(settings))
 
   registerHandler('sync:pull', () => syncPull())
+
+  registerHandler('sync:peek', () => syncPeek())
 }

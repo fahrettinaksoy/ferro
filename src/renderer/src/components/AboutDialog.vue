@@ -40,11 +40,11 @@ onBeforeUnmount(() => unsub?.())
         <v-avatar size="72" rounded="lg" color="primary" variant="tonal" class="mb-4">
           <v-icon icon="$ferroLogo" size="40" />
         </v-avatar>
-        <div class="text-h5 font-weight-bold">{{ info?.name ?? 'Ferro' }}</div>
+        <div class="text-headline-medium font-weight-bold">{{ info?.name ?? 'Ferro' }}</div>
         <v-chip size="small" variant="tonal" color="primary" class="mt-2">
           {{ $t('about.version', { v: info?.version ?? '—' }) }}
         </v-chip>
-        <p class="text-body-2 text-medium-emphasis mt-4 mb-0">
+        <p class="text-body-medium text-medium-emphasis mt-4 mb-0">
           {{ $t('about.description') }}
         </p>
       </div>
@@ -73,7 +73,7 @@ onBeforeUnmount(() => unsub?.())
       </div>
 
       <!-- Telif + lisans -->
-      <div class="px-6 pb-2 text-center text-caption text-medium-emphasis">
+      <div class="px-6 pb-2 text-center text-body-small text-medium-emphasis">
         {{ $t('about.copyright') }} · {{ $t('about.license') }}
       </div>
 

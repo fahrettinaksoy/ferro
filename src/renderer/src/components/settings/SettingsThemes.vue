@@ -84,7 +84,7 @@ function onSeedInput(v: string): void {
     <legend>{{ $t('settings.themesPage.variantTitle') }}</legend>
     <div class="d-flex ga-6 flex-wrap">
       <div>
-        <div class="text-caption text-medium-emphasis mb-1">{{ $t('settings.theme') }}</div>
+        <div class="text-body-small text-medium-emphasis mb-1">{{ $t('settings.theme') }}</div>
         <v-btn-toggle
           :model-value="ui.themeMode"
           mandatory
@@ -98,7 +98,7 @@ function onSeedInput(v: string): void {
         </v-btn-toggle>
       </div>
       <div>
-        <div class="text-caption text-medium-emphasis mb-1">
+        <div class="text-body-small text-medium-emphasis mb-1">
           {{ $t('settings.themesPage.contrastLabel') }}
         </div>
         <v-btn-toggle
@@ -167,8 +167,8 @@ function onSeedInput(v: string): void {
   <fieldset class="section">
     <legend>{{ $t('settings.themesPage.previewLabel') }}</legend>
     <div class="theme-preview pa-3">
-      <div class="text-h6 mb-1">{{ $t('settings.themesPage.previewSample') }}</div>
-      <div class="text-body-2 mb-2 text-medium-emphasis">
+      <div class="text-headline-small mb-1">{{ $t('settings.themesPage.previewSample') }}</div>
+      <div class="text-body-medium mb-2 text-medium-emphasis">
         {{ ui.themeSeed }} · {{ ui.themeMode }} · {{ ui.themeContrast }}
       </div>
       <div class="d-flex ga-2 flex-wrap">

@@ -28,7 +28,7 @@ const previewLocale = computed(() => {
 <template>
   <!-- eslint-disable vue/no-mutating-props -- draft, parent'a ait reaktif taslak nesnesidir; alanları burada doğrudan düzenlenir -->
   <!-- Arayüz → Dil -->
-  <div class="text-body-2 mb-1">{{ $t('settings.langPage.selectLabel') }}</div>
+  <div class="text-body-medium mb-1">{{ $t('settings.langPage.selectLabel') }}</div>
   <div class="lang-list">
     <v-list density="compact" nav>
       <v-list-item
@@ -40,14 +40,14 @@ const previewLocale = computed(() => {
       />
     </v-list>
   </div>
-  <p class="text-caption text-medium-emphasis mt-2 mb-2">
+  <p class="text-body-small text-medium-emphasis mt-2 mb-2">
     {{ $t('settings.langPage.instantNote') }}
   </p>
 
   <!-- Seçilen dilin önizlemesi: <v-locale-provider> ile bu alt-ağaç,
        uygulamanın mevcut (global) dilinden BAĞIMSIZ olarak seçilen
        locale'de render edilir. Kaydet'ten önce dili görmeyi sağlar. -->
-  <div class="text-body-2 mb-1">{{ $t('settings.langPage.previewLabel') }}</div>
+  <div class="text-body-medium mb-1">{{ $t('settings.langPage.previewLabel') }}</div>
   <v-locale-provider :locale="previewLocale">
     <div class="preview-box">
       <LocalePreview />

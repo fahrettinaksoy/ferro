@@ -24,11 +24,11 @@ const tlsVersions: { value: TlsVersion; title: string }[] = [
         type="number"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.connection.timeoutRange') }}
       </span>
     </div>
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.connection.timeoutHint') }}
     </p>
   </fieldset>
@@ -42,7 +42,7 @@ const tlsVersions: { value: TlsVersion; title: string }[] = [
         type="number"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.connection.maxRetriesRange') }}
       </span>
     </div>
@@ -53,11 +53,11 @@ const tlsVersions: { value: TlsVersion; title: string }[] = [
         type="number"
         style="max-width: 90px"
       />
-      <span class="text-caption text-medium-emphasis">
+      <span class="text-body-small text-medium-emphasis">
         {{ $t('settings.connection.retryDelayRange') }}
       </span>
     </div>
-    <p class="text-caption text-medium-emphasis mt-2 mb-0">
+    <p class="text-body-small text-medium-emphasis mt-2 mb-0">
       {{ $t('settings.connection.reconnectHint') }}
     </p>
   </fieldset>
