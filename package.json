@@ -63,7 +63,7 @@
     "socks": "^2.8.9",
     "ssh2-sftp-client": "^11.0.0",
     "vue-i18n": "^11.4.6",
-    "vuetify": "^4.1.2",
+    "vuetify": "^4.1.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
