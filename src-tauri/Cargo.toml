@@ -43,7 +43,7 @@ russh-sftp = "2"
 # rustls'i ayrı dep olarak EKLEMİYORUZ; suppaftp::rustls (ring, tek provider) kullanılır —
 # aksi halde feature unification aws-lc-rs'i de çeker ve iki provider builder()'ı bozar.
 suppaftp = { version = "6", features = ["rustls", "deprecated"] }
-sha2 = "0.10"
+sha2 = "0.11"
 # Vekil (SOCKS4/5) — SFTP soketine enjekte edilir.
 tokio-socks = "0.5"
 
