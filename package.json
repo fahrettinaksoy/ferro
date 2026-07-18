@@ -1,6 +1,7 @@
 {
   "name": "ferro",
   "version": "0.1.0",
+  "type": "module",
   "description": "Ferro — a modern, security-focused FTP/FTPS/SFTP desktop client",
   "author": "Fahrettin Aksoy <backend@cyh.com.tr>",
   "license": "MIT",
@@ -35,7 +36,7 @@
     "tauri:build:mac": "tauri build --bundles dmg",
     "tauri:build:win": "tauri build --bundles nsis",
     "tauri:build:linux": "tauri build --bundles appimage,deb",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
     "test": "vitest run -c vitest.config.component.ts",
     "test:component": "vitest run -c vitest.config.component.ts",
     "test:watch": "vitest -c vitest.config.component.ts",
@@ -45,7 +46,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,mjs,cjs,vue}": "eslint --cache --fix",
+    "*.{ts,js,mjs,cjs,vue}": "eslint --cache --fix",
     "*.{ts,mjs,cjs,vue,json,md,yml,yaml,scss,css,html}": "prettier --write"
   },
   "dependencies": {

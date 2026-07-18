@@ -3,15 +3,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
-// Tauri renderer'ı standart Vite ile derlenir.
-// Kök src/renderer; çıktı proje kökündeki dist/ (tauri.conf.json frontendDist).
-// Alias'lar renderer kaynağının değişmeden derlenmesi için tutulur.
-// değişmeden derlensin.
+// Standart Tauri + Vue + Vite düzeni: kök index.html, kaynak src/, çıktı dist/.
 export default defineConfig({
-  root: resolve('src/renderer'),
   resolve: {
     alias: {
-      '@renderer': resolve('src/renderer/src'),
+      '@renderer': resolve('src'),
       '@shared': resolve('src/shared')
     }
   },

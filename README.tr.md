@@ -2,173 +2,248 @@
 
 # Ferro
 
-**Modern, güvenli ve hızlı FTP / FTPS / SFTP istemcisi**
+**Modern, güvenlik odaklı bir FTP / FTPS / SFTP masaüstü istemcisi**
 
-Dosyalarınızı sunucularınıza güvenle taşıyın — macOS, Windows ve Linux'ta.
+Tauri (Rust) + Vue 3 + Vuetify ile geliştirilmiştir. Küçük, hızlı ve gizliliğe saygılı.
 
 [![CI](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml/badge.svg)](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/fahrettinaksoy/ferro?include_prereleases&sort=semver)](https://github.com/fahrettinaksoy/ferro/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Latest Release](https://img.shields.io/github/v/release/fahrettinaksoy/ferro?label=%C4%B0ndir&color=success)](https://github.com/fahrettinaksoy/ferro/releases/latest)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-informational)
 
-[**⬇ İndir**](https://github.com/fahrettinaksoy/ferro/releases/latest) · [Özellikler](#neden-ferro) · [Hızlı Başlangıç](#hızlı-başlangıç) · [SSS](#sık-sorulan-sorular)
-
-_English documentation: [README.md](README.md)_
+[English](README.md) · **Türkçe**
 
 </div>
 
 ---
 
-## Ekran Görüntüleri
+## İçindekiler
 
-<!--
-  Ekran görüntüleri docs/screenshots/ dizinine eklenecek.
-  Önerilen dosyalar: main.png, site-manager.png, transfer-queue.png,
-  settings.png, theme-studio.png, sync.png
--->
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/main.png" alt="Ana ekran — çift panel görünümü" /> -->
-      <em>Ana ekran — çift panel görünümü</em>
-    </td>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/site-manager.png" alt="Site Yöneticisi" /> -->
-      <em>Site Yöneticisi</em>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/transfer-queue.png" alt="Transfer kuyruğu" /> -->
-      <em>Transfer kuyruğu</em>
-    </td>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/settings.png" alt="Ayarlar" /> -->
-      <em>Ayarlar</em>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/theme-studio.png" alt="Tema stüdyosu" /> -->
-      <em>Tema stüdyosu</em>
-    </td>
-    <td align="center" width="50%">
-      <!-- <img src="docs/screenshots/sync.png" alt="Dizin senkronizasyonu" /> -->
-      <em>Dizin senkronizasyonu</em>
-    </td>
-  </tr>
-</table>
-
-> Ekran görüntüleri ilk halka açık sürümden önce eklenecektir.
+- [Neden Ferro?](#neden-ferro)
+- [Özellikler](#özellikler)
+- [Ekran görüntüleri](#ekran-görüntüleri)
+- [Kurulum](#kurulum)
+- [Teknoloji yığını](#teknoloji-yığını)
+- [Geliştirme](#geliştirme)
+- [Proje yapısı](#proje-yapısı)
+- [Mimari](#mimari)
+- [Paketleme](#paketleme)
+- [Otomatik güncelleme](#otomatik-güncelleme)
+- [Yapılandırma ve veri konumu](#yapılandırma-ve-veri-konumu)
+- [Güvenlik](#güvenlik)
+- [Katkı](#katkı)
+- [Lisans](#lisans)
 
 ---
 
 ## Neden Ferro?
 
-### 🔒 Parolalarınız güvende
+Ferro; FTP, FTPS ve SFTP sunucularına bağlanıp dosya aktarmanız için tasarlanmış,
+**yerel çekirdeği tamamen Rust'ta** yazılmış bir masaüstü uygulamasıdır. Web görünümü
+(Vue 3 + Vuetify) yalnızca arayüzü çizer; tüm ağ, dosya sistemi ve kriptografi işlemleri
+Rust tarafında, sıkı bir IPC sözleşmesi ardında çalışır.
 
-- Parolalarınız **işletim sisteminizin anahtar zincirinde şifrelenir** — diskte asla düz metin durmaz. İsterseniz bunun yerine bir **ana parola** belirleyebilirsiniz.
-- Şifreli bağlantılarda (FTPS) kimlik bilgileriniz, **kimliği doğrulanmamış bir sunucuya asla gönderilmez**.
-- Bağlandığınız sunucunun kimliği ilk bağlantıda kaydedilir; sonradan **değişirse sizi açıkça uyarır** — araya giren sahte sunuculara (MITM) karşı koruma sağlar.
-- Dilerseniz parolayı hiç kaydetmeyip her bağlantıda sorulmasını seçebilirsiniz.
+- 🔒 **Güvenlik önce gelir** — kimlik bilgileri OS anahtar zincirinde ya da ana parolayla
+  (scrypt + AES-256-GCM) şifrelenir; SFTP host anahtarları ve FTPS sertifikaları TOFU
+  ile pinlenir.
+- 🪶 **Hafif** — küçük ikili boyut, düşük bellek; Node.js runtime paketlenmez.
+- 🌐 **Çok platform** — macOS, Windows ve Linux için tek kod tabanı.
+- 🧩 **Zengin ama sade** — kuyruk, sürdürme, bant genişliği sınırı, yerinde düzenleme,
+  uçtan uca şifreli senkronizasyon ve ekip paylaşımı.
 
-### ⚡ Hızlı ve kesintiye dayanıklı transferler
+## Özellikler
 
-- **Paralel transfer** — aynı anda birden fazla dosya, bağlantı havuzuyla.
-- **Kaldığı yerden devam** — bağlantı koptuğunda yarım kalan indirme/yükleme baştan başlamaz.
-- **Otomatik yeniden bağlanma** — geçici hatalarda transferi kendisi toparlar.
-- **Hız sınırı** — arka planda çalışırken internetinizi tüketmesin diye bant genişliğini sınırlayabilirsiniz.
-- Dosya çakışmalarında ne yapılacağını siz seçersiniz: sor, üzerine yaz, yeniyse yaz, sürdür, yeniden adlandır, atla.
+### Protokoller
 
-### 🗂 Günlük işleri kolaylaştıran arayüz
+- **FTP** ve **FTPS** (explicit `AUTH TLS` + implicit) — pasif mod.
+- **SFTP** (SSH) — parola veya özel anahtar (passphrase destekli) ile kimlik doğrulama.
 
-- **Çift panel** — solda bilgisayarınız, sağda sunucu; **sürükle-bırak** ile dosya ve klasör aktarın.
-- **Site Yöneticisi** — sunucularınızı klasörleyin, renk etiketleri verin, site başına ayarları özelleştirin.
-- **Yerinde düzenleme** — sunucudaki dosyaya çift tıklayın, kendi editörünüzde düzenleyin; kaydettiğinizde otomatik yüklenir.
-- **Dizin senkronizasyonu** — yerel ve uzak klasörü karşılaştırın, yalnızca farkları aktarın.
-- **Protokol günlüğü** — merak ederseniz sunucuyla konuşulan her komutu görün.
+### Transfer motoru
 
-### 🎨 Size uyum sağlar
+- İndirme/yükleme **kuyruğu**: ilerleme, iptal, duraklat/sürdür, otomatik **yeniden deneme**.
+- **Kaldığı yerden devam** (resume / REST offset) ve **klasör transferleri** (özyinelemeli).
+- **Bant genişliği sınırlama** (throttle), FTP için **ASCII/binary** otomatik seçimi.
+- **Dosya-var politikası**: sürdür / üzerine yaz / yeniden adlandır / atla.
 
-- **Tema stüdyosu** — tek bir renk seçin, uygulama tüm temayı ondan üretsin: açık/koyu mod, 9 renk şeması, 3 kontrast seviyesi.
-- **Türkçe ve İngilizce** arayüz.
-- **Otomatik güncelleme** — yeni sürümler kendiliğinden gelir.
+### Güvenlik ve gizlilik
 
-### Desteklenen protokoller
+- **Kimlik kasası (vault):** OS anahtar zinciri (`keyring`) ya da kullanıcı **ana parolası**
+  (scrypt + AES-256-GCM). Parola saklanamıyorsa açıkça uyarılır, düz metin yazılmaz.
+- **SFTP host anahtarı TOFU** (`known_hosts`) ve **FTPS sertifika pinleme** (`trusted_certs`)
+  — anahtar/sertifika değişince kullanıcı uyarılır (MITM koruması).
+- **Vekil sunucu** (SFTP için SOCKS4/5 + HTTP CONNECT).
 
-| Protokol | Ne zaman kullanılır?                                                  |
-| -------- | --------------------------------------------------------------------- |
-| **SFTP** | SSH erişiminiz olan sunucular — en güvenli ve yaygın seçenek          |
-| **FTPS** | TLS şifrelemeli FTP (explicit ve implicit) — klasik hosting panelleri |
-| **FTP**  | Şifrelemesiz eski sunucular — yalnızca güvenilir ağlarda önerilir     |
+### Site yönetimi
 
----
+- **Site Yöneticisi:** kayıtlı bağlantılar, klasör/grup düzeni, gelişmiş ayarlar.
+- **İçe/dışa aktarma** (JSON) — parolalar isteğe bağlı ve açık onayla.
+
+### Senkronizasyon ve ekip
+
+- **Uçtan uca şifreli senkronizasyon** (GitHub **Gist** veya **WebDAV**) — siteler ve
+  ayarlar cihazdan çıkmadan şifrelenir; sağlayıcı yalnızca şifreli blob'u görür.
+- **Ekip paylaşımı** (sunucusuz) — paylaşılan şifreli bir kasa; davet kodu + PIN ile katılım.
+
+### Düzenleme ve arayüz
+
+- **Yerinde düzenleme:** uzak dosyayı indir → editörde aç → kaydettikçe otomatik yükle.
+- **Yerel native menü**, **çok dil** (Türkçe/İngilizce), **Material 3** temalar (açık/koyu).
+- **Rotasyonlu dosya loglaması** (sır maskeli) ve **otomatik güncelleme** altyapısı.
+
+## Ekran görüntüleri
+
+> _Buraya uygulama ekran görüntüleri eklenecek._
+
+<!--
+| Bağlan & gez | Site Yöneticisi | Ayarlar |
+|---|---|---|
+| ![](docs/img/browse.png) | ![](docs/img/sites.png) | ![](docs/img/settings.png) |
+-->
 
 ## Kurulum
 
-Platformunuza uygun paketi [**Releases**](https://github.com/fahrettinaksoy/ferro/releases/latest) sayfasından indirin:
+Hazır paketleri [**Releases**](https://github.com/fahrettinaksoy/ferro/releases)
+sayfasından indirin:
 
-| Platform    | Paket                                                 |
-| ----------- | ----------------------------------------------------- |
-| **macOS**   | `Ferro-<sürüm>-<mimari>.dmg` — Apple Silicon ve Intel |
-| **Windows** | `Ferro-<sürüm>-x64.exe` — kurulum sihirbazı           |
-| **Linux**   | `Ferro-<sürüm>-x64.AppImage` veya `.deb`              |
+| Platform | Paket                                   |
+| -------- | --------------------------------------- |
+| macOS    | `.dmg` (Apple Silicon + Intel evrensel) |
+| Windows  | `.exe` (NSIS kurulum)                   |
+| Linux    | `.AppImage`, `.deb`                     |
 
-Kurulumdan sonra uygulama güncellemeleri kendiliğinden alır; sıklığı ve kanalı Ayarlar → Güncellemeler'den değiştirebilirsiniz.
+> macOS/Windows paketleri imza sertifikaları tanımlıysa kod imzalıdır. Uygulamayı
+> yalnızca resmî Releases sayfasından indirin.
 
-## Hızlı Başlangıç
+## Teknoloji yığını
 
-1. Ferro'yu açın — **Site Yöneticisi** sizi karşılar.
-2. **Yeni site** oluşturun: protokolü seçin (SFTP önerilir), sunucu adresi, kullanıcı adı ve parolanızı girin.
-3. **Bağlan** deyin. İlk bağlantıda sunucunun kimliği size gösterilir ve onayınızla kaydedilir.
-4. Sol panel bilgisayarınız, sağ panel sunucudur — dosyaları **sürükleyip bırakın** ya da çift tıklayın.
-5. Transferlerin durumunu alttaki kuyruk panelinden izleyin.
+| Katman          | Teknoloji                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| Kabuk / backend | **Tauri v2**, **Rust** (tokio, russh + russh-sftp, suppaftp, rustls, aes-gcm, scrypt, keyring, reqwest) |
+| Arayüz          | **Vue 3**, **Vuetify 4**, **Pinia**, **vue-i18n**, **Vite**                                             |
+| Dil             | **TypeScript** (renderer), **Rust** (çekirdek)                                                          |
 
-## Klavye Kısayolları
+## Geliştirme
 
-| Kısayol          | İşlev                 |
-| ---------------- | --------------------- |
-| <kbd>⌘ ,</kbd>   | Ayarlar               |
-| <kbd>⌘ S</kbd>   | Site Yöneticisi       |
-| <kbd>⌘ ⇧ S</kbd> | Dizin senkronizasyonu |
-| <kbd>⌘ B</kbd>   | Sunucular paneli      |
-| <kbd>⌘ J</kbd>   | Transfer kuyruğu      |
-| <kbd>⌘ L</kbd>   | Günlük paneli         |
-| <kbd>F5</kbd>    | Yenile                |
-| <kbd>⌘ /</kbd>   | Tüm kısayollar        |
+### Gereksinimler
 
-_Windows/Linux'ta <kbd>⌘</kbd> yerine <kbd>Ctrl</kbd> kullanılır._
+- **Node.js 22+** (önerilen: **24** — `.nvmrc`)
+- **Rust** (stable) — [rustup](https://rustup.rs)
+- Platform bağımlılıkları:
+  - **macOS:** Xcode Command Line Tools
+  - **Windows:** WebView2 (Windows 11'de yerleşik)
+  - **Linux:** `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `patchelf`, `libssl-dev` (Debian/Ubuntu)
 
-## Sık Sorulan Sorular
-
-**Parolalarım nerede saklanıyor?**
-İşletim sisteminizin güvenli anahtar zincirinde (macOS Keychain, Windows Credential Manager, Linux Secret Service) şifrelenmiş olarak. İsterseniz bunun yerine bir ana parola belirleyebilir ya da parolaların hiç kaydedilmemesini seçebilirsiniz.
-
-**FileZilla'dan geçebilir miyim?**
-Evet — Ferro aynı temel iş akışını (çift panel, site yöneticisi, transfer kuyruğu) modern bir arayüz ve varsayılan olarak güvenli davranışlarla sunar. Site kayıtlarınızı şimdilik elle taşımanız gerekir.
-
-**Aktif FTP modu destekleniyor mu?**
-Şimdilik hayır; Ferro pasif mod kullanır. Günümüz sunucularının ve NAT arkasındaki ağların büyük çoğunluğu pasif modla sorunsuz çalışır.
-
-**Hangi sunucularla test edildi?**
-vsftpd ve OpenSSH ile otomatik testlerden geçer; Pure-FTPd ve ProFTPD elle doğrulanmıştır. Ayrıntılı uyumluluk matrisi: [test/COMPATIBILITY.md](test/COMPATIBILITY.md)
-
-**Bir sorun buldum, nereye bildireyim?**
-[GitHub Issues](https://github.com/fahrettinaksoy/ferro/issues) üzerinden. Güvenlik açıklarını lütfen herkese açık issue yerine özel kanaldan bildirin — bkz. [SECURITY.md](SECURITY.md)
-
----
-
-## Geliştiriciler İçin
-
-Ferro açık kaynaklıdır: Tauri (Rust) + Vue 3 + TypeScript ile geliştirilmiştir.
-
-- **Mimari, geliştirme ortamı, test ve yayınlama:** [docs/DEVELOPMENT.tr.md](docs/DEVELOPMENT.tr.md)
-- **Katkı rehberi:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Davranış kuralları:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+### Komutlar
 
 ```bash
-git clone https://github.com/fahrettinaksoy/ferro.git
-cd ferro && npm install && npm run dev
+npm install          # bağımlılıklar + git hook'ları
+
+npm run dev          # yalnız web önizleme (Vite) — http://localhost:1420
+npm run tauri:dev    # masaüstü uygulaması (native pencere)
+
+npm run build        # web build (typecheck + vite build)
+npm run tauri:build  # masaüstü paket üret
+
+npm run typecheck    # vue-tsc tip kontrolü
+npm test             # Vue bileşen testleri (Vitest)
+npm run lint         # ESLint
+npm run format       # Prettier
 ```
+
+Rust tarafı için (`src-tauri/`):
+
+```bash
+cargo clippy --manifest-path src-tauri/Cargo.toml   # lint
+cargo test  --manifest-path src-tauri/Cargo.toml    # birim testleri
+```
+
+### Mobil (deneysel, SDK kurulduktan sonra)
+
+```bash
+npm run tauri android init && npm run tauri android dev
+npm run tauri ios init     && npm run tauri ios dev
+```
+
+## Proje yapısı
+
+```text
+ferro/
+├── src-tauri/            # Rust backend (Tauri v2)
+│   ├── src/
+│   │   ├── bridge.rs     # Tek IPC komutu + kanal dispatch + olay yayını
+│   │   ├── handlers.rs   # IPC handler'ları
+│   │   ├── transfer/     # SFTP/FTP istemcileri, oturum, kuyruk, TOFU, proxy, edit
+│   │   ├── store/        # Atomik + sürümlü JSON depoları (siteler vb.)
+│   │   ├── sync/ , team/ # Uçtan uca şifreli senkronizasyon ve ekip
+│   │   ├── vault.rs      # Kimlik şifreleme (keyring + ana parola)
+│   │   └── ...           # settings, logger, menu, updater, crypto, paths
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── src/
+│   ├── renderer/         # Vue 3 arayüzü (bileşenler, store'lar, i18n, temalar)
+│   └── shared/           # IPC sözleşmesi + ortak tipler (TS)
+├── seed/                 # İlk açılış tohum verisi
+└── .github/workflows/    # CI, Release, CodeQL, Audit, Quality
+```
+
+## Mimari
+
+- **IPC köprüsü:** Arayüz tek bir yüzeyden konuşur — `window.ferro.invoke(channel, payload)`
+  → Rust `bridge_invoke` komutu → dispatch. Her çağrı bir zarf döndürür
+  (`{ ok: true, data } | { ok: false, error }`). Olaylar Tauri'nin adlandırılmış olay
+  sistemiyle arayüze iletilir.
+- **Transfer motoru:** Her oturum kendi çok-thread'li tokio runtime'ını sahiplenir; SFTP
+  async (`russh`), FTP senkron (`suppaftp`) — ikisi de tek bir `TransferClient` arayüzü
+  ardında. Transferler ayrı bağlantı kullanır, böylece tarama bloklanmaz.
+- **Kripto:** scrypt (N=16384, r=8, p=1) + AES-256-GCM; senkronizasyon ve ekip verisi
+  cihazdan çıkmadan şifrelenir.
+
+## Paketleme
+
+```bash
+npm run tauri:build            # geçerli platform için tüm hedefler
+npm run tauri:build:mac        # dmg
+npm run tauri:build:win        # nsis
+npm run tauri:build:linux      # AppImage + deb
+```
+
+Çıktılar `src-tauri/target/release/bundle/` altında üretilir. Üç platform için resmî
+paketler, `v*` etiketi push'landığında **Release** iş akışı (`tauri-action`) tarafından
+GitHub Releases'e yüklenir.
+
+## Otomatik güncelleme
+
+Ferro `tauri-plugin-updater` içerir. Etkinleştirmek için:
+
+1. `tauri signer generate` ile bir imza anahtarı üretin.
+2. `src-tauri/tauri.conf.json` içine `plugins.updater` (endpoints + `pubkey`) ekleyin.
+3. Özel anahtarı CI secret'i olarak tanımlayın (`TAURI_SIGNING_PRIVATE_KEY`).
+
+Yapılandırma yoksa açılıştaki güncelleme kontrolü sessizce atlanır.
+
+## Yapılandırma ve veri konumu
+
+Uygulama verileri (siteler, kasa, bilinen anahtarlar, sync/team yapılandırması) uygulama
+yapılandırma dizininde tutulur:
+
+| Platform | Konum                                         |
+| -------- | --------------------------------------------- |
+| macOS    | `~/Library/Application Support/com.ferro.app` |
+| Windows  | `%APPDATA%\com.ferro.app`                     |
+| Linux    | `~/.config/com.ferro.app`                     |
+
+## Güvenlik
+
+- Güvenlik açıklarını lütfen [SECURITY.md](SECURITY.md) yönergesine göre bildirin.
+- Kimlik bilgileri asla düz metin saklanmaz; saklanamıyorsa kullanıcı uyarılır.
+- Bağımlılık denetimi (`npm audit` + `cargo audit`) ve statik analiz (CodeQL, Clippy)
+  CI'da otomatik koşar.
+
+## Katkı
+
+Katkılar memnuniyetle karşılanır! Başlamadan önce [CONTRIBUTING.md](CONTRIBUTING.md) ve
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) dosyalarına göz atın. Commit'ler
+[Conventional Commits](https://www.conventionalcommits.org) biçimini izler.
 
 ## Lisans
 

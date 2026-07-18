@@ -31,7 +31,9 @@ fn key(host: &str, port: u16) -> String {
 fn load_map(file: &Path) -> FpMap {
     let legacy = |parsed: &Value| -> Option<FpMap> {
         // Zarf öncesi: çıplak string→string nesnesi.
-        parsed.as_object().and_then(|_| serde_json::from_value(parsed.clone()).ok())
+        parsed
+            .as_object()
+            .and_then(|_| serde_json::from_value(parsed.clone()).ok())
     };
     match read_versioned::<FpMap, _>(file, STORE_VERSION, legacy) {
         ReadOutcome::Loaded(m) => m,
@@ -67,7 +69,10 @@ impl Tofu {
             known_hosts,
             trusted_certs,
             session_trusted: Mutex::new(HashSet::new()),
-            pending: Mutex::new(Pending { senders: HashMap::new(), counter: 0 }),
+            pending: Mutex::new(Pending {
+                senders: HashMap::new(),
+                counter: 0,
+            }),
         }
     }
 
@@ -93,7 +98,13 @@ impl Tofu {
 
     /// Host anahtarını doğrular. Bilinen+eşleşiyorsa true; aksi halde kullanıcıya
     /// sorar (5 dk zaman aşımı → false). Kabulde known_hosts'a yazılır.
-    pub fn verify_host_key(&self, app: &AppHandle, host: &str, port: u16, fingerprint: &str) -> bool {
+    pub fn verify_host_key(
+        &self,
+        app: &AppHandle,
+        host: &str,
+        port: u16,
+        fingerprint: &str,
+    ) -> bool {
         let k = key(host, port);
         let known = self.known_hosts.lock().unwrap().get(&k).cloned();
         if known.as_deref() == Some(fingerprint) {

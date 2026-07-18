@@ -19,7 +19,11 @@ const STORE_VERSION: u32 = 1;
 struct GistCfg {
     #[serde(rename = "gistId", default)]
     gist_id: String,
-    #[serde(rename = "tokenSecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tokenSecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     token_secret: Option<String>,
 }
 
@@ -29,7 +33,11 @@ struct WebdavCfg {
     url: String,
     #[serde(default)]
     user: String,
-    #[serde(rename = "passwordSecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "passwordSecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     password_secret: Option<String>,
 }
 
@@ -48,15 +56,27 @@ pub struct StoredTeam {
     gist: GistCfg,
     #[serde(default)]
     webdav: WebdavCfg,
-    #[serde(rename = "teamKeySecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "teamKeySecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     team_key_secret: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     members: Option<Vec<TeamMember>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     sites: Option<Vec<SiteExportEntry>>,
-    #[serde(rename = "lastSyncAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastSyncAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     last_sync_at: Option<String>,
-    #[serde(rename = "lastRevision", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastRevision",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     last_revision: Option<u64>,
 }
 
@@ -78,8 +98,15 @@ pub struct TeamInsert {
 
 /// Çözülmüş depo erişim bilgisi.
 pub enum TeamCreds {
-    Gist { token: String, gist_id: String },
-    Webdav { url: String, user: String, password: String },
+    Gist {
+        token: String,
+        gist_id: String,
+    },
+    Webdav {
+        url: String,
+        user: String,
+        password: String,
+    },
 }
 
 pub struct TeamStore {
@@ -91,12 +118,16 @@ impl TeamStore {
     pub fn new(config_dir: &Path) -> Self {
         let file = config_dir.join("teams.json");
         let cache = match read_versioned::<Vec<StoredTeam>, _>(&file, STORE_VERSION, |p| {
-            p.as_array().and_then(|_| serde_json::from_value(p.clone()).ok())
+            p.as_array()
+                .and_then(|_| serde_json::from_value(p.clone()).ok())
         }) {
             ReadOutcome::Loaded(v) => v,
             _ => Vec::new(),
         };
-        Self { file, cache: Mutex::new(cache) }
+        Self {
+            file,
+            cache: Mutex::new(cache),
+        }
     }
 
     fn save(&self, cache: &[StoredTeam]) {
@@ -122,15 +153,29 @@ impl TeamStore {
     }
 
     pub fn list_public(&self) -> Vec<Value> {
-        self.cache.lock().unwrap().iter().map(Self::to_public).collect()
+        self.cache
+            .lock()
+            .unwrap()
+            .iter()
+            .map(Self::to_public)
+            .collect()
     }
 
     pub fn get_public(&self, team_id: &str) -> Option<Value> {
-        self.cache.lock().unwrap().iter().find(|t| t.team_id == team_id).map(Self::to_public)
+        self.cache
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|t| t.team_id == team_id)
+            .map(Self::to_public)
     }
 
     pub fn exists(&self, team_id: &str) -> bool {
-        self.cache.lock().unwrap().iter().any(|t| t.team_id == team_id)
+        self.cache
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|t| t.team_id == team_id)
     }
 
     /// Ekip ekler/günceller (düz sırlar şifrelenir).
@@ -142,13 +187,21 @@ impl TeamStore {
                 WebdavCfg {
                     url: input.url,
                     user: input.user,
-                    password_secret: if input.password.is_empty() { None } else { vault.encrypt_secret(&input.password) },
+                    password_secret: if input.password.is_empty() {
+                        None
+                    } else {
+                        vault.encrypt_secret(&input.password)
+                    },
                 },
             ),
             _ => (
                 GistCfg {
                     gist_id: input.gist_id,
-                    token_secret: if input.token.is_empty() { None } else { vault.encrypt_secret(&input.token) },
+                    token_secret: if input.token.is_empty() {
+                        None
+                    } else {
+                        vault.encrypt_secret(&input.token)
+                    },
                 },
                 WebdavCfg::default(),
             ),
@@ -184,7 +237,10 @@ impl TeamStore {
     pub fn team_key(&self, vault: &Vault, team_id: &str) -> Option<String> {
         let cache = self.cache.lock().unwrap();
         let t = cache.iter().find(|t| t.team_id == team_id)?;
-        t.team_key_secret.as_ref().map(|s| vault.decrypt_secret(s)).filter(|k| !k.is_empty())
+        t.team_key_secret
+            .as_ref()
+            .map(|s| vault.decrypt_secret(s))
+            .filter(|k| !k.is_empty())
     }
 
     pub fn credentials(&self, vault: &Vault, team_id: &str) -> Option<TeamCreds> {
@@ -194,21 +250,41 @@ impl TeamStore {
             "webdav" => TeamCreds::Webdav {
                 url: t.webdav.url.clone(),
                 user: t.webdav.user.clone(),
-                password: t.webdav.password_secret.as_ref().map(|s| vault.decrypt_secret(s)).unwrap_or_default(),
+                password: t
+                    .webdav
+                    .password_secret
+                    .as_ref()
+                    .map(|s| vault.decrypt_secret(s))
+                    .unwrap_or_default(),
             },
             _ => TeamCreds::Gist {
-                token: t.gist.token_secret.as_ref().map(|s| vault.decrypt_secret(s)).unwrap_or_default(),
+                token: t
+                    .gist
+                    .token_secret
+                    .as_ref()
+                    .map(|s| vault.decrypt_secret(s))
+                    .unwrap_or_default(),
                 gist_id: t.gist.gist_id.clone(),
             },
         })
     }
 
     pub fn member_id(&self, team_id: &str) -> Option<String> {
-        self.cache.lock().unwrap().iter().find(|t| t.team_id == team_id).map(|t| t.member_id.clone())
+        self.cache
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|t| t.team_id == team_id)
+            .map(|t| t.member_id.clone())
     }
 
     pub fn role(&self, team_id: &str) -> Option<String> {
-        self.cache.lock().unwrap().iter().find(|t| t.team_id == team_id).map(|t| t.role.clone())
+        self.cache
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|t| t.team_id == team_id)
+            .map(|t| t.role.clone())
     }
 
     pub fn cached_sites(&self, team_id: &str) -> Vec<SiteExportEntry> {

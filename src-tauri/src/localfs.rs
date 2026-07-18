@@ -13,7 +13,9 @@ pub fn home_dir() -> PathBuf {
     let key = "USERPROFILE";
     #[cfg(not(windows))]
     let key = "HOME";
-    std::env::var_os(key).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+    std::env::var_os(key)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/"))
 }
 
 /// Yol mutlak + NUL içermez olmalı (`safeLocalPath`).
@@ -23,7 +25,10 @@ fn safe_local_path(p: &str) -> FerroResult<PathBuf> {
     }
     let path = PathBuf::from(p);
     if !path.is_absolute() {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Yol mutlak olmalı"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Yol mutlak olmalı",
+        ));
     }
     Ok(path)
 }

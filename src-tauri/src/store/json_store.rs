@@ -12,11 +12,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 /// Değeri `{version, data}` zarfıyla atomik (tmp + rename) yazar.
-pub fn write_versioned<T: Serialize>(
-    path: &Path,
-    version: u32,
-    data: &T,
-) -> std::io::Result<()> {
+pub fn write_versioned<T: Serialize>(path: &Path, version: u32, data: &T) -> std::io::Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -62,7 +58,10 @@ where
 
     // Zarf mı? { version: number, data: ... }
     if let Some(obj) = parsed.as_object() {
-        if let (Some(v), true) = (obj.get("version").and_then(Value::as_u64), obj.contains_key("data")) {
+        if let (Some(v), true) = (
+            obj.get("version").and_then(Value::as_u64),
+            obj.contains_key("data"),
+        ) {
             if v as u32 == version {
                 return match serde_json::from_value::<T>(obj["data"].clone()) {
                     Ok(data) => ReadOutcome::Loaded(data),

@@ -24,7 +24,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
-async-trait = "0.1"
 
 # Kimlik/kripto: master parola (scrypt+AES-256-GCM, mevcut `m1:` verisiyle byte-uyumlu)
 # ve OS keychain (keyring) tabanlı veri anahtarı.
@@ -36,7 +35,7 @@ base64 = "0.22"
 
 # Transfer protokolleri
 # SFTP: russh (tokio-native SSH) + russh-sftp.
-russh = "0.45"
+russh = "0.62"
 russh-sftp = "2"
 # FTP/FTPS: suppaftp (senkron API; oturum actor thread'inde çalıştırılır).
 # rustls (ring provider) + deprecated: FTPS TOFU özel sertifika doğrulayıcı + implicit.

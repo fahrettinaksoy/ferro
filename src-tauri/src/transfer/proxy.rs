@@ -12,25 +12,43 @@ use crate::error::{FerroError, FerroErrorCode, FerroResult};
 use crate::types::{ProxyConfig, ProxyType};
 
 fn conn_err(e: impl std::fmt::Display) -> FerroError {
-    FerroError::with_detail(FerroErrorCode::ConnectionFailed, "Vekil sunucuya bağlanılamadı", e.to_string())
+    FerroError::with_detail(
+        FerroErrorCode::ConnectionFailed,
+        "Vekil sunucuya bağlanılamadı",
+        e.to_string(),
+    )
 }
 
-pub async fn socks5(proxy: &ProxyConfig, host: &str, port: u16) -> FerroResult<Socks5Stream<TcpStream>> {
+pub async fn socks5(
+    proxy: &ProxyConfig,
+    host: &str,
+    port: u16,
+) -> FerroResult<Socks5Stream<TcpStream>> {
     let paddr = format!("{}:{}", proxy.host, proxy.port);
     let target = (host, port);
     match (proxy.user.as_deref(), proxy.password.as_deref()) {
         (Some(u), Some(p)) if !u.is_empty() => {
-            Socks5Stream::connect_with_password(paddr.as_str(), target, u, p).await.map_err(conn_err)
+            Socks5Stream::connect_with_password(paddr.as_str(), target, u, p)
+                .await
+                .map_err(conn_err)
         }
-        _ => Socks5Stream::connect(paddr.as_str(), target).await.map_err(conn_err),
+        _ => Socks5Stream::connect(paddr.as_str(), target)
+            .await
+            .map_err(conn_err),
     }
 }
 
-pub async fn socks4(proxy: &ProxyConfig, host: &str, port: u16) -> FerroResult<Socks4Stream<TcpStream>> {
+pub async fn socks4(
+    proxy: &ProxyConfig,
+    host: &str,
+    port: u16,
+) -> FerroResult<Socks4Stream<TcpStream>> {
     let paddr = format!("{}:{}", proxy.host, proxy.port);
     let target = (host, port);
     let user = proxy.user.as_deref().unwrap_or("");
-    Socks4Stream::connect_with_userid(paddr.as_str(), target, user).await.map_err(conn_err)
+    Socks4Stream::connect_with_userid(paddr.as_str(), target, user)
+        .await
+        .map_err(conn_err)
 }
 
 /// HTTP CONNECT tüneli kurar ve tünellenmiş TcpStream'i döner.

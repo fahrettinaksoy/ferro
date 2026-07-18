@@ -24,7 +24,14 @@ pub fn compare_dirs(local_path: &str, remote: &[RemoteEntry]) -> Vec<SyncEntry> 
                     .ok()
                     .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                     .map(|d| d.as_millis() as i64);
-                locals.insert(name, LocalInfo { is_dir: meta.is_dir(), size: meta.len(), mtime });
+                locals.insert(
+                    name,
+                    LocalInfo {
+                        is_dir: meta.is_dir(),
+                        size: meta.len(),
+                        mtime,
+                    },
+                );
             }
         }
     }

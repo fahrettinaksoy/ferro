@@ -32,20 +32,20 @@ export default tseslint.config(
 
   // Node ortamı (yardımcı script'ler + testler). Yerel çekirdek artık Rust'ta.
   {
-    files: ['scripts/**/*.mjs', 'test/**/*.ts', '*.config.{ts,mjs}', 'vite.config.ts'],
+    files: ['scripts/**/*.{js,mjs}', 'test/**/*.ts', '*.config.{ts,js,mjs}', 'vite.config.ts'],
     languageOptions: { globals: { ...globals.node } }
   },
 
   // Renderer: tarayıcı ortamı
   {
-    files: ['src/renderer/**/*.{ts,vue}'],
+    files: ['src/**/*.{ts,vue}'],
     languageOptions: { globals: { ...globals.browser } }
   },
 
   // Vuetify 4: deprecated prop/component/slot kullanımını yakalar (yalnızca renderer .vue).
   ...pluginVuetify.configs['flat/recommended-v4'].map((c) => ({
     ...c,
-    files: ['src/renderer/**/*.vue']
+    files: ['src/**/*.vue']
   })),
 
   {

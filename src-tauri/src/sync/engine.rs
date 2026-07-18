@@ -6,38 +6,63 @@ use crate::error::{FerroError, FerroErrorCode, FerroResult};
 use crate::state::AppState;
 
 use super::config::ProviderCreds;
-use super::crypto::{decrypt_sync_payload, encrypt_sync_payload, SettingsSnapshot, SyncBlobFile, SyncPayload};
+use super::crypto::{
+    decrypt_sync_payload, encrypt_sync_payload, SettingsSnapshot, SyncBlobFile, SyncPayload,
+};
 use super::providers::Provider;
 
 const SYNC_FILE_NAME: &str = "ferro-sync.json";
 
 /// Yapılandırmadan sağlayıcı kurar.
 fn build_provider(state: &AppState) -> FerroResult<Provider> {
-    let creds = state
-        .sync
-        .credentials(&state.vault)
-        .ok_or_else(|| FerroError::new(FerroErrorCode::Validation, "Senkronizasyon yapılandırılmamış"))?;
+    let creds = state.sync.credentials(&state.vault).ok_or_else(|| {
+        FerroError::new(
+            FerroErrorCode::Validation,
+            "Senkronizasyon yapılandırılmamış",
+        )
+    })?;
     Ok(match creds {
         ProviderCreds::Gist { token, gist_id } => {
             if token.is_empty() {
-                return Err(FerroError::new(FerroErrorCode::Validation, "Gist jetonu ayarlanmamış"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Validation,
+                    "Gist jetonu ayarlanmamış",
+                ));
             }
-            Provider::Gist { token, gist_id, file_name: SYNC_FILE_NAME.into() }
+            Provider::Gist {
+                token,
+                gist_id,
+                file_name: SYNC_FILE_NAME.into(),
+            }
         }
-        ProviderCreds::Webdav { url, user, password } => {
+        ProviderCreds::Webdav {
+            url,
+            user,
+            password,
+        } => {
             if url.is_empty() {
-                return Err(FerroError::new(FerroErrorCode::Validation, "WebDAV adresi ayarlanmamış"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Validation,
+                    "WebDAV adresi ayarlanmamış",
+                ));
             }
-            Provider::Webdav { url, user, password, file_name: SYNC_FILE_NAME.into() }
+            Provider::Webdav {
+                url,
+                user,
+                password,
+                file_name: SYNC_FILE_NAME.into(),
+            }
         }
     })
 }
 
 fn require_password(state: &AppState) -> FerroResult<String> {
-    state
-        .sync
-        .sync_password(&state.vault)
-        .ok_or_else(|| FerroError::new(FerroErrorCode::Validation, "Senkronizasyon parolası ayarlanmamış"))
+    state.sync.sync_password(&state.vault).ok_or_else(|| {
+        FerroError::new(
+            FerroErrorCode::Validation,
+            "Senkronizasyon parolası ayarlanmamış",
+        )
+    })
 }
 
 /// Yalnızca `ferro.*` anahtarlarını, string değerleri (≤200000), en çok 100 öğe.
@@ -81,7 +106,10 @@ pub async fn push(state: &AppState, settings: Option<Value>) -> FerroResult<Valu
         None
     };
     if sites.is_none() && settings_snap.is_none() {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Eşitlenecek veri seçilmedi"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Eşitlenecek veri seçilmedi",
+        ));
     }
     let site_count = sites.as_ref().map(|s| s.len()).unwrap_or(0);
     let has_settings = settings_snap.is_some();
@@ -100,7 +128,9 @@ pub async fn push(state: &AppState, settings: Option<Value>) -> FerroResult<Valu
     if let Some(new_id) = provider.upload(&text).await? {
         state.sync.set_gist_id(&new_id);
     }
-    state.sync.mark_synced("push", Some(updated_at.clone()), now_iso());
+    state
+        .sync
+        .mark_synced("push", Some(updated_at.clone()), now_iso());
 
     Ok(json!({
         "updatedAt": updated_at,
@@ -116,8 +146,13 @@ pub async fn pull(state: &AppState) -> FerroResult<Value> {
     let Some(text) = provider.download().await? else {
         return Ok(json!({ "found": false }));
     };
-    let blob: SyncBlobFile = serde_json::from_str(&text)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Sync dosyası çözümlenemedi", e.to_string()))?;
+    let blob: SyncBlobFile = serde_json::from_str(&text).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Sync dosyası çözümlenemedi",
+            e.to_string(),
+        )
+    })?;
     let payload = decrypt_sync_payload(&blob, &password)?;
 
     let mut result = json!({ "found": true, "updatedAt": payload.updated_at });
@@ -133,7 +168,9 @@ pub async fn pull(state: &AppState) -> FerroResult<Value> {
             result["settings"] = serde_json::to_value(settings)?;
         }
     }
-    state.sync.mark_synced("pull", Some(payload.updated_at), now_iso());
+    state
+        .sync
+        .mark_synced("pull", Some(payload.updated_at), now_iso());
     Ok(result)
 }
 
@@ -143,8 +180,13 @@ pub async fn peek(state: &AppState) -> FerroResult<Value> {
     let Some(text) = provider.download().await? else {
         return Ok(json!({ "found": false, "updatedAt": null }));
     };
-    let blob: SyncBlobFile = serde_json::from_str(&text)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Sync dosyası çözümlenemedi", e.to_string()))?;
+    let blob: SyncBlobFile = serde_json::from_str(&text).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Sync dosyası çözümlenemedi",
+            e.to_string(),
+        )
+    })?;
     let payload = decrypt_sync_payload(&blob, &password)?;
     Ok(json!({ "found": true, "updatedAt": payload.updated_at }))
 }

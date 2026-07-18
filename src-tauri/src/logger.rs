@@ -51,7 +51,11 @@ pub fn configure(to_file: bool, max_size_mib: u32) {
 /// Sır maskeleme (parola/PASS/secret satırları).
 fn redact(s: &str) -> String {
     let low = s.to_lowercase();
-    if low.contains("pass ") || low.contains("password") || low.contains("secret") || low.contains("passphrase") {
+    if low.contains("pass ")
+        || low.contains("password")
+        || low.contains("secret")
+        || low.contains("passphrase")
+    {
         // İçeriğin gövdesini gizle — tanı için yalnızca başlığı bırak.
         if let Some(idx) = low.find("pass") {
             let head = &s[..idx];
@@ -77,7 +81,13 @@ fn rotate(i: &mut Inner) {
 
 /// Bir log satırı yazar (dosya loglama açıksa). Her zaman stderr'e de gider.
 pub fn log(level: &str, scope: &str, msg: &str) {
-    let line = format!("{} [{}] [{}] {}", now_iso(), level.to_uppercase(), scope, redact(msg));
+    let line = format!(
+        "{} [{}] [{}] {}",
+        now_iso(),
+        level.to_uppercase(),
+        scope,
+        redact(msg)
+    );
     eprintln!("{line}");
 
     let mut i = inst().lock().unwrap();
@@ -92,7 +102,11 @@ pub fn log(level: &str, scope: &str, msg: &str) {
         let _ = std::fs::create_dir_all(&i.dir);
         let path = i.dir.join(LOG_NAME);
         i.size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-        i.file = OpenOptions::new().create(true).append(true).open(&path).ok();
+        i.file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)
+            .ok();
     }
     if let Some(f) = i.file.as_mut() {
         let bytes = line.as_bytes();

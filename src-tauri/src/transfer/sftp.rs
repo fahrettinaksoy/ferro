@@ -8,6 +8,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use russh::client::{self, Handle};
+use russh::keys::{HashAlg, PrivateKeyWithHashAlg, PublicKey};
 use russh_sftp::client::SftpSession;
 use russh_sftp::protocol::{FileType, OpenFlags};
 use tauri::AppHandle;
@@ -31,17 +32,20 @@ struct ClientHandler {
     port: u16,
 }
 
-#[async_trait::async_trait]
+// russh 0.50+ Handler artık native `async fn` kullanır (async_trait YOK).
 impl client::Handler for ClientHandler {
     type Error = russh::Error;
 
     async fn check_server_key(
         &mut self,
-        server_public_key: &russh::keys::key::PublicKey,
+        server_public_key: &PublicKey,
     ) -> Result<bool, Self::Error> {
-        // fingerprint() base64(sha256) döndürür — OpenSSH 'SHA256:...' biçimiyle uyumlu.
-        let fp = format!("SHA256:{}", server_public_key.fingerprint());
-        Ok(self.tofu.verify_host_key(&self.app, &self.host, self.port, &fp))
+        // fingerprint(Sha256) 'SHA256:base64' biçiminde Display verir — OpenSSH ile
+        // aynı; TOFU kayıtlarıyla uyumlu (eskiden format!("SHA256:{}", ...) idi).
+        let fp = server_public_key.fingerprint(HashAlg::Sha256).to_string();
+        Ok(self
+            .tofu
+            .verify_host_key(&self.app, &self.host, self.port, &fp))
     }
 }
 
@@ -70,7 +74,10 @@ fn mtime_ms(mtime: Option<u32>) -> Option<i64> {
 fn translate(e: impl std::fmt::Display, code: FerroErrorCode, message: &str) -> FerroError {
     let detail = e.to_string();
     let low = detail.to_lowercase();
-    let mapped = if low.contains("no such file") || low.contains("not found") || low.contains("nosuchfile") {
+    let mapped = if low.contains("no such file")
+        || low.contains("not found")
+        || low.contains("nosuchfile")
+    {
         FerroErrorCode::NotFound
     } else if low.contains("permission") {
         FerroErrorCode::PermissionDenied
@@ -95,7 +102,13 @@ impl SftpConnection {
             .worker_threads(2)
             .enable_all()
             .build()
-            .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "runtime kurulamadı", e.to_string()))?;
+            .map_err(|e| {
+                FerroError::with_detail(
+                    FerroErrorCode::Unknown,
+                    "runtime kurulamadı",
+                    e.to_string(),
+                )
+            })?;
 
         let host = config.host.clone();
         let port = config.port;
@@ -103,15 +116,26 @@ impl SftpConnection {
         let password = config.password.clone();
         let private_key = config.private_key.clone();
         let passphrase = config.passphrase.clone();
-        let timeout = if opts.connect_timeout_ms == 0 { 30_000 } else { opts.connect_timeout_ms };
+        let timeout = if opts.connect_timeout_ms == 0 {
+            30_000
+        } else {
+            opts.connect_timeout_ms
+        };
         let proxy = opts.proxy.clone().filter(proxy::is_active);
 
         let (handle, sftp, cwd) = runtime.block_on(async move {
-            let mut cfg = client::Config::default();
-            cfg.inactivity_timeout = Some(std::time::Duration::from_secs(0)); // keepalive ssh2 tarafı
-            cfg.keepalive_interval = Some(std::time::Duration::from_secs(20));
-            let cfg = Arc::new(cfg);
-            let handler = ClientHandler { app, tofu, host: host.clone(), port };
+            let cfg = Arc::new(client::Config {
+                // keepalive ssh2 tarafında; boşta zaman aşımı kapalı.
+                inactivity_timeout: Some(std::time::Duration::from_secs(0)),
+                keepalive_interval: Some(std::time::Duration::from_secs(20)),
+                ..Default::default()
+            });
+            let handler = ClientHandler {
+                app,
+                tofu,
+                host: host.clone(),
+                port,
+            };
 
             // Bağlantı zaman aşımı sarmalı (vekil varsa hedefe proxy üzerinden bağlan).
             let connect_fut = async {
@@ -119,66 +143,126 @@ impl SftpConnection {
                     Some(p) => match p.proxy_type {
                         ProxyType::Socks5 => {
                             let s = proxy::socks5(p, &host, port).await?;
-                            client::connect_stream(cfg, s, handler).await.map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP (SOCKS5) bağlanamadı"))
+                            client::connect_stream(cfg, s, handler).await.map_err(|e| {
+                                translate(
+                                    e,
+                                    FerroErrorCode::ConnectionFailed,
+                                    "SFTP (SOCKS5) bağlanamadı",
+                                )
+                            })
                         }
                         ProxyType::Socks4 => {
                             let s = proxy::socks4(p, &host, port).await?;
-                            client::connect_stream(cfg, s, handler).await.map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP (SOCKS4) bağlanamadı"))
+                            client::connect_stream(cfg, s, handler).await.map_err(|e| {
+                                translate(
+                                    e,
+                                    FerroErrorCode::ConnectionFailed,
+                                    "SFTP (SOCKS4) bağlanamadı",
+                                )
+                            })
                         }
                         ProxyType::Http => {
                             let s = proxy::http_connect(p, &host, port).await?;
-                            client::connect_stream(cfg, s, handler).await.map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP (HTTP proxy) bağlanamadı"))
+                            client::connect_stream(cfg, s, handler).await.map_err(|e| {
+                                translate(
+                                    e,
+                                    FerroErrorCode::ConnectionFailed,
+                                    "SFTP (HTTP proxy) bağlanamadı",
+                                )
+                            })
                         }
-                        ProxyType::None => {
-                            client::connect(cfg, (host.as_str(), port), handler).await.map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP bağlantısı kurulamadı"))
-                        }
+                        ProxyType::None => client::connect(cfg, (host.as_str(), port), handler)
+                            .await
+                            .map_err(|e| {
+                                translate(
+                                    e,
+                                    FerroErrorCode::ConnectionFailed,
+                                    "SFTP bağlantısı kurulamadı",
+                                )
+                            }),
                     },
-                    None => client::connect(cfg, (host.as_str(), port), handler).await.map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP bağlantısı kurulamadı")),
+                    None => client::connect(cfg, (host.as_str(), port), handler)
+                        .await
+                        .map_err(|e| {
+                            translate(
+                                e,
+                                FerroErrorCode::ConnectionFailed,
+                                "SFTP bağlantısı kurulamadı",
+                            )
+                        }),
                 }
             };
-            let mut handle = tokio::time::timeout(
-                std::time::Duration::from_millis(timeout),
-                connect_fut,
-            )
-            .await
-            .map_err(|_| FerroError::new(FerroErrorCode::Timeout, "SFTP bağlantı zaman aşımı"))??;
+            let mut handle =
+                tokio::time::timeout(std::time::Duration::from_millis(timeout), connect_fut)
+                    .await
+                    .map_err(|_| {
+                        FerroError::new(FerroErrorCode::Timeout, "SFTP bağlantı zaman aşımı")
+                    })??;
 
             // Kimlik doğrulama: önce özel anahtar, yoksa parola.
             let authed = if let Some(pem) = private_key.as_ref().filter(|k| !k.is_empty()) {
-                let key = russh::keys::decode_secret_key(pem, passphrase.as_deref())
-                    .map_err(|e| translate(e, FerroErrorCode::AuthFailed, "Özel anahtar çözülemedi"))?;
+                let key =
+                    russh::keys::decode_secret_key(pem, passphrase.as_deref()).map_err(|e| {
+                        translate(e, FerroErrorCode::AuthFailed, "Özel anahtar çözülemedi")
+                    })?;
+                // RSA anahtarlarda rsa-sha2-256 zorlanır (SHA-1 kullanılmaz); diğer
+                // anahtar türlerinde hash_alg yok sayılır.
+                let key = PrivateKeyWithHashAlg::new(Arc::new(key), Some(HashAlg::Sha256));
                 handle
-                    .authenticate_publickey(&user, Arc::new(key))
+                    .authenticate_publickey(&user, key)
                     .await
-                    .map_err(|e| translate(e, FerroErrorCode::AuthFailed, "Kimlik doğrulama başarısız"))?
+                    .map_err(|e| {
+                        translate(e, FerroErrorCode::AuthFailed, "Kimlik doğrulama başarısız")
+                    })?
             } else {
                 handle
                     .authenticate_password(&user, password.clone().unwrap_or_default())
                     .await
-                    .map_err(|e| translate(e, FerroErrorCode::AuthFailed, "Kimlik doğrulama başarısız"))?
+                    .map_err(|e| {
+                        translate(e, FerroErrorCode::AuthFailed, "Kimlik doğrulama başarısız")
+                    })?
             };
-            if !authed {
-                return Err(FerroError::new(FerroErrorCode::AuthFailed, "Kimlik doğrulama reddedildi"));
+            // russh 0.50+ auth metotları bool yerine AuthResult döndürür.
+            if !authed.success() {
+                return Err(FerroError::new(
+                    FerroErrorCode::AuthFailed,
+                    "Kimlik doğrulama reddedildi",
+                ));
             }
 
             // SFTP alt sistemi.
-            let channel = handle
-                .channel_open_session()
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP kanalı açılamadı"))?;
-            channel
-                .request_subsystem(true, "sftp")
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP alt sistemi başlatılamadı"))?;
-            let sftp = SftpSession::new(channel.into_stream())
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "SFTP oturumu kurulamadı"))?;
+            let channel = handle.channel_open_session().await.map_err(|e| {
+                translate(e, FerroErrorCode::ConnectionFailed, "SFTP kanalı açılamadı")
+            })?;
+            channel.request_subsystem(true, "sftp").await.map_err(|e| {
+                translate(
+                    e,
+                    FerroErrorCode::ConnectionFailed,
+                    "SFTP alt sistemi başlatılamadı",
+                )
+            })?;
+            let sftp = SftpSession::new(channel.into_stream()).await.map_err(|e| {
+                translate(
+                    e,
+                    FerroErrorCode::ConnectionFailed,
+                    "SFTP oturumu kurulamadı",
+                )
+            })?;
 
-            let cwd = sftp.canonicalize(".").await.unwrap_or_else(|_| "/".to_string());
+            let cwd = sftp
+                .canonicalize(".")
+                .await
+                .unwrap_or_else(|_| "/".to_string());
             Ok::<_, FerroError>((handle, sftp, cwd))
         })?;
 
-        Ok(Self { runtime, _handle: handle, sftp, cwd, connected: true })
+        Ok(Self {
+            runtime,
+            _handle: handle,
+            sftp,
+            cwd,
+            connected: true,
+        })
     }
 
     fn resolve(&self, path: &str) -> String {
@@ -202,7 +286,10 @@ impl TransferClient for SftpConnection {
             .block_on(self.sftp.metadata(target.clone()))
             .map_err(|e| translate(e, FerroErrorCode::FsError, "Dizin bulunamadı"))?;
         if !meta.is_dir() {
-            return Err(FerroError::new(FerroErrorCode::FsError, format!("Dizin değil: {target}")));
+            return Err(FerroError::new(
+                FerroErrorCode::FsError,
+                format!("Dizin değil: {target}"),
+            ));
         }
         self.cwd = target.clone();
         Ok(target)
@@ -245,7 +332,11 @@ impl TransferClient for SftpConnection {
             EntryType::File
         };
         Ok(RemoteEntry {
-            name: normalize_posix(&target).rsplit('/').next().unwrap_or("").to_string(),
+            name: normalize_posix(&target)
+                .rsplit('/')
+                .next()
+                .unwrap_or("")
+                .to_string(),
             entry_type,
             size: meta.size.unwrap_or(0),
             modified_at: mtime_ms(meta.mtime),
@@ -256,7 +347,12 @@ impl TransferClient for SftpConnection {
         })
     }
 
-    fn download(&mut self, remote_path: &str, dest: &Path, ctx: &mut TransferCtx) -> FerroResult<()> {
+    fn download(
+        &mut self,
+        remote_path: &str,
+        dest: &Path,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()> {
         let target = self.resolve(remote_path);
         let start_at = ctx.start_at;
         let dest = dest.to_path_buf();
@@ -268,18 +364,23 @@ impl TransferClient for SftpConnection {
             .and_then(|m| m.size);
         let sftp = &self.sftp;
         self.runtime.block_on(async {
-            let mut remote = sftp
-                .open(target.clone())
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Uzak dosya açılamadı"))?;
+            let mut remote = sftp.open(target.clone()).await.map_err(|e| {
+                translate(e, FerroErrorCode::TransferFailed, "Uzak dosya açılamadı")
+            })?;
             if start_at > 0 {
                 remote
                     .seek(std::io::SeekFrom::Start(start_at))
                     .await
-                    .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Offset ayarlanamadı"))?;
+                    .map_err(|e| {
+                        translate(e, FerroErrorCode::TransferFailed, "Offset ayarlanamadı")
+                    })?;
             }
             let mut local = if start_at > 0 {
-                tokio::fs::OpenOptions::new().create(true).append(true).open(&dest).await?
+                tokio::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&dest)
+                    .await?
             } else {
                 tokio::fs::File::create(&dest).await?
             };
@@ -287,12 +388,14 @@ impl TransferClient for SftpConnection {
             let mut done = start_at;
             loop {
                 if ctx.is_cancelled() {
-                    return Err(FerroError::new(FerroErrorCode::Cancelled, "İndirme iptal edildi"));
+                    return Err(FerroError::new(
+                        FerroErrorCode::Cancelled,
+                        "İndirme iptal edildi",
+                    ));
                 }
-                let n = remote
-                    .read(&mut buf)
-                    .await
-                    .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "İndirme başarısız"))?;
+                let n = remote.read(&mut buf).await.map_err(|e| {
+                    translate(e, FerroErrorCode::TransferFailed, "İndirme başarısız")
+                })?;
                 if n == 0 {
                     break;
                 }
@@ -306,7 +409,12 @@ impl TransferClient for SftpConnection {
         })
     }
 
-    fn upload(&mut self, source: &Path, remote_path: &str, ctx: &mut TransferCtx) -> FerroResult<()> {
+    fn upload(
+        &mut self,
+        source: &Path,
+        remote_path: &str,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()> {
         let target = self.resolve(remote_path);
         let start_at = ctx.start_at;
         let source = source.to_path_buf();
@@ -325,33 +433,35 @@ impl TransferClient for SftpConnection {
             let mut remote = sftp
                 .open_with_flags(target.clone(), flags)
                 .await
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Uzak dosya açılamadı"))?;
+                .map_err(|e| {
+                    translate(e, FerroErrorCode::TransferFailed, "Uzak dosya açılamadı")
+                })?;
             let mut buf = vec![0u8; CHUNK];
             let mut done = start_at;
             loop {
                 if ctx.is_cancelled() {
-                    return Err(FerroError::new(FerroErrorCode::Cancelled, "Yükleme iptal edildi"));
+                    return Err(FerroError::new(
+                        FerroErrorCode::Cancelled,
+                        "Yükleme iptal edildi",
+                    ));
                 }
                 let n = local.read(&mut buf).await?;
                 if n == 0 {
                     break;
                 }
-                remote
-                    .write_all(&buf[..n])
-                    .await
-                    .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme başarısız"))?;
+                remote.write_all(&buf[..n]).await.map_err(|e| {
+                    translate(e, FerroErrorCode::TransferFailed, "Yükleme başarısız")
+                })?;
                 done += n as u64;
                 (ctx.on_progress)(done, total);
                 ctx.pace(n);
             }
-            remote
-                .flush()
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme tamamlanamadı"))?;
-            remote
-                .shutdown()
-                .await
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Uzak dosya kapatılamadı"))?;
+            remote.flush().await.map_err(|e| {
+                translate(e, FerroErrorCode::TransferFailed, "Yükleme tamamlanamadı")
+            })?;
+            remote.shutdown().await.map_err(|e| {
+                translate(e, FerroErrorCode::TransferFailed, "Uzak dosya kapatılamadı")
+            })?;
             Ok::<(), FerroError>(())
         })
     }
@@ -386,8 +496,10 @@ impl TransferClient for SftpConnection {
 
     fn chmod(&mut self, path: &str, mode: u32) -> FerroResult<()> {
         let target = self.resolve(path);
-        let mut meta = russh_sftp::protocol::FileAttributes::default();
-        meta.permissions = Some(mode & 0o777);
+        let meta = russh_sftp::protocol::FileAttributes {
+            permissions: Some(mode & 0o777),
+            ..Default::default()
+        };
         self.runtime
             .block_on(self.sftp.set_metadata(target, meta))
             .map_err(|e| translate(e, FerroErrorCode::FsError, "İzin değiştirilemedi"))
