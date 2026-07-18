@@ -36,7 +36,7 @@ base64 = "0.22"
 
 # Transfer protokolleri
 # SFTP: russh (tokio-native SSH) + russh-sftp.
-russh = "0.45"
+russh = "0.61"
 russh-sftp = "2"
 # FTP/FTPS: suppaftp (senkron API; oturum actor thread'inde çalıştırılır).
 # rustls (ring provider) + deprecated: FTPS TOFU özel sertifika doğrulayıcı + implicit.
