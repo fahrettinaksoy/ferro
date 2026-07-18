@@ -52,7 +52,7 @@
     "@material/material-color-utilities": "^0.4.0",
     "@mdi/font": "^7.4.47",
     "@tauri-apps/api": "^2.11.1",
-    "pinia": "^3.0.4",
+    "pinia": "^4.0.2",
     "vue-i18n": "^11.4.6",
     "vuetify": "^4.1.2",
     "zod": "^4.4.3"
