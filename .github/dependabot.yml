@@ -1,7 +1,7 @@
 # Otomatik bağımlılık güncellemeleri — üç ekosistem de kapsanır.
-# Major'lar kırıcı olabildiği için otomatik PR AÇILMAZ (bilinçli, elle yükseltilir);
-# minor/patch'ler tek grup PR'ında toplanır (gürültü azalır). CI kalite + audit
-# kapıları her PR'ı ayrıca doğrular.
+# Elle güncelleme, bilinen CVE'li bir sürümü aylarca gizleyebilir (bkz. CI'daki
+# vuetify v3/v4 ayrışma notu). Dependabot bunları haftalık PR olarak açar; CI
+# kalite + audit kapıları PR'ı ayrıca doğrular.
 version: 2
 updates:
   # Frontend (package.json)
@@ -10,10 +10,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    # Major'lar kırıcı olabilir → otomatik PR AÇILMAZ; bilinçli, elle yükseltilir.
+    # (Bu kural eklenince dependabot mevcut major PR'ları bir sonraki koşuda kapatır.)
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
     groups:
+      # Yamalar/minor'lar tek PR'da — gürültüyü azaltır.
       minor-and-patch:
         update-types:
           - minor
@@ -34,13 +37,8 @@ updates:
           - minor
           - patch
 
-  # GitHub Actions sürümleri (checkout, setup-node, tauri-action…)
+  # GitHub Actions sürümleri (actions/checkout, setup-node, tauri-action…)
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    groups:
-      github-actions:
-        update-types:
-          - minor
-          - patch
