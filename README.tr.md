@@ -160,7 +160,7 @@ vsftpd ve OpenSSH ile otomatik testlerden geçer; Pure-FTPd ve ProFTPD elle doğ
 
 ## Geliştiriciler İçin
 
-Ferro açık kaynaklıdır: Electron + Vue 3 + TypeScript ile geliştirilmiştir.
+Ferro açık kaynaklıdır: Tauri (Rust) + Vue 3 + TypeScript ile geliştirilmiştir.
 
 - **Mimari, geliştirme ortamı, test ve yayınlama:** [docs/DEVELOPMENT.tr.md](docs/DEVELOPMENT.tr.md)
 - **Katkı rehberi:** [CONTRIBUTING.md](CONTRIBUTING.md) · **Davranış kuralları:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)

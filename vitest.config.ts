@@ -10,17 +10,16 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    // *.unit.test.ts altyapısız koşar; *.integration.test.ts Docker sunucuları ister
-    // (npm run test:unit / test:integration ayrımı package.json'da).
+    // Paylaşılan (protokol-agnostik) TS sözleşmesi testleri. Yerel çekirdek artık
+    // Rust'ta olduğundan protokol/kripto testleri `cargo test` tarafına taşındı;
+    // Vue bileşen testleri vitest.config.component.ts ile koşar.
     include: ['test/**/*.test.ts'],
+    passWithNoTests: true,
     testTimeout: 30_000,
     hookTimeout: 30_000,
     coverage: {
       provider: 'v8',
-      // Kapsam ana süreç motoru + paylaşılan sözleşme üzerinden ölçülür;
-      // Electron kabuğu (index.ts, updater) ve renderer UI hariçtir.
-      include: ['src/main/**/*.ts', 'src/shared/**/*.ts'],
-      exclude: ['src/main/index.ts', 'src/main/core/updater.ts'],
+      include: ['src/shared/**/*.ts'],
       reporter: ['text', 'lcov'],
       reportsDirectory: 'coverage'
     }

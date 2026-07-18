@@ -1,6 +1,6 @@
 # Ferro
 
-**A modern, security-focused FTP / FTPS / SFTP desktop client** built with Electron, Vue 3, Vuetify and TypeScript.
+**A modern, security-focused FTP / FTPS / SFTP desktop client** built with Tauri (Rust), Vue 3, Vuetify and TypeScript.
 
 [![CI](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml/badge.svg)](https://github.com/fahrettinaksoy/ferro/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -18,7 +18,7 @@ _Türkçe belgeler için: [README.tr.md](README.tr.md)_
 - **Edit-in-place** — open a remote file in your local editor; saves upload automatically
 - **Site Manager** — saved connections with folders, color labels and per-site advanced options
 - **Security by default**
-  - Credentials encrypted with the OS keychain (Electron `safeStorage`)
+  - Credentials encrypted with the OS keychain (`keyring`) or a user master password (scrypt + AES-256-GCM)
   - SSH host key trust-on-first-use with SHA-256 fingerprint pinning and change warnings
   - FTPS: strict certificate verification first (credentials never reach an unverified server); self-signed certificates require explicit approval and are **pinned by fingerprint**
   - Sandboxed renderer, context isolation, strict CSP, schema-validated IPC
@@ -39,14 +39,15 @@ Requires **Node.js 22** (`.nvmrc`) — and Docker if you want to run the integra
 
 ```bash
 npm install
-npm run dev        # electron-vite dev server (HMR)
+npm run dev        # Vite dev server (HMR)
+npm run tauri:dev  # desktop app (native window)
 npm run typecheck  # tsc (main/preload) + vue-tsc (renderer)
 npm run lint       # ESLint
 npm run build      # typecheck + production bundle
 npm run build:mac  # package for macOS (or build:win / build:linux)
 ```
 
-> **Note:** if `ELECTRON_RUN_AS_NODE=1` is set, Electron starts as plain Node and no window opens. Run `unset ELECTRON_RUN_AS_NODE && npm run dev`.
+> **Note:** `npm run dev` starts only the Vite web preview (http://localhost:1420). Use `npm run tauri:dev` to launch the native desktop window.
 
 ### Try it against local test servers
 

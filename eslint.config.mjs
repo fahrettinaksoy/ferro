@@ -7,7 +7,15 @@ import globals from 'globals'
 
 export default tseslint.config(
   {
-    ignores: ['node_modules/**', 'out/**', 'dist/**', 'coverage/**', '**/*.timestamp-*', '.vite/**']
+    ignores: [
+      'node_modules/**',
+      'dist/**',
+      'coverage/**',
+      'src-tauri/target/**',
+      'src-tauri/gen/**',
+      '**/*.timestamp-*',
+      '.vite/**'
+    ]
   },
 
   js.configs.recommended,
@@ -22,9 +30,9 @@ export default tseslint.config(
     }
   },
 
-  // Main + preload: Node ortamı
+  // Node ortamı (yardımcı script'ler + testler). Yerel çekirdek artık Rust'ta.
   {
-    files: ['src/main/**/*.ts', 'src/preload/**/*.ts', 'scripts/**/*.mjs', 'test/**/*.ts'],
+    files: ['scripts/**/*.mjs', 'test/**/*.ts', '*.config.{ts,mjs}', 'vite.config.ts'],
     languageOptions: { globals: { ...globals.node } }
   },
 

@@ -1,0 +1,71 @@
+[package]
+name = "ferro"
+version = "0.1.0"
+description = "Ferro — a modern, security-focused FTP/FTPS/SFTP desktop client"
+authors = ["Fahrettin Aksoy <backend@cyh.com.tr>"]
+license = "MIT"
+repository = "https://github.com/fahrettinaksoy/ferro"
+edition = "2021"
+rust-version = "1.82"
+
+# Kütüphane hedefi: Tauri v2 mobil/masaüstü ortak giriş noktası (run()).
+[lib]
+name = "ferro_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+
+# Kimlik/kripto: master parola (scrypt+AES-256-GCM, mevcut `m1:` verisiyle byte-uyumlu)
+# ve OS keychain (keyring) tabanlı veri anahtarı.
+aes-gcm = "0.10"
+scrypt = { version = "0.11", default-features = false }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
+rand = "0.8"
+base64 = "0.22"
+
+# Transfer protokolleri
+# SFTP: russh (tokio-native SSH) + russh-sftp.
+russh = "0.45"
+russh-sftp = "2"
+# FTP/FTPS: suppaftp (senkron API; oturum actor thread'inde çalıştırılır).
+# rustls (ring provider) + deprecated: FTPS TOFU özel sertifika doğrulayıcı + implicit.
+# rustls'i ayrı dep olarak EKLEMİYORUZ; suppaftp::rustls (ring, tek provider) kullanılır —
+# aksi halde feature unification aws-lc-rs'i de çeker ve iki provider builder()'ı bozar.
+suppaftp = { version = "6", features = ["rustls", "deprecated"] }
+sha2 = "0.10"
+# Vekil (SOCKS4/5) — SFTP soketine enjekte edilir.
+tokio-socks = "0.5"
+
+# HTTP istemcisi (Gist / WebDAV sağlayıcıları). native-tls: suppaftp'nin ring-only
+# rustls'iyle provider çakışmasını önlemek için (macOS Secure Transport).
+reqwest = { version = "0.12", default-features = false, features = ["json", "default-tls"] }
+
+# Edit-in-place: geçici dosya değişikliğini izleyip yeniden yükler.
+notify = "6"
+notify-debouncer-mini = "0.4"
+
+# Yardımcılar
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[features]
+# Bu, Tauri CLI tarafından `tauri dev`de kaldırılır; `tauri build`de devDependency değildir.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

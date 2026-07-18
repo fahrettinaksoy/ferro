@@ -1,0 +1,16 @@
+# Bağımlılıklar / derleme çıktıları
+node_modules
+dist
+coverage
+
+# Rust / Tauri üretilmiş + derleme çıktıları
+src-tauri/target
+src-tauri/gen
+
+# Lockfile'lar ve tohum verisi (elle biçimlendirilmez)
+package-lock.json
+seed/*.seed.json
+
+# Değişmez/otomatik dosyalar
+*.min.*
+CHANGELOG.md

@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Runtime IPC validation:** every IPC channel payload is now validated against a schema (zod) at the router boundary; unknown fields are stripped and invalid payloads are rejected before reaching handlers.
 - **IPC sender verification:** IPC calls are only accepted from the application's own top-level frame.
 - **Local filesystem guardrails:** destructive local operations (delete, rename source) refuse the filesystem root, drive roots and the home directory itself; all local paths are normalized and must be absolute.
-- **Reduced renderer attack surface:** the generic `window.electron` bridge (raw `ipcRenderer` passthrough and `process.env` exposure) was removed; only the typed `window.ferro` API remains.
+- **Reduced renderer attack surface:** the generic raw IPC passthrough bridge (with `process.env` exposure) was removed; only the typed `window.ferro` API remains.
 - **External link hardening:** `shell.openExternal` is restricted to `https:`, `http:` and `mailto:` URLs; in-app top-level navigation is blocked.
 - **Stricter CSP:** added `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-src 'none'`; removed unused Google Fonts allowances.
 
@@ -74,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Durable stores:** `sites.json`, `known_hosts.json` and `trusted_certs.json` are now written atomically (temp file + rename) with a `{version, data}` schema envelope. Corrupted files are quarantined as `.corrupt` instead of being silently overwritten, and legacy formats migrate automatically.
 - **Credential fallback policy:** when OS-level encryption (`safeStorage`) is unavailable, passwords are no longer persisted as base64 — the site is saved without a stored password and the user is prompted at connect time. Existing `p0:` records remain readable.
 - Connection pool rewritten: leased-connection tracking (session teardown closes in-flight connections), waiter timeouts, waiter promotion on dead-connection returns, and drift-free size accounting.
-- Electron upgraded 33 → 43 and electron-builder 25 → 26; `npm audit` is now clean (0 vulnerabilities).
+- Toolchain and dependencies upgraded; `npm audit` is now clean (0 vulnerabilities).
 - Auto-update feed now uses GitHub Releases (was a placeholder URL).
 - README rewritten in English (Turkish version available as README.tr.md).
 

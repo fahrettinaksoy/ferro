@@ -52,16 +52,12 @@ onBeforeUnmount(() => unsub?.())
       <!-- Çalışma ortamı: tonal kapta anahtar/değer satırları -->
       <div class="runtime mx-6 mb-4 pa-3">
         <div class="runtime-row">
-          <span class="text-medium-emphasis">Electron</span>
-          <span class="font-monospace">{{ info?.electron ?? '—' }}</span>
+          <span class="text-medium-emphasis">Tauri</span>
+          <span class="font-monospace">{{ info?.tauri ?? '—' }}</span>
         </div>
         <div class="runtime-row">
-          <span class="text-medium-emphasis">Chromium</span>
-          <span class="font-monospace">{{ info?.chrome ?? '—' }}</span>
-        </div>
-        <div class="runtime-row">
-          <span class="text-medium-emphasis">Node.js</span>
-          <span class="font-monospace">{{ info?.node ?? '—' }}</span>
+          <span class="text-medium-emphasis">WebView</span>
+          <span class="font-monospace">{{ info?.webview ?? '—' }}</span>
         </div>
         <div class="runtime-row">
           <span class="text-medium-emphasis">{{ $t('about.platform') }}</span>

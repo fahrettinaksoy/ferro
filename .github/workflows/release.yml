@@ -1,12 +1,11 @@
 name: Release
 
-# v* etiketi push'landığında üç platformda paketler ve GitHub Release'e yükler.
-# electron-updater güncelleme akışı da (publish: github) aynı release'i kullanır.
-#
-# Kod imzalama secrets (opsiyonel — yoksa paketler imzasız üretilir):
-#   macOS   : CSC_LINK (base64 .p12), CSC_KEY_PASSWORD,
-#             APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID (notarization)
-#   Windows : WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+# v* etiketi push'landığında üç platformda Tauri paketleri üretir ve GitHub
+# Release'e (taslak) yükler. tauri-plugin-updater akışı için imzalama:
+#   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# macOS kod imzalama/notarization (opsiyonel):
+#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
 
 on:
   push:
@@ -17,18 +16,18 @@ permissions:
 
 jobs:
   release:
-    name: Build & publish (${{ matrix.os }})
+    name: Build & publish (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
-            args: --mac
-          - os: windows-latest
-            args: --win
-          - os: ubuntu-latest
-            args: --linux
-    runs-on: ${{ matrix.os }}
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+          - platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,23 +36,38 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
-
-      - name: Package & publish to GitHub Release
-        run: npx electron-builder ${{ matrix.args }} --publish always
+      - uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # İmzalama sertifikaları tanımlı değilse otomatik keşfi kapat
-          # (macOS'ta "sertifika bulunamadı" hatasını önler).
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Ferro ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

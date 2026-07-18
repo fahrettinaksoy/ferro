@@ -14,7 +14,7 @@ Releases are fully automated via GitHub Actions ([release.yml](../.github/workfl
    ```bash
    git push origin main --follow-tags
    ```
-4. The `Release` workflow builds dmg (macOS arm64+x64), nsis (Windows x64), AppImage + deb (Linux) and attaches them to a GitHub Release. `electron-updater` serves updates from the same release (publish provider: `github`).
+4. The `Release` workflow (tauri-apps/tauri-action) builds dmg (macOS universal), nsis (Windows x64), AppImage + deb (Linux) and attaches them to a GitHub Release. The Tauri updater serves signed updates from the same release.
 
 ## Code signing secrets
 
@@ -31,5 +31,5 @@ Local unsigned packaging: `CSC_IDENTITY_AUTO_DISCOVERY=false npm run build:unpac
 
 ## Notes
 
-- Linux packages are not signature-verified by electron-updater; integrity rests on HTTPS + blockmap. Consider publishing checksums in the release notes.
+- Updates are verified with the Tauri updater's minisign signatures; integrity also rests on HTTPS. Consider publishing checksums in the release notes.
 - The npm version in `.nvmrc` / `engines` is the build baseline used by CI.
