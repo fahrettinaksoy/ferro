@@ -74,11 +74,21 @@ fn clean_advanced(mut a: SiteAdvanced) -> SiteAdvanced {
     fn blank(s: &Option<String>) -> bool {
         s.as_deref().map(|v| v.is_empty()).unwrap_or(false)
     }
-    if blank(&a.comment) { a.comment = None }
-    if blank(&a.color_label) { a.color_label = None }
-    if blank(&a.server_type) { a.server_type = None }
-    if blank(&a.local_dir) { a.local_dir = None }
-    if blank(&a.remote_dir) { a.remote_dir = None }
+    if blank(&a.comment) {
+        a.comment = None
+    }
+    if blank(&a.color_label) {
+        a.color_label = None
+    }
+    if blank(&a.server_type) {
+        a.server_type = None
+    }
+    if blank(&a.local_dir) {
+        a.local_dir = None
+    }
+    if blank(&a.remote_dir) {
+        a.remote_dir = None
+    }
     a
 }
 
@@ -101,7 +111,9 @@ impl SiteStore {
         }
         let legacy = |parsed: &Value| -> Option<Vec<StoredSite>> {
             // Zarf öncesi format: çıplak dizi.
-            parsed.as_array().and_then(|_| serde_json::from_value(parsed.clone()).ok())
+            parsed
+                .as_array()
+                .and_then(|_| serde_json::from_value(parsed.clone()).ok())
         };
         let sites = match read_versioned::<Vec<StoredSite>, _>(&self.file, STORE_VERSION, legacy) {
             ReadOutcome::Loaded(v) => v,
@@ -123,19 +135,31 @@ impl SiteStore {
     }
 
     fn seed(&self, vault: &Vault) -> Vec<StoredSite> {
-        let Some(path) = self.seed_file() else { return Vec::new() };
-        let Ok(raw) = std::fs::read_to_string(&path) else { return Vec::new() };
-        let Ok(seeds) = serde_json::from_str::<Vec<SeedSite>>(&raw) else { return Vec::new() };
+        let Some(path) = self.seed_file() else {
+            return Vec::new();
+        };
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            return Vec::new();
+        };
+        let Ok(seeds) = serde_json::from_str::<Vec<SeedSite>>(&raw) else {
+            return Vec::new();
+        };
         let records: Vec<StoredSite> = seeds
             .into_iter()
             .map(|s| {
-                let secret = s.secret.or_else(|| {
-                    s.password.as_ref().and_then(|p| vault.encrypt_secret(p))
-                });
+                let secret = s
+                    .secret
+                    .or_else(|| s.password.as_ref().and_then(|p| vault.encrypt_secret(p)));
                 let anon = s.anonymous.unwrap_or(false);
                 StoredSite {
                     port: s.port.unwrap_or_else(|| s.protocol.default_port()),
-                    user: s.user.unwrap_or_else(|| if anon { "anonymous".into() } else { String::new() }),
+                    user: s.user.unwrap_or_else(|| {
+                        if anon {
+                            "anonymous".into()
+                        } else {
+                            String::new()
+                        }
+                    }),
                     id: s.id.unwrap_or_else(|| Uuid::new_v4().to_string()),
                     name: s.name,
                     folder: s.folder.filter(|f| !f.is_empty()),
@@ -250,7 +274,11 @@ impl SiteStore {
         let target = from.trim();
         let next = {
             let t = to.trim();
-            if t.is_empty() { None } else { Some(t.to_string()) }
+            if t.is_empty() {
+                None
+            } else {
+                Some(t.to_string())
+            }
         };
         let mut count = 0u32;
         for s in cache.iter_mut() {
@@ -275,9 +303,8 @@ impl SiteStore {
         self.ensure_loaded(vault);
         let cache = self.cache.lock().unwrap();
         let s = cache.iter().find(|x| x.id == id)?;
-        let password = password_override.or_else(|| {
-            s.secret.as_ref().map(|sec| vault.decrypt_secret(sec))
-        });
+        let password =
+            password_override.or_else(|| s.secret.as_ref().map(|sec| vault.decrypt_secret(sec)));
         let max_connections = if s.advanced.limit_connections.unwrap_or(false) {
             s.advanced.max_connections
         } else {
@@ -306,7 +333,11 @@ impl SiteStore {
         let cache = self.cache.lock().unwrap();
         cache
             .iter()
-            .filter_map(|s| s.secret.as_ref().map(|sec| (s.id.clone(), vault.decrypt_secret(sec))))
+            .filter_map(|s| {
+                s.secret
+                    .as_ref()
+                    .map(|sec| (s.id.clone(), vault.decrypt_secret(sec)))
+            })
             .filter(|(_, plain)| !plain.is_empty())
             .collect()
     }
@@ -327,13 +358,27 @@ impl SiteStore {
 
     // ── Dışa/İçe aktarma ──
 
-    fn to_export(s: &StoredSite, vault: &Vault, include_password: bool, folder_override: Option<&str>) -> SiteExportEntry {
+    fn to_export(
+        s: &StoredSite,
+        vault: &Vault,
+        include_password: bool,
+        folder_override: Option<&str>,
+    ) -> SiteExportEntry {
         let folder = match folder_override {
-            Some(f) => if f.is_empty() { None } else { Some(f.to_string()) },
+            Some(f) => {
+                if f.is_empty() {
+                    None
+                } else {
+                    Some(f.to_string())
+                }
+            }
             None => s.folder.clone(),
         };
         let password = if include_password {
-            s.secret.as_ref().map(|sec| vault.decrypt_secret(sec)).filter(|p| !p.is_empty())
+            s.secret
+                .as_ref()
+                .map(|sec| vault.decrypt_secret(sec))
+                .filter(|p| !p.is_empty())
         } else {
             None
         };
@@ -356,11 +401,19 @@ impl SiteStore {
     pub fn export_sites(&self, vault: &Vault, include_passwords: bool) -> Vec<SiteExportEntry> {
         self.ensure_loaded(vault);
         let cache = self.cache.lock().unwrap();
-        cache.iter().map(|s| Self::to_export(s, vault, include_passwords, None)).collect()
+        cache
+            .iter()
+            .map(|s| Self::to_export(s, vault, include_passwords, None))
+            .collect()
     }
 
     /// Verilen id'leri dışa aktarır (ekip paylaşımı; parolalar çözülür, folder ezilir).
-    pub fn export_sites_by_ids(&self, vault: &Vault, ids: &[String], folder_override: Option<&str>) -> Vec<SiteExportEntry> {
+    pub fn export_sites_by_ids(
+        &self,
+        vault: &Vault,
+        ids: &[String],
+        folder_override: Option<&str>,
+    ) -> Vec<SiteExportEntry> {
         self.ensure_loaded(vault);
         let cache = self.cache.lock().unwrap();
         let wanted: std::collections::HashSet<&String> = ids.iter().collect();
@@ -376,10 +429,19 @@ impl SiteStore {
         self.ensure_loaded(vault);
         let mut cache = self.cache.lock().unwrap();
         let key = |protocol: Protocol, host: &str, port: u16, user: &str, name: &str| -> String {
-            format!("{:?} {} {} {} {}", protocol, host.to_lowercase(), port, user, name)
+            format!(
+                "{:?} {} {} {} {}",
+                protocol,
+                host.to_lowercase(),
+                port,
+                user,
+                name
+            )
         };
-        let mut seen: std::collections::HashSet<String> =
-            cache.iter().map(|s| key(s.protocol, &s.host, s.port, &s.user, &s.name)).collect();
+        let mut seen: std::collections::HashSet<String> = cache
+            .iter()
+            .map(|s| key(s.protocol, &s.host, s.port, &s.user, &s.name))
+            .collect();
         let mut imported = 0u32;
         let mut skipped = 0u32;
         for e in entries {

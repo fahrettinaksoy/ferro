@@ -3,7 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::crypto::{b64, derive_key, gcm_decrypt, gcm_encrypt, random_bytes, unb64, KDF_N, KDF_P, KDF_R, SALT_LEN};
+use crate::crypto::{
+    b64, derive_key, gcm_decrypt, gcm_encrypt, random_bytes, unb64, KDF_N, KDF_P, KDF_R, SALT_LEN,
+};
 use crate::error::{FerroError, FerroErrorCode, FerroResult};
 use crate::types::SiteExportEntry;
 
@@ -60,7 +62,13 @@ pub fn encrypt_sync_payload(payload: &SyncPayload, password: &str) -> FerroResul
         kind: "ferro-sync".into(),
         version: 1,
         updated_at: payload.updated_at.clone(),
-        kdf: SyncKdf { algo: "scrypt".into(), salt: b64(&salt), n: KDF_N, r: KDF_R, p: KDF_P },
+        kdf: SyncKdf {
+            algo: "scrypt".into(),
+            salt: b64(&salt),
+            n: KDF_N,
+            r: KDF_R,
+            p: KDF_P,
+        },
         cipher: "aes-256-gcm".into(),
         iv: b64(&iv),
         data: b64(&data),
@@ -70,17 +78,28 @@ pub fn encrypt_sync_payload(payload: &SyncPayload, password: &str) -> FerroResul
 /// Zarfı çözer. Yanlış parola/bozuk veri → AUTH_FAILED; tanınmayan format → VALIDATION.
 pub fn decrypt_sync_payload(file: &SyncBlobFile, password: &str) -> FerroResult<SyncPayload> {
     if file.kind != "ferro-sync" || file.version != 1 || file.cipher != "aes-256-gcm" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Tanınmayan sync dosyası formatı"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Tanınmayan sync dosyası formatı",
+        ));
     }
     let salt = unb64(&file.kdf.salt)?;
     let key = derive_key(password, &salt, file.kdf.n, file.kdf.r, file.kdf.p)?;
     let iv = unb64(&file.iv)?;
     let data = unb64(&file.data)?;
     let plain = gcm_decrypt(&key, &iv, &data)?;
-    let payload: SyncPayload = serde_json::from_slice(&plain)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Sync yükü çözümlenemedi", e.to_string()))?;
+    let payload: SyncPayload = serde_json::from_slice(&plain).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Sync yükü çözümlenemedi",
+            e.to_string(),
+        )
+    })?;
     if payload.kind != "ferro-sync-payload" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Sync yükü türü uyuşmuyor"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Sync yükü türü uyuşmuyor",
+        ));
     }
     Ok(payload)
 }

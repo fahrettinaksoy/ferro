@@ -26,12 +26,14 @@ impl Paths {
         let p = app.path();
         // app_config_dir: macOS `~/Library/Application Support/com.ferro.app`,
         // Windows `%APPDATA%/com.ferro.app`, Linux `~/.config/com.ferro.app`.
-        let config_dir = p
-            .app_config_dir()
-            .unwrap_or_else(|_| PathBuf::from("."));
+        let config_dir = p.app_config_dir().unwrap_or_else(|_| PathBuf::from("."));
         let log_dir = p.app_log_dir().unwrap_or_else(|_| config_dir.join("logs"));
         let resource_dir = p.resource_dir().unwrap_or_else(|_| PathBuf::from("."));
-        Self { config_dir, log_dir, resource_dir }
+        Self {
+            config_dir,
+            log_dir,
+            resource_dir,
+        }
     }
 
     /// config_dir altındaki bir depo dosyasının tam yolu.

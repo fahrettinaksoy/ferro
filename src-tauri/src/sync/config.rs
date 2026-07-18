@@ -13,21 +13,29 @@ use crate::vault::Vault;
 
 const STORE_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct GistCfg {
     #[serde(rename = "gistId", default)]
     gist_id: String,
-    #[serde(rename = "tokenSecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tokenSecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     token_secret: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct WebdavCfg {
     #[serde(default)]
     url: String,
     #[serde(default)]
     user: String,
-    #[serde(rename = "passwordSecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "passwordSecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     password_secret: Option<String>,
 }
 
@@ -45,7 +53,11 @@ struct StoredSyncConfig {
     gist: GistCfg,
     #[serde(default)]
     webdav: WebdavCfg,
-    #[serde(rename = "syncPasswordSecret", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "syncPasswordSecret",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     sync_password_secret: Option<String>,
     #[serde(default)]
     #[serde(rename = "autoSync")]
@@ -53,29 +65,34 @@ struct StoredSyncConfig {
     #[serde(default)]
     #[serde(rename = "autoPush")]
     auto_push: bool,
-    #[serde(rename = "lastSyncAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastSyncAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     last_sync_at: Option<String>,
-    #[serde(rename = "lastDirection", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastDirection",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     last_direction: Option<String>,
-    #[serde(rename = "lastRemoteUpdatedAt", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "lastRemoteUpdatedAt",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     last_remote_updated_at: Option<String>,
 }
 
-impl Default for GistCfg {
-    fn default() -> Self {
-        Self { gist_id: String::new(), token_secret: None }
-    }
-}
-impl Default for WebdavCfg {
-    fn default() -> Self {
-        Self { url: String::new(), user: String::new(), password_secret: None }
-    }
-}
 impl Default for StoredSyncConfig {
     fn default() -> Self {
         Self {
             provider: "gist".into(),
-            include: Include { sites: true, settings: true },
+            include: Include {
+                sites: true,
+                settings: true,
+            },
             gist: GistCfg::default(),
             webdav: WebdavCfg::default(),
             sync_password_secret: None,
@@ -95,8 +112,15 @@ pub struct SyncConfigStore {
 
 /// Çözülmüş sağlayıcı erişim bilgisi (engine kullanır).
 pub enum ProviderCreds {
-    Gist { token: String, gist_id: String },
-    Webdav { url: String, user: String, password: String },
+    Gist {
+        token: String,
+        gist_id: String,
+    },
+    Webdav {
+        url: String,
+        user: String,
+        password: String,
+    },
 }
 
 impl SyncConfigStore {
@@ -106,7 +130,10 @@ impl SyncConfigStore {
             ReadOutcome::Loaded(c) => c,
             _ => StoredSyncConfig::default(),
         };
-        Self { file, cache: Mutex::new(cache) }
+        Self {
+            file,
+            cache: Mutex::new(cache),
+        }
     }
 
     fn save(&self, cfg: &StoredSyncConfig) {
@@ -156,7 +183,11 @@ impl SyncConfigStore {
             if let Some(id) = g.get("gistId").and_then(Value::as_str) {
                 c.gist.gist_id = id.to_string();
             }
-            c.gist.token_secret = enc(vault, g.get("token").and_then(Value::as_str), &c.gist.token_secret);
+            c.gist.token_secret = enc(
+                vault,
+                g.get("token").and_then(Value::as_str),
+                &c.gist.token_secret,
+            );
         }
         if let Some(w) = input.get("webdav") {
             if let Some(u) = w.get("url").and_then(Value::as_str) {
@@ -165,9 +196,17 @@ impl SyncConfigStore {
             if let Some(u) = w.get("user").and_then(Value::as_str) {
                 c.webdav.user = u.to_string();
             }
-            c.webdav.password_secret = enc(vault, w.get("password").and_then(Value::as_str), &c.webdav.password_secret);
+            c.webdav.password_secret = enc(
+                vault,
+                w.get("password").and_then(Value::as_str),
+                &c.webdav.password_secret,
+            );
         }
-        c.sync_password_secret = enc(vault, input.get("syncPassword").and_then(Value::as_str), &c.sync_password_secret);
+        c.sync_password_secret = enc(
+            vault,
+            input.get("syncPassword").and_then(Value::as_str),
+            &c.sync_password_secret,
+        );
         if let Some(b) = input.get("autoSync").and_then(Value::as_bool) {
             c.auto_sync = b;
         }
@@ -190,7 +229,10 @@ impl SyncConfigStore {
 
     pub fn sync_password(&self, vault: &Vault) -> Option<String> {
         let c = self.cache.lock().unwrap();
-        c.sync_password_secret.as_ref().map(|s| vault.decrypt_secret(s)).filter(|p| !p.is_empty())
+        c.sync_password_secret
+            .as_ref()
+            .map(|s| vault.decrypt_secret(s))
+            .filter(|p| !p.is_empty())
     }
 
     /// Çözülmüş sağlayıcı erişim bilgisi.
@@ -198,12 +240,29 @@ impl SyncConfigStore {
         let c = self.cache.lock().unwrap();
         match c.provider.as_str() {
             "webdav" => {
-                let password = c.webdav.password_secret.as_ref().map(|s| vault.decrypt_secret(s)).unwrap_or_default();
-                Some(ProviderCreds::Webdav { url: c.webdav.url.clone(), user: c.webdav.user.clone(), password })
+                let password = c
+                    .webdav
+                    .password_secret
+                    .as_ref()
+                    .map(|s| vault.decrypt_secret(s))
+                    .unwrap_or_default();
+                Some(ProviderCreds::Webdav {
+                    url: c.webdav.url.clone(),
+                    user: c.webdav.user.clone(),
+                    password,
+                })
             }
             _ => {
-                let token = c.gist.token_secret.as_ref().map(|s| vault.decrypt_secret(s)).unwrap_or_default();
-                Some(ProviderCreds::Gist { token, gist_id: c.gist.gist_id.clone() })
+                let token = c
+                    .gist
+                    .token_secret
+                    .as_ref()
+                    .map(|s| vault.decrypt_secret(s))
+                    .unwrap_or_default();
+                Some(ProviderCreds::Gist {
+                    token,
+                    gist_id: c.gist.gist_id.clone(),
+                })
             }
         }
     }

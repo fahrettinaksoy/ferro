@@ -25,10 +25,25 @@ fn defaults() -> RuntimeSettings {
             no_ext_as_ascii: true,
             dotfiles_as_ascii: true,
         },
-        editor: EditorConfig { mode: EditorMode::System, custom_path: String::new() },
-        proxy: ProxyConfig { proxy_type: ProxyType::None, host: String::new(), port: 0, user: None, password: None },
-        logging: LoggingConfig { to_file: true, max_size_mib: 5 },
-        updates: UpdatesConfig { frequency: "weekly".into(), channel: "stable".into() },
+        editor: EditorConfig {
+            mode: EditorMode::System,
+            custom_path: String::new(),
+        },
+        proxy: ProxyConfig {
+            proxy_type: ProxyType::None,
+            host: String::new(),
+            port: 0,
+            user: None,
+            password: None,
+        },
+        logging: LoggingConfig {
+            to_file: true,
+            max_size_mib: 5,
+        },
+        updates: UpdatesConfig {
+            frequency: "weekly".into(),
+            channel: "stable".into(),
+        },
     }
 }
 
@@ -38,7 +53,9 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { current: Mutex::new(defaults()) }
+        Self {
+            current: Mutex::new(defaults()),
+        }
     }
 }
 
@@ -71,12 +88,19 @@ impl Settings {
 
     pub fn retry_policy(&self) -> RetryPolicy {
         let s = self.current.lock().unwrap();
-        RetryPolicy { max_attempts: s.retry_max_attempts, base_delay_ms: s.retry_delay_ms }
+        RetryPolicy {
+            max_attempts: s.retry_max_attempts,
+            base_delay_ms: s.retry_delay_ms,
+        }
     }
 
     pub fn file_exists_policy(&self, upload: bool) -> FileExistsAction {
         let s = self.current.lock().unwrap();
-        if upload { s.file_exists_upload } else { s.file_exists_download }
+        if upload {
+            s.file_exists_upload
+        } else {
+            s.file_exists_download
+        }
     }
 
     pub fn transfer_type(&self) -> TransferTypeConfig {

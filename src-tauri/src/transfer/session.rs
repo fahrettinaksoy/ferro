@@ -14,8 +14,8 @@ use crate::bridge::emit_event;
 use crate::error::{FerroError, FerroErrorCode, FerroResult};
 use crate::types::{ConnectionConfig, Protocol, RemoteEntry};
 
-use super::client::TransferClient;
 use super::client::AdapterOptions;
+use super::client::TransferClient;
 use super::ftp::FtpConnection;
 use super::sftp::SftpConnection;
 use super::tofu::Tofu;
@@ -29,7 +29,10 @@ pub struct Session {
 }
 
 impl Session {
-    fn with_client<T>(&self, f: impl FnOnce(&mut dyn TransferClient) -> FerroResult<T>) -> FerroResult<T> {
+    fn with_client<T>(
+        &self,
+        f: impl FnOnce(&mut dyn TransferClient) -> FerroResult<T>,
+    ) -> FerroResult<T> {
         let mut guard = self.browsing.lock().unwrap();
         f(guard.as_mut())
     }
@@ -74,7 +77,11 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(tofu: Arc<Tofu>) -> Self {
-        Self { sessions: Mutex::new(HashMap::new()), counter: AtomicU64::new(0), tofu }
+        Self {
+            sessions: Mutex::new(HashMap::new()),
+            counter: AtomicU64::new(0),
+            tofu,
+        }
     }
 
     /// Verilen config için istemci kurar (protokole göre). Bloklayıcıdır.
@@ -110,14 +117,29 @@ impl SessionManager {
             "session:connecting",
             serde_json::json!({ "sessionId": id, "host": config.host, "port": config.port }),
         );
-        emit_log(app, &id, "info", &format!("Bağlanılıyor: {}:{}", config.host, config.port));
+        emit_log(
+            app,
+            &id,
+            "info",
+            &format!("Bağlanılıyor: {}:{}", config.host, config.port),
+        );
 
         let mut client = self.build_client(&config, &opts, app).inspect_err(|e| {
-            emit_log(app, &id, "error", &format!("Bağlantı hatası: {}", e.message));
+            emit_log(
+                app,
+                &id,
+                "error",
+                &format!("Bağlantı hatası: {}", e.message),
+            );
         })?;
         let cwd = client.pwd().unwrap_or_else(|_| "/".to_string());
 
-        let session = Arc::new(Session { id: id.clone(), config, opts, browsing: Mutex::new(client) });
+        let session = Arc::new(Session {
+            id: id.clone(),
+            config,
+            opts,
+            browsing: Mutex::new(client),
+        });
         self.sessions.lock().unwrap().insert(id.clone(), session);
         emit_log(app, &id, "info", "Bağlandı");
         Ok((id, cwd))
@@ -140,7 +162,12 @@ impl SessionManager {
             .unwrap()
             .get(id)
             .cloned()
-            .ok_or_else(|| FerroError::new(FerroErrorCode::NotConnected, "Oturum bulunamadı ya da bağlantı kapalı"))
+            .ok_or_else(|| {
+                FerroError::new(
+                    FerroErrorCode::NotConnected,
+                    "Oturum bulunamadı ya da bağlantı kapalı",
+                )
+            })
     }
 
     pub fn disconnect(&self, id: &str) -> FerroResult<()> {
@@ -151,7 +178,13 @@ impl SessionManager {
     }
 
     pub fn disconnect_all(&self) {
-        let sessions: Vec<Arc<Session>> = self.sessions.lock().unwrap().drain().map(|(_, s)| s).collect();
+        let sessions: Vec<Arc<Session>> = self
+            .sessions
+            .lock()
+            .unwrap()
+            .drain()
+            .map(|(_, s)| s)
+            .collect();
         for s in sessions {
             s.disconnect();
         }

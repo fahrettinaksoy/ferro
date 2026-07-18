@@ -64,7 +64,10 @@ impl TransferManager {
     }
 
     fn next_id(&self, session_id: &str) -> String {
-        format!("{session_id}:j{}", self.counter.fetch_add(1, Ordering::Relaxed) + 1)
+        format!(
+            "{session_id}:j{}",
+            self.counter.fetch_add(1, Ordering::Relaxed) + 1
+        )
     }
 
     pub fn set_paused(&self, paused: bool) {
@@ -98,7 +101,12 @@ impl TransferManager {
     ) -> String {
         let job_id = self.next_id(&session_id);
         let cancel = Arc::new(AtomicBool::new(false));
-        self.jobs.lock().unwrap().insert(job_id.clone(), JobState { cancel: cancel.clone() });
+        self.jobs.lock().unwrap().insert(
+            job_id.clone(),
+            JobState {
+                cancel: cancel.clone(),
+            },
+        );
 
         let mgr = self.clone();
         let job_id_task = job_id.clone();
@@ -142,11 +150,25 @@ impl TransferManager {
                 let job_for_progress = job.clone();
 
                 let result = tokio::task::spawn_blocking(move || {
-                    run_one(&app2, &mgr2, &sid, direction, &rp, &lp, &params2, cancel2, job_for_progress)
+                    run_one(
+                        &app2,
+                        &mgr2,
+                        &sid,
+                        direction,
+                        &rp,
+                        &lp,
+                        &params2,
+                        cancel2,
+                        job_for_progress,
+                    )
                 })
                 .await
                 .unwrap_or_else(|e| {
-                    Err(FerroError::with_detail(FerroErrorCode::Unknown, "Transfer görevi çöktü", e.to_string()))
+                    Err(FerroError::with_detail(
+                        FerroErrorCode::Unknown,
+                        "Transfer görevi çöktü",
+                        e.to_string(),
+                    ))
                 });
 
                 match result {
@@ -202,14 +224,21 @@ impl TransferManager {
             let mgr2 = mgr.clone();
             let (sid, rp, lp) = (session_id.clone(), remote_path.clone(), local_path.clone());
             // Yürüyüş uzak listeleme gerektirir → ayrı istemci, spawn_blocking.
-            let files = tokio::task::spawn_blocking(move || {
-                walk(&app2, &mgr2, &sid, direction, &rp, &lp)
-            })
-            .await
-            .unwrap_or_else(|_| Vec::new());
+            let files =
+                tokio::task::spawn_blocking(move || walk(&app2, &mgr2, &sid, direction, &rp, &lp))
+                    .await
+                    .unwrap_or_else(|_| Vec::new());
 
             for f in files {
-                mgr.enqueue_file(app.clone(), session_id.clone(), direction, f.remote, f.local, f.name, params.clone());
+                mgr.enqueue_file(
+                    app.clone(),
+                    session_id.clone(),
+                    direction,
+                    f.remote,
+                    f.local,
+                    f.name,
+                    params.clone(),
+                );
             }
         });
     }
@@ -252,7 +281,13 @@ fn walk(
     out
 }
 
-fn walk_download(client: &mut dyn TransferClient, remote: &str, local: &str, depth: usize, out: &mut Vec<WalkFile>) {
+fn walk_download(
+    client: &mut dyn TransferClient,
+    remote: &str,
+    local: &str,
+    depth: usize,
+    out: &mut Vec<WalkFile>,
+) {
     if depth > MAX_WALK_DEPTH {
         return;
     }
@@ -268,14 +303,26 @@ fn walk_download(client: &mut dyn TransferClient, remote: &str, local: &str, dep
         let child_remote = format!("{}/{}", remote.trim_end_matches('/'), e.name);
         let child_local = Path::new(local).join(&e.name).to_string_lossy().to_string();
         match e.entry_type {
-            EntryType::Directory => walk_download(client, &child_remote, &child_local, depth + 1, out),
+            EntryType::Directory => {
+                walk_download(client, &child_remote, &child_local, depth + 1, out)
+            }
             EntryType::Symlink | EntryType::Unknown => {} // sembolik linkler atlanır
-            EntryType::File => out.push(WalkFile { remote: child_remote, local: child_local, name: e.name }),
+            EntryType::File => out.push(WalkFile {
+                remote: child_remote,
+                local: child_local,
+                name: e.name,
+            }),
         }
     }
 }
 
-fn walk_upload(client: &mut dyn TransferClient, remote: &str, local: &str, depth: usize, out: &mut Vec<WalkFile>) {
+fn walk_upload(
+    client: &mut dyn TransferClient,
+    remote: &str,
+    local: &str,
+    depth: usize,
+    out: &mut Vec<WalkFile>,
+) {
     if depth > MAX_WALK_DEPTH {
         return;
     }
@@ -298,7 +345,11 @@ fn walk_upload(client: &mut dyn TransferClient, remote: &str, local: &str, depth
         if meta.is_dir() {
             walk_upload(client, &child_remote, &child_local, depth + 1, out);
         } else {
-            out.push(WalkFile { remote: child_remote, local: child_local, name });
+            out.push(WalkFile {
+                remote: child_remote,
+                local: child_local,
+                name,
+            });
         }
     }
 }
@@ -319,7 +370,13 @@ fn run_one(
     let mut client = mgr.sessions.build_transfer_client(session_id, app)?;
 
     // Plan: kaynak/hedef boyutları + dosya-var politikası → startAt / skip.
-    let plan = plan_transfer(client.as_mut(), direction, remote_path, local_path, params.file_exists)?;
+    let plan = plan_transfer(
+        client.as_mut(),
+        direction,
+        remote_path,
+        local_path,
+        params.file_exists,
+    )?;
     if plan.skip {
         return Ok(plan.start_at);
     }
@@ -331,7 +388,11 @@ fn run_one(
     let mut ctx = TransferCtx {
         start_at: plan.start_at,
         cancel: cancel.clone(),
-        throttle: if params.bandwidth_bps > 0 { Some(Throttle::new(params.bandwidth_bps)) } else { None },
+        throttle: if params.bandwidth_bps > 0 {
+            Some(Throttle::new(params.bandwidth_bps))
+        } else {
+            None
+        },
         on_progress: Box::new(move |bytes, total| {
             if last.elapsed() >= PROGRESS_INTERVAL {
                 last = Instant::now();
@@ -344,7 +405,9 @@ fn run_one(
     };
 
     let result = match direction {
-        TransferDirection::Download => client.download(remote_path, Path::new(local_path), &mut ctx),
+        TransferDirection::Download => {
+            client.download(remote_path, Path::new(local_path), &mut ctx)
+        }
         TransferDirection::Upload => client.upload(Path::new(local_path), remote_path, &mut ctx),
     };
     let final_bytes = job.total.unwrap_or(0);
@@ -380,21 +443,45 @@ fn plan_transfer(
     };
     // Hedef yoksa baştan aktar.
     let Some(dest) = dest_size else {
-        return Ok(Plan { start_at: 0, total: source_size, skip: false });
+        return Ok(Plan {
+            start_at: 0,
+            total: source_size,
+            skip: false,
+        });
     };
     match policy {
-        FileExistsAction::Skip => Ok(Plan { start_at: 0, total: source_size, skip: true }),
-        FileExistsAction::Overwrite => Ok(Plan { start_at: 0, total: source_size, skip: false }),
+        FileExistsAction::Skip => Ok(Plan {
+            start_at: 0,
+            total: source_size,
+            skip: true,
+        }),
+        FileExistsAction::Overwrite => Ok(Plan {
+            start_at: 0,
+            total: source_size,
+            skip: false,
+        }),
         // Varsayılan resume: hedef daha küçükse kaldığı yerden, eşit/büyükse tamamlanmış say.
         _ => {
             if let Some(src) = source_size {
                 if dest < src {
-                    Ok(Plan { start_at: dest, total: source_size, skip: false })
+                    Ok(Plan {
+                        start_at: dest,
+                        total: source_size,
+                        skip: false,
+                    })
                 } else {
-                    Ok(Plan { start_at: dest, total: source_size, skip: true })
+                    Ok(Plan {
+                        start_at: dest,
+                        total: source_size,
+                        skip: true,
+                    })
                 }
             } else {
-                Ok(Plan { start_at: 0, total: source_size, skip: false })
+                Ok(Plan {
+                    start_at: 0,
+                    total: source_size,
+                    skip: false,
+                })
             }
         }
     }

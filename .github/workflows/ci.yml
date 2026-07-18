@@ -1,77 +1,95 @@
 name: CI
 
+# Kalite + güvenlik kapısı: her push (main) ve PR'da lint/tip/test + Rust
+# fmt/clippy/test/audit + npm audit. Job adları (quality/rust/audit) branch
+# protection'daki zorunlu check adlarıyla birebir eşleşir.
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
+# Aynı dala/PR'a arka arkaya push gelince önceki koşuyu iptal et (yalnız PR'larda).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  web:
-    name: Lint, typecheck & component tests
+  # Frontend kalite kapısı — lint + tip + bileşen testleri.
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
+
       - name: Install dependencies
         run: npm ci
+
       - name: Lint
         run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
-      - name: Component tests
-        run: npm run test:component
 
+      - name: Test
+        run: npm test
+
+  # Rust kalite + güvenlik kapısı — src-tauri/.
   rust:
-    name: Rust check (clippy)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      # tauri crate'i webkit2gtk vb.'ye link eder — testleri derlemek için bile şart.
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential libssl-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Format check
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - uses: taiki-e/install-action@cargo-audit
+      # russh 0.62'ye yükseltilince RUSTSEC-2026-0154 (russh) ve -0153
+      # (russh-cryptovec) KAPANDI. Geriye tek geçişli advisory kalıyor:
+      #   RUSTSEC-2023-0071  rsa — Marvin timing (rsa crate'inde düzeltme YOK;
+      #   russh RSA anahtar desteği için çeker). Gate sıkı kalır — YENİ açıklar yakalanır.
+      - name: cargo audit (RustSec)
+        run: cargo audit --ignore RUSTSEC-2023-0071
+
+  # Tedarik zinciri kapısı — yalnız üretim bağımlılıkları; yüksek/kritik prod açığı bloklar.
+  audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-      - name: Install Linux deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
-      - name: Clippy
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
 
-  build:
-    name: Tauri build smoke (${{ matrix.os }})
-    if: github.event_name == 'push'
-    needs: [web, rust]
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-22.04, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-      - name: Install Linux deps
-        if: matrix.os == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
       - name: Install dependencies
         run: npm ci
-      - name: Build (no bundle)
-        run: npm run tauri -- build --no-bundle
+
+      - name: npm audit (production deps)
+        run: npm audit --omit=dev --audit-level=high

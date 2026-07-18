@@ -1,34 +1,46 @@
+# Otomatik bağımlılık güncellemeleri — üç ekosistem de kapsanır.
+# Major'lar kırıcı olabildiği için otomatik PR AÇILMAZ (bilinçli, elle yükseltilir);
+# minor/patch'ler tek grup PR'ında toplanır (gürültü azalır). CI kalite + audit
+# kapıları her PR'ı ayrıca doğrular.
 version: 2
 updates:
-  # Frontend (Vue / Vite) — npm
+  # Frontend (package.json)
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
-      dev-dependencies:
-        dependency-type: development
-        update-types: [minor, patch]
-      runtime-dependencies:
-        dependency-type: production
-        update-types: [minor, patch]
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
 
-  # Rust backend (Tauri) — cargo
+  # Rust arka uç (src-tauri/Cargo.toml)
   - package-ecosystem: cargo
     directory: /src-tauri
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
     groups:
-      cargo-minor-patch:
-        update-types: [minor, patch]
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
 
-  # CI iş akışları
+  # GitHub Actions sürümleri (checkout, setup-node, tauri-action…)
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     groups:
       github-actions:
-        update-types: [minor, patch]
+        update-types:
+          - minor
+          - patch

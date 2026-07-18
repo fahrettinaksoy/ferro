@@ -20,7 +20,11 @@ where
 {
     match tokio::task::spawn_blocking(f).await {
         Ok(r) => r,
-        Err(e) => Err(FerroError::with_detail(FerroErrorCode::Unknown, "İç görev hatası", e.to_string())),
+        Err(e) => Err(FerroError::with_detail(
+            FerroErrorCode::Unknown,
+            "İç görev hatası",
+            e.to_string(),
+        )),
     }
 }
 
@@ -56,13 +60,17 @@ pub fn pick_directory(app: &AppHandle, payload: Value) -> FerroResult<Value> {
         builder = builder.set_directory(dir);
     }
     let picked = builder.blocking_pick_folder();
-    let path = picked.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().to_string());
+    let path = picked
+        .and_then(|p| p.into_path().ok())
+        .map(|p| p.to_string_lossy().to_string());
     Ok(json!({ "path": path }))
 }
 
 pub fn pick_editor(app: &AppHandle) -> FerroResult<Value> {
     let picked = app.dialog().file().blocking_pick_file();
-    let path = picked.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().to_string());
+    let path = picked
+        .and_then(|p| p.into_path().ok())
+        .map(|p| p.to_string_lossy().to_string());
     Ok(json!({ "path": path }))
 }
 
@@ -89,7 +97,13 @@ pub fn set_conn_state(app: &AppHandle, payload: Value) -> FerroResult<Value> {
         paused: bool,
     }
     let req: Req = parse(payload)?;
-    crate::menu::set_conn_state(app, req.connected, req.connecting, req.any_connected, req.paused);
+    crate::menu::set_conn_state(
+        app,
+        req.connected,
+        req.connecting,
+        req.any_connected,
+        req.paused,
+    );
     Ok(json!({ "ok": true }))
 }
 
@@ -123,9 +137,16 @@ pub fn vault_set_master(state: &AppState, payload: Value) -> FerroResult<Value> 
     let req: Req = parse(payload)?;
     // hasMaster ise önce current ile aç (transition için sırları çözebilmek adına).
     if state.vault.has_master() {
-        let ok = req.current.as_deref().map(|c| state.vault.unlock(c)).unwrap_or(false);
+        let ok = req
+            .current
+            .as_deref()
+            .map(|c| state.vault.unlock(c))
+            .unwrap_or(false);
         if !ok {
-            return Err(FerroError::new(FerroErrorCode::AuthFailed, "Mevcut master parola hatalı"));
+            return Err(FerroError::new(
+                FerroErrorCode::AuthFailed,
+                "Mevcut master parola hatalı",
+            ));
         }
     }
     // Mevcut sırları düz metne çöz → yeni anahtar → yeniden şifrele.
@@ -151,10 +172,16 @@ pub fn vault_use_os_keychain(state: &AppState, payload: Value) -> FerroResult<Va
     }
     let req: Req = parse(payload)?;
     if !state.vault.os_encryption_available() {
-        return Err(FerroError::new(FerroErrorCode::Validation, "OS anahtar zinciri kullanılamıyor"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "OS anahtar zinciri kullanılamıyor",
+        ));
     }
     if !state.vault.unlock(&req.current) {
-        return Err(FerroError::new(FerroErrorCode::AuthFailed, "Master parola hatalı"));
+        return Err(FerroError::new(
+            FerroErrorCode::AuthFailed,
+            "Master parola hatalı",
+        ));
     }
     let plains = state.sites.export_secrets(&state.vault);
     state.vault.disable_master(&req.current)?;
@@ -206,7 +233,9 @@ pub fn sites_export(app: &AppHandle, state: &AppState, payload: Value) -> FerroR
         include_passwords: bool,
     }
     let req: Req = parse(payload)?;
-    let sites = state.sites.export_sites(&state.vault, req.include_passwords);
+    let sites = state
+        .sites
+        .export_sites(&state.vault, req.include_passwords);
     let count = sites.len();
     let picked = app
         .dialog()
@@ -224,8 +253,9 @@ pub fn sites_export(app: &AppHandle, state: &AppState, payload: Value) -> FerroR
         "exportedAt": chrono::Utc::now().to_rfc3339(),
         "sites": sites,
     });
-    let mut text = serde_json::to_string_pretty(&envelope)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "JSON üretilemedi", e.to_string()))?;
+    let mut text = serde_json::to_string_pretty(&envelope).map_err(|e| {
+        FerroError::with_detail(FerroErrorCode::Unknown, "JSON üretilemedi", e.to_string())
+    })?;
     text.push('\n');
     std::fs::write(&path, text)?;
     Ok(json!({ "path": path.to_string_lossy(), "count": count }))
@@ -233,7 +263,11 @@ pub fn sites_export(app: &AppHandle, state: &AppState, payload: Value) -> FerroR
 
 /// JSON'dan site içe aktarır (açma diyaloğu). Yinelenenler atlanır.
 pub fn sites_import(app: &AppHandle, state: &AppState) -> FerroResult<Value> {
-    let picked = app.dialog().file().add_filter("JSON", &["json"]).blocking_pick_file();
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .blocking_pick_file();
     let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
         return Ok(json!({ "path": null, "imported": 0, "skipped": 0, "total": 0 }));
     };
@@ -254,8 +288,13 @@ pub fn sites_import(app: &AppHandle, state: &AppState) -> FerroResult<Value> {
     if arr.len() > 5000 {
         return Err(validation("Çok fazla kayıt (>5000)"));
     }
-    let entries: Vec<SiteExportEntry> = serde_json::from_value(Value::Array(arr))
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Geçersiz site kaydı", e.to_string()))?;
+    let entries: Vec<SiteExportEntry> = serde_json::from_value(Value::Array(arr)).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Geçersiz site kaydı",
+            e.to_string(),
+        )
+    })?;
     let total = entries.len();
     let (imported, skipped) = state.sites.import_sites(&state.vault, entries);
     Ok(json!({
@@ -315,7 +354,11 @@ pub fn local_rename(payload: Value) -> FerroResult<Value> {
 
 // ── bağlantı ─────────────────────────────────────────────────────────────────
 
-pub async fn connection_connect(app: &AppHandle, state: &AppState, payload: Value) -> FerroResult<Value> {
+pub async fn connection_connect(
+    app: &AppHandle,
+    state: &AppState,
+    payload: Value,
+) -> FerroResult<Value> {
     let config: ConnectionConfig = parse(payload)?;
     let opts = adapter_options(state);
     let sessions = state.sessions.clone();
@@ -336,7 +379,11 @@ pub async fn connection_disconnect(state: &AppState, payload: Value) -> FerroRes
 }
 
 /// Kaydedilmiş siteye bağlanır (parola çözülür / "parola sorulsun"da iletilen kullanılır).
-pub async fn sites_connect(app: &AppHandle, state: &AppState, payload: Value) -> FerroResult<Value> {
+pub async fn sites_connect(
+    app: &AppHandle,
+    state: &AppState,
+    payload: Value,
+) -> FerroResult<Value> {
     #[derive(serde::Deserialize)]
     struct Req {
         id: String,
@@ -585,7 +632,16 @@ pub async fn edit_open(app: &AppHandle, state: &AppState, payload: Value) -> Fer
     let transfers = state.transfers.clone();
     let app = app.clone();
     blocking(move || {
-        edits.open(&app, &sessions, &transfers, &req.session_id, &req.remote_path, &req.name, editor, params)
+        edits.open(
+            &app,
+            &sessions,
+            &transfers,
+            &req.session_id,
+            &req.remote_path,
+            &req.name,
+            editor,
+            params,
+        )
     })
     .await?;
     Ok(json!({ "ok": true }))
@@ -628,7 +684,10 @@ pub async fn sync_compare(state: &AppState, payload: Value) -> FerroResult<Value
     let session = state.sessions.require(&req.session_id)?;
     let entries = blocking(move || {
         let remote = session.list(Some(&req.remote_path))?;
-        Ok(crate::transfer::compare::compare_dirs(&req.local_path, &remote))
+        Ok(crate::transfer::compare::compare_dirs(
+            &req.local_path,
+            &remote,
+        ))
     })
     .await?;
     Ok(json!({ "entries": entries }))

@@ -24,7 +24,12 @@ impl Throttle {
     pub fn new(bps: u64) -> Self {
         // Patlama penceresi 0.25s, en az 16 KiB.
         let capacity = (bps as f64 * 0.25).max(16.0 * 1024.0);
-        Self { bps, capacity, tokens: capacity, last: Instant::now() }
+        Self {
+            bps,
+            capacity,
+            tokens: capacity,
+            last: Instant::now(),
+        }
     }
 
     /// n bayt için gereken jetonu tüketir; yetmiyorsa açığı bekler.
@@ -96,8 +101,18 @@ pub trait TransferClient: Send {
     fn list(&mut self, path: Option<&str>) -> FerroResult<Vec<RemoteEntry>>;
     fn stat(&mut self, path: &str) -> FerroResult<RemoteEntry>;
 
-    fn download(&mut self, remote_path: &str, dest: &Path, ctx: &mut TransferCtx) -> FerroResult<()>;
-    fn upload(&mut self, source: &Path, remote_path: &str, ctx: &mut TransferCtx) -> FerroResult<()>;
+    fn download(
+        &mut self,
+        remote_path: &str,
+        dest: &Path,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()>;
+    fn upload(
+        &mut self,
+        source: &Path,
+        remote_path: &str,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()>;
 
     fn delete(&mut self, path: &str) -> FerroResult<()>;
     fn rename(&mut self, from: &str, to: &str) -> FerroResult<()>;
@@ -121,7 +136,10 @@ pub fn is_ascii_transfer(name: &str, tt: &TransferTypeConfig) -> bool {
             }
             match base.rsplit_once('.') {
                 None => tt.no_ext_as_ascii,
-                Some((_, ext)) => tt.ascii_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)),
+                Some((_, ext)) => tt
+                    .ascii_extensions
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext)),
             }
         }
     }

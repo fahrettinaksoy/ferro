@@ -13,8 +13,8 @@ use crate::types::SiteExportEntry;
 
 use super::crypto::{
     decode_invite_code, decrypt_invite, decrypt_team_payload, encode_invite_code, encrypt_invite,
-    encrypt_team_payload, generate_team_key, InviteGist, InviteWebdav, TeamInvitePayload, TeamMember,
-    TeamPayload, TEAM_FILE_NAME,
+    encrypt_team_payload, generate_team_key, InviteGist, InviteWebdav, TeamInvitePayload,
+    TeamMember, TeamPayload, TEAM_FILE_NAME,
 };
 use super::store::{TeamCreds, TeamInsert};
 
@@ -23,7 +23,14 @@ fn now_iso() -> String {
 }
 
 fn site_key(s: &SiteExportEntry) -> String {
-    format!("{:?} {} {} {} {}", s.protocol, s.host.to_lowercase(), s.port, s.user, s.name)
+    format!(
+        "{:?} {} {} {} {}",
+        s.protocol,
+        s.host.to_lowercase(),
+        s.port,
+        s.user,
+        s.name
+    )
 }
 
 /// Site listelerini birleştirir (eklemeli — anahtar: protokol+host+port+kullanıcı+ad).
@@ -49,15 +56,34 @@ fn team_provider(creds: TeamCreds) -> FerroResult<Provider> {
     Ok(match creds {
         TeamCreds::Gist { token, gist_id } => {
             if token.is_empty() {
-                return Err(FerroError::new(FerroErrorCode::Validation, "Ekip depo jetonu yok"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Validation,
+                    "Ekip depo jetonu yok",
+                ));
             }
-            Provider::Gist { token, gist_id, file_name: TEAM_FILE_NAME.into() }
+            Provider::Gist {
+                token,
+                gist_id,
+                file_name: TEAM_FILE_NAME.into(),
+            }
         }
-        TeamCreds::Webdav { url, user, password } => {
+        TeamCreds::Webdav {
+            url,
+            user,
+            password,
+        } => {
             if url.is_empty() {
-                return Err(FerroError::new(FerroErrorCode::Validation, "Ekip WebDAV adresi yok"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Validation,
+                    "Ekip WebDAV adresi yok",
+                ));
             }
-            Provider::Webdav { url, user, password, file_name: TEAM_FILE_NAME.into() }
+            Provider::Webdav {
+                url,
+                user,
+                password,
+                file_name: TEAM_FILE_NAME.into(),
+            }
         }
     })
 }
@@ -76,8 +102,13 @@ async fn fetch_payload(state: &AppState, team_id: &str) -> FerroResult<Option<Te
     let Some(text) = provider.download().await? else {
         return Ok(None);
     };
-    let blob = serde_json::from_str(&text)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Ekip dosyası çözümlenemedi", e.to_string()))?;
+    let blob = serde_json::from_str(&text).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Ekip dosyası çözümlenemedi",
+            e.to_string(),
+        )
+    })?;
     Ok(Some(decrypt_team_payload(&blob, &key)?))
 }
 
@@ -130,7 +161,13 @@ struct CreateInput {
     webdav: Option<RepoWebdav>,
 }
 
-fn build_insert(team_id: String, role: String, member_id: String, i: &CreateInput, team_key: String) -> TeamInsert {
+fn build_insert(
+    team_id: String,
+    role: String,
+    member_id: String,
+    i: &CreateInput,
+    team_key: String,
+) -> TeamInsert {
     let g = i.gist.as_ref();
     let w = i.webdav.as_ref();
     TeamInsert {
@@ -166,7 +203,10 @@ pub async fn create(state: &AppState, payload: Value) -> FerroResult<Value> {
         added_by: None,
     };
     // Önce yerel: erişim bilgisi + anahtar saklanır.
-    state.teams.add(&state.vault, build_insert(team_id.clone(), "admin".into(), member_id, &input, team_key));
+    state.teams.add(
+        &state.vault,
+        build_insert(team_id.clone(), "admin".into(), member_id, &input, team_key),
+    );
 
     let payload = TeamPayload {
         kind: "ferro-team-payload".into(),
@@ -179,9 +219,19 @@ pub async fn create(state: &AppState, payload: Value) -> FerroResult<Value> {
         sites: vec![],
     };
     upload_payload(state, &team_id, &payload).await?;
-    state.teams.mark_synced(&team_id, vec![creator], vec![], 1, Some("admin".into()), now);
+    state.teams.mark_synced(
+        &team_id,
+        vec![creator],
+        vec![],
+        1,
+        Some("admin".into()),
+        now,
+    );
 
-    state.teams.get_public(&team_id).map(|team| json!({ "team": team }))
+    state
+        .teams
+        .get_public(&team_id)
+        .map(|team| json!({ "team": team }))
         .ok_or_else(|| FerroError::new(FerroErrorCode::Unknown, "Ekip oluşturulamadı"))
 }
 
@@ -206,11 +256,31 @@ pub async fn join(state: &AppState, payload: Value) -> FerroResult<Value> {
         member_id: member_id.clone(),
         member_name: input.member_name.clone(),
         provider: invite.provider.clone(),
-        gist_id: invite.gist.as_ref().map(|g| g.gist_id.clone()).unwrap_or_default(),
-        token: invite.gist.as_ref().map(|g| g.token.clone()).unwrap_or_default(),
-        url: invite.webdav.as_ref().map(|w| w.url.clone()).unwrap_or_default(),
-        user: invite.webdav.as_ref().map(|w| w.user.clone()).unwrap_or_default(),
-        password: invite.webdav.as_ref().map(|w| w.password.clone()).unwrap_or_default(),
+        gist_id: invite
+            .gist
+            .as_ref()
+            .map(|g| g.gist_id.clone())
+            .unwrap_or_default(),
+        token: invite
+            .gist
+            .as_ref()
+            .map(|g| g.token.clone())
+            .unwrap_or_default(),
+        url: invite
+            .webdav
+            .as_ref()
+            .map(|w| w.url.clone())
+            .unwrap_or_default(),
+        user: invite
+            .webdav
+            .as_ref()
+            .map(|w| w.user.clone())
+            .unwrap_or_default(),
+        password: invite
+            .webdav
+            .as_ref()
+            .map(|w| w.password.clone())
+            .unwrap_or_default(),
         team_key: invite.team_key.clone(),
     };
     state.teams.add(&state.vault, insert);
@@ -220,7 +290,10 @@ pub async fn join(state: &AppState, payload: Value) -> FerroResult<Value> {
         .ok_or_else(|| FerroError::new(FerroErrorCode::NotFound, "Ekip kasası bulunamadı"))?;
     if remote.team_id != file.team_id {
         state.teams.remove(&file.team_id);
-        return Err(FerroError::new(FerroErrorCode::Validation, "Ekip kimliği uyuşmuyor"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Ekip kimliği uyuşmuyor",
+        ));
     }
     let now = now_iso();
     let me = TeamMember {
@@ -235,21 +308,47 @@ pub async fn join(state: &AppState, payload: Value) -> FerroResult<Value> {
     remote.updated_at = now.clone();
     // Yükleme best-effort — başarısız olsa da yerel kayıt uzak revision ile kalır.
     let _ = upload_payload(state, &file.team_id, &remote).await;
-    state.teams.mark_synced(&file.team_id, remote.members.clone(), remote.sites.clone(), remote.revision, Some(file.role), now);
+    state.teams.mark_synced(
+        &file.team_id,
+        remote.members.clone(),
+        remote.sites.clone(),
+        remote.revision,
+        Some(file.role),
+        now,
+    );
 
-    state.teams.get_public(&file.team_id).map(|team| json!({ "team": team }))
+    state
+        .teams
+        .get_public(&file.team_id)
+        .map(|team| json!({ "team": team }))
         .ok_or_else(|| FerroError::new(FerroErrorCode::Unknown, "Ekibe katılınamadı"))
 }
 
 pub async fn pull(state: &AppState, payload: Value) -> FerroResult<Value> {
-    let team_id = payload.get("teamId").and_then(Value::as_str).unwrap_or_default().to_string();
+    let team_id = payload
+        .get("teamId")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
     let Some(remote) = fetch_payload(state, &team_id).await? else {
         return Ok(json!({ "found": false }));
     };
     let my_id = state.teams.member_id(&team_id);
-    let my_role = my_id
-        .and_then(|id| remote.members.iter().find(|m| m.id == id).map(|m| m.role.clone()));
-    state.teams.mark_synced(&team_id, remote.members.clone(), remote.sites.clone(), remote.revision, my_role.clone(), now_iso());
+    let my_role = my_id.and_then(|id| {
+        remote
+            .members
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| m.role.clone())
+    });
+    state.teams.mark_synced(
+        &team_id,
+        remote.members.clone(),
+        remote.sites.clone(),
+        remote.revision,
+        my_role.clone(),
+        now_iso(),
+    );
     Ok(json!({
         "found": true,
         "revision": remote.revision,
@@ -269,14 +368,24 @@ pub async fn push(state: &AppState, payload: Value) -> FerroResult<Value> {
     }
     let input: PushInput = serde_json::from_value(payload)?;
     if state.teams.role(&input.team_id).as_deref() == Some("readonly") {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Salt-okunur üye siteleri paylaşamaz"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Salt-okunur üye siteleri paylaşamaz",
+        ));
     }
     let team_public = state
         .teams
         .get_public(&input.team_id)
         .ok_or_else(|| FerroError::new(FerroErrorCode::NotFound, "Ekip bulunamadı"))?;
-    let team_name = team_public.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
-    let new_sites = state.sites.export_sites_by_ids(&state.vault, &input.site_ids, Some(&team_name));
+    let team_name = team_public
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let new_sites =
+        state
+            .sites
+            .export_sites_by_ids(&state.vault, &input.site_ids, Some(&team_name));
 
     let mut remote = match fetch_payload(state, &input.team_id).await? {
         Some(r) => r,
@@ -297,7 +406,14 @@ pub async fn push(state: &AppState, payload: Value) -> FerroResult<Value> {
     remote.revision += 1;
     remote.updated_at = now_iso();
     upload_payload(state, &input.team_id, &remote).await?;
-    state.teams.mark_synced(&input.team_id, remote.members.clone(), remote.sites.clone(), remote.revision, None, now_iso());
+    state.teams.mark_synced(
+        &input.team_id,
+        remote.members.clone(),
+        remote.sites.clone(),
+        remote.revision,
+        None,
+        now_iso(),
+    );
 
     Ok(json!({ "revision": remote.revision, "siteCount": remote.sites.len(), "added": added }))
 }
@@ -312,10 +428,16 @@ pub fn invite(state: &AppState, payload: Value) -> FerroResult<Value> {
     }
     let input: InviteInput = serde_json::from_value(payload)?;
     if state.teams.role(&input.team_id).as_deref() != Some("admin") {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Yalnızca yöneticiler davet oluşturabilir"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Yalnızca yöneticiler davet oluşturabilir",
+        ));
     }
     if input.pin.len() < 4 {
-        return Err(FerroError::new(FerroErrorCode::Validation, "PIN en az 4 karakter olmalı"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "PIN en az 4 karakter olmalı",
+        ));
     }
     let team_key = state
         .teams
@@ -325,31 +447,70 @@ pub fn invite(state: &AppState, payload: Value) -> FerroResult<Value> {
         .teams
         .get_public(&input.team_id)
         .ok_or_else(|| FerroError::new(FerroErrorCode::NotFound, "Ekip bulunamadı"))?;
-    let team_name = team_public.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
+    let team_name = team_public
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
 
-    let creds = state.teams.credentials(&state.vault, &input.team_id).unwrap();
+    let creds = state
+        .teams
+        .credentials(&state.vault, &input.team_id)
+        .unwrap();
     let (provider, gist, webdav) = match creds {
         TeamCreds::Gist { token, gist_id } => ("gist", Some(InviteGist { gist_id, token }), None),
-        TeamCreds::Webdav { url, user, password } => ("webdav", None, Some(InviteWebdav { url, user, password })),
+        TeamCreds::Webdav {
+            url,
+            user,
+            password,
+        } => (
+            "webdav",
+            None,
+            Some(InviteWebdav {
+                url,
+                user,
+                password,
+            }),
+        ),
     };
-    let invite_payload = TeamInvitePayload { team_key, provider: provider.into(), gist, webdav };
-    let file = encrypt_invite(&invite_payload, &input.pin, &input.team_id, &team_name, &input.role)?;
+    let invite_payload = TeamInvitePayload {
+        team_key,
+        provider: provider.into(),
+        gist,
+        webdav,
+    };
+    let file = encrypt_invite(
+        &invite_payload,
+        &input.pin,
+        &input.team_id,
+        &team_name,
+        &input.role,
+    )?;
     Ok(json!({ "code": encode_invite_code(&file)? }))
 }
 
 pub fn members(state: &AppState, payload: Value) -> FerroResult<Value> {
-    let team_id = payload.get("teamId").and_then(Value::as_str).unwrap_or_default();
+    let team_id = payload
+        .get("teamId")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     Ok(json!({ "members": state.teams.cached_members(team_id) }))
 }
 
 pub fn leave(state: &AppState, payload: Value) -> FerroResult<Value> {
-    let team_id = payload.get("teamId").and_then(Value::as_str).unwrap_or_default();
+    let team_id = payload
+        .get("teamId")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     state.teams.remove(team_id);
     Ok(json!({ "ok": true }))
 }
 
 pub fn import_sites(state: &AppState, payload: Value) -> FerroResult<Value> {
-    let team_id = payload.get("teamId").and_then(Value::as_str).unwrap_or_default();
+    let team_id = payload
+        .get("teamId")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     let sites = state.teams.cached_sites(team_id);
     let total = sites.len();
     let (imported, skipped) = state.sites.import_sites(&state.vault, sites);
@@ -363,7 +524,10 @@ async fn mutate_roster(
     mutate: impl FnOnce(&mut Vec<TeamMember>, &str) -> FerroResult<()>,
 ) -> FerroResult<Value> {
     if state.teams.role(team_id).as_deref() != Some("admin") {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Yalnızca yöneticiler roster'ı değiştirebilir"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Yalnızca yöneticiler roster'ı değiştirebilir",
+        ));
     }
     let my_id = state.teams.member_id(team_id).unwrap_or_default();
     let mut remote = fetch_payload(state, team_id)
@@ -373,7 +537,14 @@ async fn mutate_roster(
     remote.revision += 1;
     remote.updated_at = now_iso();
     upload_payload(state, team_id, &remote).await?;
-    state.teams.mark_synced(team_id, remote.members.clone(), remote.sites.clone(), remote.revision, None, now_iso());
+    state.teams.mark_synced(
+        team_id,
+        remote.members.clone(),
+        remote.sites.clone(),
+        remote.revision,
+        None,
+        now_iso(),
+    );
     Ok(json!({ "members": remote.members }))
 }
 
@@ -390,7 +561,9 @@ pub async fn set_role(state: &AppState, payload: Value) -> FerroResult<Value> {
     let mid = input.member_id.clone();
     let role = input.role.clone();
     mutate_roster(state, &input.team_id, move |members, _me| {
-        let m = members.iter_mut().find(|m| m.id == mid)
+        let m = members
+            .iter_mut()
+            .find(|m| m.id == mid)
             .ok_or_else(|| FerroError::new(FerroErrorCode::NotFound, "Üye bulunamadı"))?;
         m.role = role;
         Ok(())
@@ -410,7 +583,10 @@ pub async fn remove_member(state: &AppState, payload: Value) -> FerroResult<Valu
     let mid = input.member_id.clone();
     mutate_roster(state, &input.team_id, move |members, me| {
         if mid == me {
-            return Err(FerroError::new(FerroErrorCode::Validation, "Kendinizi çıkaramazsınız"));
+            return Err(FerroError::new(
+                FerroErrorCode::Validation,
+                "Kendinizi çıkaramazsınız",
+            ));
         }
         members.retain(|m| m.id != mid);
         Ok(())

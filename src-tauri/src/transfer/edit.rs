@@ -93,13 +93,24 @@ impl EditManager {
                 );
             }
         })
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "Dosya izleyici kurulamadı", e.to_string()))?;
+        .map_err(|e| {
+            FerroError::with_detail(
+                FerroErrorCode::Unknown,
+                "Dosya izleyici kurulamadı",
+                e.to_string(),
+            )
+        })?;
         debouncer
             .watcher()
             .watch(&temp_dir, RecursiveMode::NonRecursive)
-            .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "Dosya izlenemedi", e.to_string()))?;
+            .map_err(|e| {
+                FerroError::with_detail(FerroErrorCode::Unknown, "Dosya izlenemedi", e.to_string())
+            })?;
 
-        self.sessions.lock().unwrap().push(EditSession { _debouncer: debouncer, temp_dir });
+        self.sessions.lock().unwrap().push(EditSession {
+            _debouncer: debouncer,
+            temp_dir,
+        });
         Ok(())
     }
 
@@ -118,7 +129,13 @@ fn open_in_editor(editor: &EditorConfig, local: &std::path::Path) -> FerroResult
         std::process::Command::new(&editor.custom_path)
             .arg(local)
             .spawn()
-            .map_err(|e| FerroError::with_detail(FerroErrorCode::FsError, "Özel editör açılamadı", e.to_string()))?;
+            .map_err(|e| {
+                FerroError::with_detail(
+                    FerroErrorCode::FsError,
+                    "Özel editör açılamadı",
+                    e.to_string(),
+                )
+            })?;
         return Ok(());
     }
     // Sistem varsayılanı.
@@ -140,7 +157,8 @@ fn open_in_editor(editor: &EditorConfig, local: &std::path::Path) -> FerroResult
         c.arg(local);
         c
     };
-    cmd.spawn()
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::FsError, "Editör açılamadı", e.to_string()))?;
+    cmd.spawn().map_err(|e| {
+        FerroError::with_detail(FerroErrorCode::FsError, "Editör açılamadı", e.to_string())
+    })?;
     Ok(())
 }

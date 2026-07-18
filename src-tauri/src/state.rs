@@ -37,6 +37,17 @@ impl AppState {
         let sync = SyncConfigStore::new(&paths.config_dir);
         let teams = TeamStore::new(&paths.config_dir);
         let edits = Arc::new(EditManager::new());
-        Self { vault, sites, settings: Settings::default(), tofu, sessions, transfers, sync, teams, edits, paths }
+        Self {
+            vault,
+            sites,
+            settings: Settings::default(),
+            tofu,
+            sessions,
+            transfers,
+            sync,
+            teams,
+            edits,
+            paths,
+        }
     }
 }

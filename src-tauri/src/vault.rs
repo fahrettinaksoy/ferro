@@ -49,7 +49,10 @@ struct VaultMeta {
 
 impl Default for VaultMeta {
     fn default() -> Self {
-        Self { mode: "os".into(), master: None }
+        Self {
+            mode: "os".into(),
+            master: None,
+        }
     }
 }
 
@@ -69,11 +72,17 @@ pub struct Vault {
 // ── scrypt + AES-256-GCM yardımcıları ──────────────────────────────────────
 
 fn scrypt_key(password: &str, salt: &[u8]) -> FerroResult<[u8; KEY_LEN]> {
-    let params = scrypt::Params::new(SCRYPT_LOG_N, SCRYPT_R, SCRYPT_P, KEY_LEN)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "scrypt parametresi", e.to_string()))?;
+    let params = scrypt::Params::new(SCRYPT_LOG_N, SCRYPT_R, SCRYPT_P, KEY_LEN).map_err(|e| {
+        FerroError::with_detail(FerroErrorCode::Unknown, "scrypt parametresi", e.to_string())
+    })?;
     let mut out = [0u8; KEY_LEN];
-    scrypt::scrypt(password.as_bytes(), salt, &params, &mut out)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Unknown, "anahtar türetilemedi", e.to_string()))?;
+    scrypt::scrypt(password.as_bytes(), salt, &params, &mut out).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Unknown,
+            "anahtar türetilemedi",
+            e.to_string(),
+        )
+    })?;
     Ok(out)
 }
 
@@ -99,7 +108,10 @@ fn aes_decrypt(key: &[u8; KEY_LEN], blob: &str) -> FerroResult<Vec<u8>> {
         .decode(blob)
         .map_err(|_| FerroError::new(FerroErrorCode::AuthFailed, "geçersiz base64"))?;
     if buf.len() < IV_LEN + TAG_LEN {
-        return Err(FerroError::new(FerroErrorCode::AuthFailed, "şifreli veri eksik"));
+        return Err(FerroError::new(
+            FerroErrorCode::AuthFailed,
+            "şifreli veri eksik",
+        ));
     }
     let iv = &buf[..IV_LEN];
     let tag = &buf[IV_LEN..IV_LEN + TAG_LEN];
@@ -111,7 +123,12 @@ fn aes_decrypt(key: &[u8; KEY_LEN], blob: &str) -> FerroResult<Vec<u8>> {
     let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(key));
     cipher
         .decrypt(Nonce::from_slice(iv), ct_tag.as_ref())
-        .map_err(|_| FerroError::new(FerroErrorCode::AuthFailed, "şifre çözülemedi (yanlış parola?)"))
+        .map_err(|_| {
+            FerroError::new(
+                FerroErrorCode::AuthFailed,
+                "şifre çözülemedi (yanlış parola?)",
+            )
+        })
 }
 
 impl Vault {
@@ -123,7 +140,11 @@ impl Vault {
         };
         Self {
             file,
-            state: Mutex::new(VaultState { meta, master_key: None, os_key: None }),
+            state: Mutex::new(VaultState {
+                meta,
+                master_key: None,
+                os_key: None,
+            }),
         }
     }
 
@@ -164,9 +185,16 @@ impl Vault {
     // ── Durum ──
 
     pub fn os_encryption_available(&self) -> bool {
-        // keyring erişilebiliyor mu (veri anahtarı okunabiliyor/üretilebiliyor mu)?
-        let mut st = self.state.lock().unwrap();
-        self.os_data_key(&mut st).is_some()
+        // SADECE bir durum sorgusu: anahtar zincirine ERİŞMEDEN (macOS parolası
+        // SORMADAN) yalnızca keyring backend'inin ulaşılabilir olduğunu doğrula.
+        // Gerçek veri anahtarı, ilk gerçek şifreleme/çözme işleminde (bir sunucuya
+        // bağlanıp parola saklandığında) `os_data_key` ile TEMBEL okunur/üretilir.
+        // Böylece uygulama açılışında (sites/teams/vault durum sorguları) parola
+        // penceresi çıkmaz; keychain yalnızca gerçekten gerektiğinde açılır.
+        if self.state.lock().unwrap().os_key.is_some() {
+            return true;
+        }
+        keyring::Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT).is_ok()
     }
 
     pub fn mode(&self) -> String {
@@ -193,10 +221,14 @@ impl Vault {
         let mut st = self.state.lock().unwrap();
         if st.meta.mode == "master" {
             let key = st.master_key?;
-            return aes_encrypt(&key, plain.as_bytes()).ok().map(|b| format!("m1:{b}"));
+            return aes_encrypt(&key, plain.as_bytes())
+                .ok()
+                .map(|b| format!("m1:{b}"));
         }
         let key = self.os_data_key(&mut st)?;
-        aes_encrypt(&key, plain.as_bytes()).ok().map(|b| format!("k1:{b}"))
+        aes_encrypt(&key, plain.as_bytes())
+            .ok()
+            .map(|b| format!("k1:{b}"))
     }
 
     pub fn decrypt_secret(&self, stored: &str) -> String {
@@ -207,23 +239,32 @@ impl Vault {
                 None => None, // kilitli — çağıran parolayı sorar
             }
         } else if let Some(rest) = stored.strip_prefix("k1:") {
-            self.os_data_key(&mut st).and_then(|key| aes_decrypt(&key, rest).ok())
+            self.os_data_key(&mut st)
+                .and_then(|key| aes_decrypt(&key, rest).ok())
         } else if let Some(rest) = stored.strip_prefix("p0:") {
             B64.decode(rest).ok()
         } else {
             // v1: (eski OS anahtar zinciri) çözülemez.
             None
         };
-        result.and_then(|b| String::from_utf8(b).ok()).unwrap_or_default()
+        result
+            .and_then(|b| String::from_utf8(b).ok())
+            .unwrap_or_default()
     }
 
     // ── Master parola yönetimi ──
 
     pub fn verify_master(&self, password: &str) -> bool {
         let st = self.state.lock().unwrap();
-        let Some(m) = &st.meta.master else { return false };
-        let Ok(salt) = B64.decode(&m.salt) else { return false };
-        let Ok(key) = scrypt_key(password, &salt) else { return false };
+        let Some(m) = &st.meta.master else {
+            return false;
+        };
+        let Ok(salt) = B64.decode(&m.salt) else {
+            return false;
+        };
+        let Ok(key) = scrypt_key(password, &salt) else {
+            return false;
+        };
         match aes_decrypt(&key, &m.verifier) {
             Ok(pt) => pt == VERIFY_PLAINTEXT,
             Err(_) => false,
@@ -235,9 +276,15 @@ impl Vault {
             return false;
         }
         let mut st = self.state.lock().unwrap();
-        let Some(m) = &st.meta.master else { return false };
-        let Ok(salt) = B64.decode(&m.salt) else { return false };
-        let Ok(key) = scrypt_key(password, &salt) else { return false };
+        let Some(m) = &st.meta.master else {
+            return false;
+        };
+        let Ok(salt) = B64.decode(&m.salt) else {
+            return false;
+        };
+        let Ok(key) = scrypt_key(password, &salt) else {
+            return false;
+        };
         st.master_key = Some(key);
         true
     }
@@ -251,7 +298,10 @@ impl Vault {
                 drop(st);
                 let ok = current.map(|c| self.verify_master(c)).unwrap_or(false);
                 if !ok {
-                    return Err(FerroError::new(FerroErrorCode::AuthFailed, "Mevcut master parola hatalı"));
+                    return Err(FerroError::new(
+                        FerroErrorCode::AuthFailed,
+                        "Mevcut master parola hatalı",
+                    ));
                 }
             }
         }
@@ -261,7 +311,10 @@ impl Vault {
         let verifier = aes_encrypt(&key, VERIFY_PLAINTEXT)?;
         let mut st = self.state.lock().unwrap();
         st.meta.mode = "master".into();
-        st.meta.master = Some(MasterParams { salt: B64.encode(salt), verifier });
+        st.meta.master = Some(MasterParams {
+            salt: B64.encode(salt),
+            verifier,
+        });
         st.master_key = Some(key);
         let meta = st.meta.clone();
         drop(st);
@@ -278,7 +331,10 @@ impl Vault {
             }
         }
         if !self.verify_master(current) {
-            return Err(FerroError::new(FerroErrorCode::AuthFailed, "Master parola hatalı"));
+            return Err(FerroError::new(
+                FerroErrorCode::AuthFailed,
+                "Master parola hatalı",
+            ));
         }
         let mut st = self.state.lock().unwrap();
         st.meta.mode = "os".into();

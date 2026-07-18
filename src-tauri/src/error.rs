@@ -59,7 +59,11 @@ pub struct FerroError {
 
 impl FerroError {
     pub fn new(code: FerroErrorCode, message: impl Into<String>) -> Self {
-        Self { code, message: message.into(), detail: None }
+        Self {
+            code,
+            message: message.into(),
+            detail: None,
+        }
     }
 
     pub fn with_detail(
@@ -67,7 +71,11 @@ impl FerroError {
         message: impl Into<String>,
         detail: impl Into<String>,
     ) -> Self {
-        Self { code, message: message.into(), detail: Some(detail.into()) }
+        Self {
+            code,
+            message: message.into(),
+            detail: Some(detail.into()),
+        }
     }
 
     pub fn serialize(&self) -> SerializedError {
@@ -97,7 +105,11 @@ pub fn fs_error(msg: impl Into<String>) -> FerroError {
 /// serde_json hataları düz VALIDATION'a düşer (geçersiz yük şekli).
 impl From<serde_json::Error> for FerroError {
     fn from(e: serde_json::Error) -> Self {
-        FerroError::with_detail(FerroErrorCode::Validation, "Geçersiz IPC yükü", e.to_string())
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Geçersiz IPC yükü",
+            e.to_string(),
+        )
     }
 }
 

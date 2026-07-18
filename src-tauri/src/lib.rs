@@ -5,9 +5,8 @@
 //!   • main → renderer olayları Tauri'nin adlandırılmış olay sistemiyle yayınlanır
 //!   • tüm yerel çekirdek (FTP/SFTP/kripto/sync) Rust'ta — Node.js yok.
 
-// Göç sürüyor: bazı yardımcılar/alanlar (log dizini, ayar getter'ları, hata kodları)
-// yaklaşan fazlarda (Phase 5 loglama/menü, Phase 3b throttle/proxy) bağlanacak.
-// O zamana dek dead_code uyarısı üretmemeleri için bilinçli olarak susturulur.
+// İleride kullanılacak/opsiyonel yardımcılar (ör. güncelleme modülü, bazı ayar
+// getter'ları) için dead_code uyarıları bilinçli olarak susturulur.
 #![allow(dead_code)]
 
 mod bridge;
@@ -35,7 +34,6 @@ use state::AppState;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             use tauri::Manager;
             // Uygulama dizinlerini çöz ve paylaşılan durumu kur.
@@ -53,11 +51,11 @@ pub fn run() {
                 let _ = win.show();
             }
 
-            // Açılışta güncelleme kontrolü (yapılandırılmışsa; değilse sessizce atlanır).
-            let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                updater::check(handle).await;
-            });
+            // Otomatik güncelleme (tauri-plugin-updater) YALNIZCA imza anahtarı +
+            // `plugins.updater` (endpoints + pubkey) yapılandırılınca etkinleşir.
+            // Yapılandırılmadan plugin'i kaydetmek config'i null bulup panik verir.
+            // Etkinleştirmek için: `tauri signer generate` → tauri.conf.json'a
+            // plugins.updater ekle → burada plugin'i kaydet ve `updater::check(...)` çağır.
             Ok(())
         })
         .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))

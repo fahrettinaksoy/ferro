@@ -26,10 +26,26 @@ pub fn build(app: &AppHandle) -> FerroResult<Menu<Wry>> {
 
     // Dosya
     let file = SubmenuBuilder::new(app, "Dosya")
-        .item(&MenuItemBuilder::with_id("act-siteManager", "Site Yöneticisi").accelerator("CmdOrCtrl+S").build(app)?)
-        .item(&MenuItemBuilder::with_id("act-teams", "Ekipler…").accelerator("CmdOrCtrl+Shift+T").build(app)?)
-        .item(&MenuItemBuilder::with_id("act-cloudSync", "Senkronizasyon…").accelerator("CmdOrCtrl+Shift+Y").build(app)?)
-        .item(&MenuItemBuilder::with_id("act-settings", "Ayarlar…").accelerator("CmdOrCtrl+,").build(app)?)
+        .item(
+            &MenuItemBuilder::with_id("act-siteManager", "Site Yöneticisi")
+                .accelerator("CmdOrCtrl+S")
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id("act-teams", "Ekipler…")
+                .accelerator("CmdOrCtrl+Shift+T")
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id("act-cloudSync", "Senkronizasyon…")
+                .accelerator("CmdOrCtrl+Shift+Y")
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id("act-settings", "Ayarlar…")
+                .accelerator("CmdOrCtrl+,")
+                .build(app)?,
+        )
         .separator()
         .item(&PredefinedMenuItem::close_window(app, Some("Kapat"))?)
         .build()?;
@@ -37,18 +53,47 @@ pub fn build(app: &AppHandle) -> FerroResult<Menu<Wry>> {
     // Sunucu (bağlantı denetimleri — enabled/checked durumları renderer'dan eşitlenir)
     let server = SubmenuBuilder::new(app, "Sunucu")
         .item(&MenuItemBuilder::with_id("act-connect", "Bağlan…").build(app)?)
-        .item(&MenuItemBuilder::with_id(ID_DISCONNECT, "Bağlantıyı Kes").enabled(false).build(app)?)
-        .item(&MenuItemBuilder::with_id(ID_RECONNECT, "Yeniden Bağlan").enabled(false).build(app)?)
+        .item(
+            &MenuItemBuilder::with_id(ID_DISCONNECT, "Bağlantıyı Kes")
+                .enabled(false)
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(ID_RECONNECT, "Yeniden Bağlan")
+                .enabled(false)
+                .build(app)?,
+        )
         .separator()
-        .item(&MenuItemBuilder::with_id(ID_SYNC, "Eşitle…").enabled(false).build(app)?)
-        .item(&CheckMenuItemBuilder::with_id(ID_TRANSFERS, "Aktarımları Duraklat").checked(false).enabled(false).build(app)?)
+        .item(
+            &MenuItemBuilder::with_id(ID_SYNC, "Eşitle…")
+                .enabled(false)
+                .build(app)?,
+        )
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_TRANSFERS, "Aktarımları Duraklat")
+                .checked(false)
+                .enabled(false)
+                .build(app)?,
+        )
         .build()?;
 
     // Görünüm (panel görünürlükleri + zoom/tam ekran)
     let view = SubmenuBuilder::new(app, "Görünüm")
-        .item(&CheckMenuItemBuilder::with_id(ID_PANEL_SERVERS, "Sunucular").checked(true).build(app)?)
-        .item(&CheckMenuItemBuilder::with_id(ID_PANEL_LOG, "Günlük").checked(true).build(app)?)
-        .item(&CheckMenuItemBuilder::with_id(ID_PANEL_QUEUE, "Transferler").checked(true).build(app)?)
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_PANEL_SERVERS, "Sunucular")
+                .checked(true)
+                .build(app)?,
+        )
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_PANEL_LOG, "Günlük")
+                .checked(true)
+                .build(app)?,
+        )
+        .item(
+            &CheckMenuItemBuilder::with_id(ID_PANEL_QUEUE, "Transferler")
+                .checked(true)
+                .build(app)?,
+        )
         .separator()
         .item(&PredefinedMenuItem::fullscreen(app, Some("Tam Ekran"))?)
         .build()?;
@@ -66,7 +111,11 @@ pub fn build(app: &AppHandle) -> FerroResult<Menu<Wry>> {
 
     // Yardım
     let help = SubmenuBuilder::new(app, "Yardım")
-        .item(&MenuItemBuilder::with_id("act-hotkeys", "Klavye Kısayolları").accelerator("CmdOrCtrl+/").build(app)?)
+        .item(
+            &MenuItemBuilder::with_id("act-hotkeys", "Klavye Kısayolları")
+                .accelerator("CmdOrCtrl+/")
+                .build(app)?,
+        )
         .separator()
         .item(&MenuItemBuilder::with_id("about", "Ferro Hakkında").build(app)?)
         .build()?;
@@ -88,7 +137,13 @@ pub fn build(app: &AppHandle) -> FerroResult<Menu<Wry>> {
             .build()?;
         builder = builder.item(&app_menu);
     }
-    let menu = builder.item(&file).item(&server).item(&edit).item(&view).item(&help).build()?;
+    let menu = builder
+        .item(&file)
+        .item(&server)
+        .item(&edit)
+        .item(&view)
+        .item(&help)
+        .build()?;
     Ok(menu)
 }
 
@@ -119,18 +174,33 @@ fn emit_action(app: &AppHandle, action: &str) {
 }
 
 /// Sunucu menüsü öğe durumlarını eşitler (`app:setConnState`).
-pub fn set_conn_state(app: &AppHandle, connected: bool, connecting: bool, any_connected: bool, paused: bool) {
+pub fn set_conn_state(
+    app: &AppHandle,
+    connected: bool,
+    connecting: bool,
+    any_connected: bool,
+    paused: bool,
+) {
     let Some(menu) = app.menu() else { return };
-    if let Some(item) = menu.get(ID_DISCONNECT).and_then(|i| i.as_menuitem().cloned()) {
+    if let Some(item) = menu
+        .get(ID_DISCONNECT)
+        .and_then(|i| i.as_menuitem().cloned())
+    {
         let _ = item.set_enabled(connected || connecting);
     }
-    if let Some(item) = menu.get(ID_RECONNECT).and_then(|i| i.as_menuitem().cloned()) {
+    if let Some(item) = menu
+        .get(ID_RECONNECT)
+        .and_then(|i| i.as_menuitem().cloned())
+    {
         let _ = item.set_enabled(connected);
     }
     if let Some(item) = menu.get(ID_SYNC).and_then(|i| i.as_menuitem().cloned()) {
         let _ = item.set_enabled(connected);
     }
-    if let Some(item) = menu.get(ID_TRANSFERS).and_then(|i| i.as_check_menuitem().cloned()) {
+    if let Some(item) = menu
+        .get(ID_TRANSFERS)
+        .and_then(|i| i.as_check_menuitem().cloned())
+    {
         let _ = item.set_enabled(any_connected);
         let _ = item.set_checked(paused);
     }
@@ -139,7 +209,11 @@ pub fn set_conn_state(app: &AppHandle, connected: bool, connecting: bool, any_co
 /// Panel görünürlük onay imlerini eşitler (`app:setPanelState`).
 pub fn set_panel_state(app: &AppHandle, servers: bool, log: bool, queue: bool) {
     let Some(menu) = app.menu() else { return };
-    for (id, on) in [(ID_PANEL_SERVERS, servers), (ID_PANEL_LOG, log), (ID_PANEL_QUEUE, queue)] {
+    for (id, on) in [
+        (ID_PANEL_SERVERS, servers),
+        (ID_PANEL_LOG, log),
+        (ID_PANEL_QUEUE, queue),
+    ] {
         if let Some(item) = menu.get(id).and_then(|i| i.as_check_menuitem().cloned()) {
             let _ = item.set_checked(on);
         }

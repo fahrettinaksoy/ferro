@@ -8,7 +8,10 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
-use crate::crypto::{b64, derive_key, gcm_decrypt, gcm_encrypt, key_from_b64, random_bytes, unb64, KDF_N, KDF_P, KDF_R, SALT_LEN};
+use crate::crypto::{
+    b64, derive_key, gcm_decrypt, gcm_encrypt, key_from_b64, random_bytes, unb64, KDF_N, KDF_P,
+    KDF_R, SALT_LEN,
+};
 use crate::error::{FerroError, FerroErrorCode, FerroResult};
 use crate::types::SiteExportEntry;
 
@@ -114,7 +117,10 @@ pub fn generate_team_key() -> String {
 
 // ── Kasa (TK ile) ──
 
-pub fn encrypt_team_payload(payload: &TeamPayload, team_key_b64: &str) -> FerroResult<TeamBlobFile> {
+pub fn encrypt_team_payload(
+    payload: &TeamPayload,
+    team_key_b64: &str,
+) -> FerroResult<TeamBlobFile> {
     let key = key_from_b64(team_key_b64)?;
     let plain = serde_json::to_vec(payload)?;
     let (iv, data) = gcm_encrypt(&key, &plain)?;
@@ -134,14 +140,25 @@ pub fn encrypt_team_payload(payload: &TeamPayload, team_key_b64: &str) -> FerroR
 
 pub fn decrypt_team_payload(file: &TeamBlobFile, team_key_b64: &str) -> FerroResult<TeamPayload> {
     if file.kind != "ferro-team" || file.version != 1 || file.cipher != "aes-256-gcm" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Tanınmayan ekip dosyası formatı"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Tanınmayan ekip dosyası formatı",
+        ));
     }
     let key = key_from_b64(team_key_b64)?;
     let plain = gcm_decrypt(&key, &unb64(&file.iv)?, &unb64(&file.data)?)?;
-    let payload: TeamPayload = serde_json::from_slice(&plain)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Ekip yükü çözümlenemedi", e.to_string()))?;
+    let payload: TeamPayload = serde_json::from_slice(&plain).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Ekip yükü çözümlenemedi",
+            e.to_string(),
+        )
+    })?;
     if payload.kind != "ferro-team-payload" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Ekip yükü türü uyuşmuyor"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Ekip yükü türü uyuşmuyor",
+        ));
     }
     Ok(payload)
 }
@@ -166,7 +183,13 @@ pub fn encrypt_invite(
         team_id: team_id.into(),
         team_name: team_name.into(),
         role: role.into(),
-        kdf: InviteKdf { algo: "scrypt".into(), salt: b64(&salt), n: KDF_N, r: KDF_R, p: KDF_P },
+        kdf: InviteKdf {
+            algo: "scrypt".into(),
+            salt: b64(&salt),
+            n: KDF_N,
+            r: KDF_R,
+            p: KDF_P,
+        },
         cipher: "aes-256-gcm".into(),
         iv: b64(&iv),
         data: b64(&data),
@@ -175,20 +198,31 @@ pub fn encrypt_invite(
 
 pub fn decrypt_invite(file: &TeamInviteFile, pin: &str) -> FerroResult<TeamInvitePayload> {
     if file.kind != "ferro-invite" || file.version != 1 || file.cipher != "aes-256-gcm" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Tanınmayan davet formatı"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Tanınmayan davet formatı",
+        ));
     }
     let salt = unb64(&file.kdf.salt)?;
     let key = derive_key(pin, &salt, file.kdf.n, file.kdf.r, file.kdf.p)?;
     let plain = gcm_decrypt(&key, &unb64(&file.iv)?, &unb64(&file.data)?)?;
-    serde_json::from_slice(&plain)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Davet yükü çözümlenemedi", e.to_string()))
+    serde_json::from_slice(&plain).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Davet yükü çözümlenemedi",
+            e.to_string(),
+        )
+    })
 }
 
 // ── Davet kodu (taşınabilir string) ──
 
 pub fn encode_invite_code(file: &TeamInviteFile) -> FerroResult<String> {
     let json = serde_json::to_vec(file)?;
-    Ok(format!("{INVITE_CODE_PREFIX}{}", URL_SAFE_NO_PAD.encode(json)))
+    Ok(format!(
+        "{INVITE_CODE_PREFIX}{}",
+        URL_SAFE_NO_PAD.encode(json)
+    ))
 }
 
 pub fn decode_invite_code(code: &str) -> FerroResult<TeamInviteFile> {
@@ -198,10 +232,18 @@ pub fn decode_invite_code(code: &str) -> FerroResult<TeamInviteFile> {
     let bytes = URL_SAFE_NO_PAD
         .decode(rest.trim())
         .map_err(|_| FerroError::new(FerroErrorCode::Validation, "Davet kodu çözülemedi"))?;
-    let file: TeamInviteFile = serde_json::from_slice(&bytes)
-        .map_err(|e| FerroError::with_detail(FerroErrorCode::Validation, "Davet kodu biçimi geçersiz", e.to_string()))?;
+    let file: TeamInviteFile = serde_json::from_slice(&bytes).map_err(|e| {
+        FerroError::with_detail(
+            FerroErrorCode::Validation,
+            "Davet kodu biçimi geçersiz",
+            e.to_string(),
+        )
+    })?;
     if file.app != "ferro" || file.kind != "ferro-invite" {
-        return Err(FerroError::new(FerroErrorCode::Validation, "Tanınmayan davet kodu"));
+        return Err(FerroError::new(
+            FerroErrorCode::Validation,
+            "Tanınmayan davet kodu",
+        ));
     }
     Ok(file)
 }

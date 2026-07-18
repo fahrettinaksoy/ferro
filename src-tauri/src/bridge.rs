@@ -53,7 +53,9 @@ async fn dispatch(
 ) -> FerroResult<Value> {
     match channel {
         // ── app ──
-        "app:ping" => Ok(json!({ "pong": true, "version": app.package_info().version.to_string() })),
+        "app:ping" => {
+            Ok(json!({ "pong": true, "version": app.package_info().version.to_string() }))
+        }
         "app:info" => Ok(handlers::app_info(app)),
         "dialog:pickDirectory" => handlers::pick_directory(app, payload),
         "settings:apply" => handlers::settings_apply(state, payload),

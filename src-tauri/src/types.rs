@@ -56,7 +56,11 @@ pub struct RemoteEntry {
     pub owner: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
-    #[serde(rename = "linkTarget", default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "linkTarget",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
     pub link_target: Option<String>,
 }
 

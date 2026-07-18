@@ -12,10 +12,16 @@ use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 
 use suppaftp::list::File as FtpFile;
-use suppaftp::rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
-use suppaftp::rustls::crypto::{ring, verify_tls12_signature, verify_tls13_signature, WebPkiSupportedAlgorithms};
+use suppaftp::rustls::client::danger::{
+    HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier,
+};
+use suppaftp::rustls::crypto::{
+    ring, verify_tls12_signature, verify_tls13_signature, WebPkiSupportedAlgorithms,
+};
 use suppaftp::rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use suppaftp::rustls::{ClientConfig, DigitallySignedStruct, Error as RustlsError, SignatureScheme};
+use suppaftp::rustls::{
+    ClientConfig, DigitallySignedStruct, Error as RustlsError, SignatureScheme,
+};
 use suppaftp::types::FileType as FtpFileType;
 use suppaftp::{RustlsConnector, RustlsFtpStream};
 use tauri::AppHandle;
@@ -47,7 +53,11 @@ impl std::fmt::Debug for TofuVerifier {
 fn cert_fingerprint(der: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     let digest = Sha256::digest(der);
-    digest.iter().map(|b| format!("{b:02X}")).collect::<Vec<_>>().join(":")
+    digest
+        .iter()
+        .map(|b| format!("{b:02X}"))
+        .collect::<Vec<_>>()
+        .join(":")
 }
 
 impl ServerCertVerifier for TofuVerifier {
@@ -70,7 +80,9 @@ impl ServerCertVerifier for TofuVerifier {
         if ok {
             Ok(ServerCertVerified::assertion())
         } else {
-            Err(RustlsError::General("Sertifika kullanıcı tarafından reddedildi".into()))
+            Err(RustlsError::General(
+                "Sertifika kullanıcı tarafından reddedildi".into(),
+            ))
         }
     }
 
@@ -101,7 +113,13 @@ impl ServerCertVerifier for TofuVerifier {
 fn tofu_connector(app: &AppHandle, tofu: Arc<Tofu>, host: &str, port: u16) -> RustlsConnector {
     let provider = ring::default_provider();
     let algs = provider.signature_verification_algorithms;
-    let verifier = Arc::new(TofuVerifier { app: app.clone(), tofu, host: host.to_string(), port, algs });
+    let verifier = Arc::new(TofuVerifier {
+        app: app.clone(),
+        tofu,
+        host: host.to_string(),
+        port,
+        algs,
+    });
     let config = ClientConfig::builder_with_provider(Arc::new(provider))
         .with_safe_default_protocol_versions()
         .expect("rustls protokol sürümleri")
@@ -159,7 +177,11 @@ fn translate(e: impl std::fmt::Display, code: FerroErrorCode, message: &str) -> 
     let low = detail.to_lowercase();
     let mapped = if detail.contains("550") || low.contains("not found") || low.contains("no such") {
         FerroErrorCode::NotFound
-    } else if detail.contains("530") || detail.contains("331") || detail.contains("332") || low.contains("login") {
+    } else if detail.contains("530")
+        || detail.contains("331")
+        || detail.contains("332")
+        || low.contains("login")
+    {
         FerroErrorCode::AuthFailed
     } else if detail.contains("553") || detail.contains("532") || low.contains("permission") {
         FerroErrorCode::PermissionDenied
@@ -182,31 +204,53 @@ impl FtpConnection {
     ) -> FerroResult<Self> {
         let addr = format!("{}:{}", config.host, config.port);
         let (user, pass) = if config.anonymous.unwrap_or(false) {
-            ("anonymous".to_string(), config.password.clone().unwrap_or_else(|| "anonymous@".into()))
+            (
+                "anonymous".to_string(),
+                config
+                    .password
+                    .clone()
+                    .unwrap_or_else(|| "anonymous@".into()),
+            )
         } else {
-            (config.user.clone(), config.password.clone().unwrap_or_default())
+            (
+                config.user.clone(),
+                config.password.clone().unwrap_or_default(),
+            )
         };
 
         let mut stream = match config.protocol {
             Protocol::FtpsImplicit => {
                 // Implicit FTPS: bağlantı anında TLS.
                 let connector = tofu_connector(&app, tofu, &config.host, config.port);
-                RustlsFtpStream::connect_secure_implicit(&addr, connector, &config.host)
-                    .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "Implicit FTPS bağlanamadı"))?
+                RustlsFtpStream::connect_secure_implicit(&addr, connector, &config.host).map_err(
+                    |e| {
+                        translate(
+                            e,
+                            FerroErrorCode::ConnectionFailed,
+                            "Implicit FTPS bağlanamadı",
+                        )
+                    },
+                )?
             }
             Protocol::Ftps => {
                 // Explicit FTPS: önce düz, sonra AUTH TLS (kimlik bilgisi TLS sonrası gider).
-                let plain = RustlsFtpStream::connect(&addr)
-                    .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "FTP bağlanamadı"))?;
+                let plain = RustlsFtpStream::connect(&addr).map_err(|e| {
+                    translate(e, FerroErrorCode::ConnectionFailed, "FTP bağlanamadı")
+                })?;
                 let connector = tofu_connector(&app, tofu, &config.host, config.port);
-                plain
-                    .into_secure(connector, &config.host)
-                    .map_err(|e| translate(e, FerroErrorCode::TlsUntrusted, "TLS el sıkışması başarısız / reddedildi"))?
+                plain.into_secure(connector, &config.host).map_err(|e| {
+                    translate(
+                        e,
+                        FerroErrorCode::TlsUntrusted,
+                        "TLS el sıkışması başarısız / reddedildi",
+                    )
+                })?
             }
             _ => {
                 // Düz FTP.
-                RustlsFtpStream::connect(&addr)
-                    .map_err(|e| translate(e, FerroErrorCode::ConnectionFailed, "FTP bağlanamadı"))?
+                RustlsFtpStream::connect(&addr).map_err(|e| {
+                    translate(e, FerroErrorCode::ConnectionFailed, "FTP bağlanamadı")
+                })?
             }
         };
 
@@ -214,7 +258,11 @@ impl FtpConnection {
             .login(&user, &pass)
             .map_err(|e| translate(e, FerroErrorCode::AuthFailed, "Kimlik doğrulama başarısız"))?;
 
-        Ok(Self { stream, connected: true, transfer_type: opts.transfer_type.clone() })
+        Ok(Self {
+            stream,
+            connected: true,
+            transfer_type: opts.transfer_type.clone(),
+        })
     }
 }
 
@@ -224,11 +272,15 @@ impl TransferClient for FtpConnection {
     }
 
     fn pwd(&mut self) -> FerroResult<String> {
-        self.stream.pwd().map_err(|e| translate(e, FerroErrorCode::FsError, "PWD başarısız"))
+        self.stream
+            .pwd()
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "PWD başarısız"))
     }
 
     fn cwd(&mut self, path: &str) -> FerroResult<String> {
-        self.stream.cwd(path).map_err(|e| translate(e, FerroErrorCode::FsError, "CWD başarısız"))?;
+        self.stream
+            .cwd(path)
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "CWD başarısız"))?;
         self.pwd()
     }
 
@@ -257,7 +309,12 @@ impl TransferClient for FtpConnection {
             .ok_or_else(|| FerroError::new(FerroErrorCode::NotFound, format!("Bulunamadı: {path}")))
     }
 
-    fn download(&mut self, remote_path: &str, dest: &Path, ctx: &mut TransferCtx) -> FerroResult<()> {
+    fn download(
+        &mut self,
+        remote_path: &str,
+        dest: &Path,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()> {
         let total = self.stream.size(remote_path).ok().map(|s| s as u64);
         self.set_type(remote_path);
         if ctx.start_at > 0 {
@@ -270,7 +327,10 @@ impl TransferClient for FtpConnection {
             .retr_as_stream(remote_path)
             .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "İndirme başlatılamadı"))?;
         let mut local = if ctx.start_at > 0 {
-            std::fs::OpenOptions::new().create(true).append(true).open(dest)?
+            std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(dest)?
         } else {
             std::fs::File::create(dest)?
         };
@@ -279,9 +339,14 @@ impl TransferClient for FtpConnection {
         loop {
             if ctx.is_cancelled() {
                 self.connected = false; // veri kanalı yarıda — bağlantı atılmalı
-                return Err(FerroError::new(FerroErrorCode::Cancelled, "İndirme iptal edildi"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Cancelled,
+                    "İndirme iptal edildi",
+                ));
             }
-            let n = data.read(&mut buf).map_err(|e| translate(e, FerroErrorCode::TransferFailed, "İndirme hatası"))?;
+            let n = data
+                .read(&mut buf)
+                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "İndirme hatası"))?;
             if n == 0 {
                 break;
             }
@@ -296,7 +361,12 @@ impl TransferClient for FtpConnection {
             .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "İndirme tamamlanamadı"))
     }
 
-    fn upload(&mut self, source: &Path, remote_path: &str, ctx: &mut TransferCtx) -> FerroResult<()> {
+    fn upload(
+        &mut self,
+        source: &Path,
+        remote_path: &str,
+        ctx: &mut TransferCtx,
+    ) -> FerroResult<()> {
         let mut local = std::fs::File::open(source)?;
         let total = local.metadata().ok().map(|m| m.len());
         self.set_type(remote_path);
@@ -304,26 +374,34 @@ impl TransferClient for FtpConnection {
             local.seek(SeekFrom::Start(ctx.start_at))?;
         }
         let mut data = if ctx.start_at > 0 {
-            self.stream
-                .append_with_stream(remote_path)
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme (append) başlatılamadı"))?
+            self.stream.append_with_stream(remote_path).map_err(|e| {
+                translate(
+                    e,
+                    FerroErrorCode::TransferFailed,
+                    "Yükleme (append) başlatılamadı",
+                )
+            })?
         } else {
-            self.stream
-                .put_with_stream(remote_path)
-                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme başlatılamadı"))?
+            self.stream.put_with_stream(remote_path).map_err(|e| {
+                translate(e, FerroErrorCode::TransferFailed, "Yükleme başlatılamadı")
+            })?
         };
         let mut buf = vec![0u8; CHUNK];
         let mut done = ctx.start_at;
         loop {
             if ctx.is_cancelled() {
                 self.connected = false;
-                return Err(FerroError::new(FerroErrorCode::Cancelled, "Yükleme iptal edildi"));
+                return Err(FerroError::new(
+                    FerroErrorCode::Cancelled,
+                    "Yükleme iptal edildi",
+                ));
             }
             let n = local.read(&mut buf)?;
             if n == 0 {
                 break;
             }
-            data.write_all(&buf[..n]).map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme hatası"))?;
+            data.write_all(&buf[..n])
+                .map_err(|e| translate(e, FerroErrorCode::TransferFailed, "Yükleme hatası"))?;
             done += n as u64;
             (ctx.on_progress)(done, total);
             ctx.pace(n);
@@ -334,26 +412,40 @@ impl TransferClient for FtpConnection {
     }
 
     fn delete(&mut self, path: &str) -> FerroResult<()> {
-        self.stream.rm(path).map_err(|e| translate(e, FerroErrorCode::FsError, "Dosya silinemedi"))
+        self.stream
+            .rm(path)
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "Dosya silinemedi"))
     }
 
     fn rename(&mut self, from: &str, to: &str) -> FerroResult<()> {
-        self.stream.rename(from, to).map_err(|e| translate(e, FerroErrorCode::FsError, "Yeniden adlandırılamadı"))
+        self.stream
+            .rename(from, to)
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "Yeniden adlandırılamadı"))
     }
 
     fn mkdir(&mut self, path: &str) -> FerroResult<()> {
-        self.stream.mkdir(path).map_err(|e| translate(e, FerroErrorCode::FsError, "Dizin oluşturulamadı"))
+        self.stream
+            .mkdir(path)
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "Dizin oluşturulamadı"))
     }
 
     fn rmdir(&mut self, path: &str) -> FerroResult<()> {
-        self.stream.rmdir(path).map_err(|e| translate(e, FerroErrorCode::FsError, "Dizin silinemedi"))
+        self.stream
+            .rmdir(path)
+            .map_err(|e| translate(e, FerroErrorCode::FsError, "Dizin silinemedi"))
     }
 
     fn chmod(&mut self, path: &str, mode: u32) -> FerroResult<()> {
         self.stream
             .site(format!("CHMOD {:03o} {}", mode & 0o777, path))
             .map(|_| ())
-            .map_err(|e| translate(e, FerroErrorCode::FsError, "İzin değiştirilemedi (SITE CHMOD desteklenmiyor olabilir)"))
+            .map_err(|e| {
+                translate(
+                    e,
+                    FerroErrorCode::FsError,
+                    "İzin değiştirilemedi (SITE CHMOD desteklenmiyor olabilir)",
+                )
+            })
     }
 
     fn disconnect(&mut self) {

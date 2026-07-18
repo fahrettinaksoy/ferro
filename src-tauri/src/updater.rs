@@ -14,14 +14,20 @@ pub async fn check(app: AppHandle) {
     match run(&app).await {
         Ok(true) => crate::logger::log("info", "updater", "Güncelleme indirildi ve kuruldu"),
         Ok(false) => crate::logger::log("info", "updater", "Güncel sürüm kullanılıyor"),
-        Err(e) => crate::logger::log("info", "updater", &format!("Güncelleme kontrolü atlandı: {e}")),
+        Err(e) => crate::logger::log(
+            "info",
+            "updater",
+            &format!("Güncelleme kontrolü atlandı: {e}"),
+        ),
     }
 }
 
 async fn run(app: &AppHandle) -> Result<bool, Box<dyn std::error::Error>> {
     let updater = app.updater()?;
     if let Some(update) = updater.check().await? {
-        update.download_and_install(|_downloaded, _total| {}, || {}).await?;
+        update
+            .download_and_install(|_downloaded, _total| {}, || {})
+            .await?;
         return Ok(true);
     }
     Ok(false)
