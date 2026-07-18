@@ -52,7 +52,7 @@ tokio-socks = "0.5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "default-tls"] }
 
 # Edit-in-place: geçici dosya değişikliğini izleyip yeniden yükler.
-notify = "6"
+notify = "8"
 notify-debouncer-mini = "0.4"
 
 # Yardımcılar
