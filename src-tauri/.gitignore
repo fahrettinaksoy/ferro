@@ -1,0 +1,4 @@
+# Rust / Tauri derleme çıktıları
+/target
+# Tauri tarafından üretilen şema/izin dosyaları
+/gen/schemas

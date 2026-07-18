@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # Frontend (Vue / Vite) — npm
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -13,7 +14,21 @@ updates:
         dependency-type: production
         update-types: [minor, patch]
 
+  # Rust backend (Tauri) — cargo
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      cargo-minor-patch:
+        update-types: [minor, patch]
+
+  # CI iş akışları
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        update-types: [minor, patch]

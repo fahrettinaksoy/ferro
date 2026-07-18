@@ -38,9 +38,8 @@ export interface InvokeMap {
     res: {
       name: string
       version: string
-      electron: string
-      chrome: string
-      node: string
+      tauri: string
+      webview: string
       platform: string
       arch: string
     }

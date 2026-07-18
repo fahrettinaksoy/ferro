@@ -818,7 +818,7 @@ button.head-cell.col-sort:focus-visible {
   overflow-y: hidden;
   scrollbar-width: none; /* ince çubuk bile yüksekliği bozuyor */
 }
-/* Chromium: yatay kaydırma çubuğu yer kaplamasın (Electron = Chromium). */
+/* Yatay kaydırma çubuğu yer kaplamasın (WebView). */
 .path-bar::-webkit-scrollbar {
   display: none;
 }

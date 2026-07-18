@@ -13,14 +13,14 @@ Requirements:
 git clone https://github.com/fahrettinaksoy/ferro.git
 cd ferro
 npm install
-npm run dev        # electron-vite dev server with HMR
+npm run dev        # Vite dev server with HMR (npm run tauri:dev for the desktop app)
 ```
 
-> **Note:** if `ELECTRON_RUN_AS_NODE=1` is set in your shell, Electron starts as plain Node and no window opens. Run `unset ELECTRON_RUN_AS_NODE && npm run dev`.
+> **Note:** `npm run dev` runs only the Vite web preview; use `npm run tauri:dev` for the native desktop window.
 
 ## Project layout
 
-- `src/main` — Electron main process: transfer engine, IPC handlers, stores. All network and filesystem access lives here.
+- `src-tauri/src` — Rust backend (Tauri): transfer engine, IPC handlers, stores. All network and filesystem access lives here.
 - `src/preload` — hardened `contextBridge` bridge. Only `window.ferro` (`invoke` + `on`) is exposed to the renderer.
 - `src/renderer` — Vue 3 + Vuetify UI (Pinia stores, vue-i18n locales).
 - `src/shared` — the typed IPC contract (`ipc.ts`), error model (`errors.ts`) and domain types (`transfer.ts`). **Every IPC channel is defined here and validated at runtime in `src/main/ipc/validation.ts` — when you add or change a channel, update both.**

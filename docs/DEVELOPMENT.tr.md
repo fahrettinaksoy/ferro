@@ -58,7 +58,7 @@ IPC uçtan uca tip güvenlidir:
 ## Güvenlik Mimarisi
 
 - **Vault** (`store/vault.ts`) iki mod:
-  - `os` — Electron `safeStorage` (OS anahtar zinciri), kayıt öneki `v1:` (varsayılan)
+  - `os` — OS anahtar zinciri (`keyring`), kayıt öneki `k1:` (varsayılan)
   - `master` — ana parola: scrypt (N=16384, r=8, p=1) + AES-256-GCM (12 bayt IV), önek `m1:`. Mod geçişlerinde sırlar yeniden şifrelenerek taşınır.
   - `p0:` (base64) eski kayıtlar yalnızca okunur (geri uyumluluk + seed).
   - İkisi de kullanılamıyorsa parolalar **hiç kalıcılaştırılmaz** — düz metin asla diske yazılmaz.
@@ -73,7 +73,7 @@ IPC uçtan uca tip güvenlidir:
 ```text
 ferro/
 ├── src/
-│   ├── main/                 # Electron main süreci
+│   └── (Rust backend → src-tauri/src)
 │   │   ├── core/             # logger, updater, runtime ayarları
 │   │   ├── ipc/              # router + handler modülleri (zod doğrulama)
 │   │   ├── store/            # sites, vault, knownHosts (atomik JSON depoları)
@@ -99,14 +99,14 @@ ferro/
 
 ```bash
 npm install
-npm run dev        # electron-vite dev sunucusu (HMR)
+npm run dev        # Vite dev sunucusu (HMR); masaüstü için: npm run tauri:dev
 npm run typecheck  # tsc (main/preload) + vue-tsc (renderer)
 npm run lint       # ESLint
 npm run format     # Prettier
 npm run build      # typecheck + production paket
 ```
 
-> **Not:** `ELECTRON_RUN_AS_NODE=1` set ise Electron saf Node gibi başlar ve pencere açılmaz. `unset ELECTRON_RUN_AS_NODE && npm run dev` çalıştırın.
+> **Not:** `npm run dev` yalnızca Vite web önizlemesini başlatır; native masaüstü penceresi için `npm run tauri:dev` kullanın.
 
 Commit'ler [Conventional Commits](https://www.conventionalcommits.org/) kuralına uyar (commitlint + husky ile denetlenir); `pre-commit` kancası lint-staged çalıştırır.
 

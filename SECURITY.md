@@ -36,7 +36,7 @@ Measures currently in place:
 
 - **Process isolation:** all network and Node.js access is confined to the main process. The renderer runs with `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false` and a strict CSP; the only bridge is the typed `window.ferro` API.
 - **IPC hardening:** a single bridge channel, per-channel schema validation (zod), sender frame verification, and structured error serialization (no stack traces cross the bridge).
-- **Credential storage:** passwords are encrypted with Electron `safeStorage` (OS keychain). When OS-level encryption is unavailable, a clearly-flagged fallback is used and the user is warned.
+- **Credential storage:** passwords are encrypted with the OS keychain (`keyring`) or a user master password (scrypt + AES-256-GCM). When neither is available, secrets are not persisted and the user is warned.
 - **SFTP host keys:** trust-on-first-use with SHA-256 fingerprint pinning and a prominent warning when a stored key changes.
 - **FTPS certificates:** strict verification first (credentials are never sent to an unverified server); self-signed certificates require explicit user approval and are pinned by SHA-256 fingerprint, with a warning if the certificate later changes.
 - **Local filesystem guardrails:** destructive operations refuse filesystem roots and the home directory; all paths are validated and normalized at the IPC boundary.
@@ -44,4 +44,4 @@ Measures currently in place:
 
 ## Release integrity
 
-Official builds are published via GitHub Releases by the CI release workflow. macOS and Windows packages are code-signed when signing certificates are configured; Linux packages rely on HTTPS transport and the electron-updater blockmap. Always download Ferro from the official repository's Releases page.
+Official builds are published via GitHub Releases by the CI release workflow. macOS and Windows packages are code-signed when signing certificates are configured; updates are verified with the Tauri updater's minisign signatures. Always download Ferro from the official repository's Releases page.
